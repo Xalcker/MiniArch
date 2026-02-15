@@ -1,0 +1,34 @@
+# Placeholder para la imagen de Plymouth
+
+Este archivo es un marcador de posición. Reemplázalo con tu imagen PNG real.
+
+## Cómo crear tu imagen:
+
+1. **Opción rápida**: Ejecuta el script de ayuda:
+   ```bash
+   cd assets
+   bash create-example-assets.sh
+   ```
+
+2. **Opción manual con ImageMagick**:
+   ```bash
+   convert -size 1280x720 gradient:#0f2027-#203a43-#2c5364 \
+       -font Arial-Bold -pointsize 80 -fill white \
+       -gravity center -annotate +0-50 "Arch Linux" \
+       -pointsize 40 -annotate +0+50 "Modo Kiosko" \
+       plymouth-image.png
+   ```
+
+3. **Opción con GIMP**:
+   - Abre GIMP
+   - Crea nueva imagen: 1280x720 píxeles
+   - Diseña tu imagen
+   - Exporta como: plymouth-image.png
+
+## Requisitos:
+- Formato: PNG válido
+- Resolución: 1280x720 píxeles (recomendado)
+- El script escalará automáticamente si es diferente
+
+## Ubicación final:
+Renombra o reemplaza este archivo como: `plymouth-image.png`

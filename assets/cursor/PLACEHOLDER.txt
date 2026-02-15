@@ -1,0 +1,58 @@
+# Directorio de Cursor Personalizado
+
+Este directorio debe contener tu cursor personalizado para el sistema kiosko.
+
+## Estructura esperada:
+
+```
+cursor/
+├── cursors/              # Directorio con archivos de cursor X11
+│   ├── default
+│   ├── pointer
+│   ├── hand
+│   ├── text
+│   └── wait
+└── index.theme          # Archivo de configuración del tema
+```
+
+## Opciones rápidas:
+
+### 1. Usar el script de ayuda (Recomendado)
+
+```bash
+cd assets
+bash create-example-assets.sh
+```
+
+Este script creará automáticamente un cursor de ejemplo si tienes xcursorgen instalado.
+
+### 2. Copiar cursor del sistema
+
+```bash
+# En un sistema Linux con X11
+cp -r /usr/share/icons/Adwaita/cursors/* assets/cursor/cursors/
+
+# Crear index.theme
+cat > assets/cursor/index.theme << 'EOF'
+[Icon Theme]
+Name=Kiosk Cursor
+Comment=Cursor para modo kiosko
+EOF
+```
+
+### 3. Descargar un tema de cursor
+
+Visita https://www.gnome-look.org/browse?cat=107 y descarga un tema, luego:
+
+```bash
+tar -xzf cursor-theme.tar.gz
+cp -r cursor-theme/* assets/cursor/
+```
+
+## Si no proporcionas un cursor:
+
+El sistema usará el cursor predeterminado de X11. El cursor personalizado es opcional.
+
+## Más información:
+
+Lee el archivo README.md en este directorio para instrucciones detalladas.
