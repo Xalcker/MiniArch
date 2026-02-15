@@ -1,0 +1,42 @@
+# Logs
+*.log
+/var/log/
+
+# Assets personalizados (usuarios deben crear los suyos)
+assets/plymouth-image.png
+assets/cursor/*
+!assets/cursor/PLACEHOLDER.txt
+!assets/cursor/README.md
+
+# Archivos temporales
+*.tmp
+*.swp
+*.swo
+*~
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de respaldo
+*.bak
+*.backup
+
+# Archivos de prueba generados
+test-results.log
+*.tap
+
+# Directorios de montaje (si se ejecutan pruebas locales)
+/mnt/
+
+# Archivos de configuración local
+*.local
+.env
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Archivos de sistema Linux
+lost+found/
