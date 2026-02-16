@@ -136,10 +136,15 @@ chmod +x install-arch-kiosk.sh
 ./install-arch-kiosk.sh
 ```
 
+⚠️ **ADVERTENCIA IMPORTANTE**: El script verificará si el disco `/dev/sda` contiene particiones existentes. Si las encuentra, mostrará una advertencia y solicitará confirmación explícita antes de continuar. **TODOS LOS DATOS EN EL DISCO SERÁN DESTRUIDOS** durante la instalación.
+
+Para confirmar la destrucción de datos, debes escribir exactamente `sí` cuando se te solicite.
+
 El script realizará automáticamente:
 1. Validación del entorno y requisitos
-2. Particionamiento y formateo del disco
-3. Instalación del sistema base
+2. Verificación de disco vacío y confirmación del usuario
+3. Particionamiento y formateo del disco
+4. Instalación del sistema base
 4. Configuración de GRUB silencioso
 5. Instalación y configuración de Plymouth (opcional, continúa si falla)
 6. Instalación de drivers gráficos y audio
@@ -369,6 +374,17 @@ dhcpcd
 - Verifica la configuración de VirtualBox
 - Asegúrate de que el disco virtual tenga al menos 16GB
 - El disco debe estar en `/dev/sda` (primer disco SATA)
+
+### El script se detiene pidiendo confirmación
+
+**Causa**: El disco `/dev/sda` contiene particiones existentes.
+
+**Solución**:
+- El script muestra esta advertencia para prevenir pérdida accidental de datos
+- Revisa cuidadosamente las particiones mostradas
+- Si estás seguro de que quieres destruir todos los datos, escribe exactamente `sí` cuando se te solicite
+- Si no quieres continuar, escribe `no` o presiona Ctrl+C para cancelar
+- **IMPORTANTE**: Asegúrate de estar usando el disco correcto antes de confirmar
 
 ### Error: "Fallo en instalación de GRUB"
 

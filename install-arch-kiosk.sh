@@ -111,6 +111,13 @@ main() {
     fi
     log "Disco verificado correctamente"
     
+    log "Verificando si el disco está vacío..."
+    if ! check_disk_empty "$DISK_DEVICE"; then
+        log_error "Operación cancelada: El usuario no confirmó la destrucción de datos"
+        exit 1
+    fi
+    log "Verificación de disco vacío completada"
+    
     # Fase 2: Particionamiento y montaje
     log "==================================================================="
     log "Fase 2: Particionamiento y montaje del disco"
