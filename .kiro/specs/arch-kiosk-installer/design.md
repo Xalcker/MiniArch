@@ -97,12 +97,18 @@ check_network() -> exit_code
 check_disk() -> exit_code
   # Verifica que /dev/sda existe y tiene >= 16GB
   # Retorna: 0 si válido, 1 si inválido
+
+check_disk_empty(device: string) -> exit_code
+  # Verifica si el disco tiene particiones existentes
+  # Muestra advertencia si hay particiones
+  # Solicita confirmación explícita del usuario
+  # Retorna: 0 si el usuario confirma o disco vacío, 1 si usuario cancela
 ```
 
 **Interfaz:**
-- Input: Variables de entorno del sistema
+- Input: Variables de entorno del sistema, ruta del dispositivo de bloque
 - Output: Códigos de salida (0 = éxito, 1 = error)
-- Side effects: Imprime mensajes de error a stderr
+- Side effects: Imprime mensajes de error/advertencia a stderr, solicita input del usuario
 
 ### 2. Módulo de Particionamiento (`partitioning.sh`)
 
@@ -389,151 +395,155 @@ El script generará y modificará los siguientes archivos:
 
 **Property 2: Detección de conectividad de red**
 *Para cualquier* estado de red del sistema, la función de validación debe detectar correctamente si hay conectividad activa y retornar el código de salida apropiado (0 para éxito, 1 para fallo).
-**Validates: Requirements 1.2, 1.5**
+**Validates: Requirements 1.2, 1.9**
 
 **Property 3: Validación de disco**
 *Para cualquier* dispositivo de bloque, la función de validación debe verificar correctamente si existe y tiene al menos 16GB de capacidad, retornando el código de salida apropiado.
-**Validates: Requirements 1.3, 1.4**
+**Validates: Requirements 1.3, 1.8**
+
+**Property 4: Detección de particiones existentes**
+*Para cualquier* dispositivo de bloque, la función de validación debe detectar correctamente si el disco tiene particiones existentes usando lsblk o parted, y solicitar confirmación del usuario antes de continuar.
+**Validates: Requirements 1.4, 1.5, 1.6, 1.7**
 
 ### Propiedades de Particionamiento
 
-**Property 4: Generación de comandos de particionamiento completos**
+**Property 5: Generación de comandos de particionamiento completos**
 *Para cualquier* dispositivo de bloque válido, la función de particionamiento debe generar la secuencia completa de comandos parted para crear: tabla GPT, partición ESP de 512MB, partición root de 8GB, partición swap de 2GB, y partición home con el espacio restante.
 **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
 
-**Property 5: Cálculo correcto del espacio restante**
+**Property 6: Cálculo correcto del espacio restante**
 *Para cualquier* disco con tamaño >= 16GB, el tamaño de la partición home debe ser igual al tamaño total del disco menos (512MB + 8GB + 2GB), garantizando que se usa todo el espacio disponible.
 **Validates: Requirements 2.5**
 
-**Property 6: Generación de comandos de formateo completos**
+**Property 7: Generación de comandos de formateo completos**
 *Para cualquier* dispositivo de bloque particionado, la función de formateo debe generar los comandos correctos: mkfs.fat para ESP, mkfs.ext4 para root y home, y mkswap para swap.
 **Validates: Requirements 2.6, 2.7, 2.8, 2.9**
 
 ### Propiedades de Montaje
 
-**Property 7: Secuencia de montaje correcta**
+**Property 8: Secuencia de montaje correcta**
 *Para cualquier* conjunto de particiones formateadas, la función de montaje debe generar la secuencia correcta de comandos: montar root en /mnt, crear /mnt/boot, montar ESP en /mnt/boot, crear /mnt/home, montar home en /mnt/home, y activar swap.
 **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6**
 
 ### Propiedades de Instalación Base
 
-**Property 8: Comando pacstrap correcto**
+**Property 9: Comando pacstrap correcto**
 *Para cualquier* sistema montado, la función de instalación base debe generar el comando pacstrap con exactamente los paquetes: base, linux, linux-firmware.
 **Validates: Requirements 4.1**
 
-**Property 9: Generación de fstab con UUIDs**
+**Property 10: Generación de fstab con UUIDs**
 *Para cualquier* sistema instalado, la función debe generar el comando genfstab con la opción -U para usar UUIDs en lugar de nombres de dispositivo.
 **Validates: Requirements 4.2**
 
-**Property 10: Comando chroot correcto**
+**Property 11: Comando chroot correcto**
 *Para cualquier* sistema con fstab generado, la función debe generar el comando arch-chroot apuntando a /mnt.
 **Validates: Requirements 4.3**
 
 ### Propiedades de GRUB
 
-**Property 11: Instalación de GRUB con UEFI**
+**Property 12: Instalación de GRUB con UEFI**
 *Para cualquier* sistema en chroot, la función de instalación de GRUB debe generar los comandos para instalar grub y efibootmgr, seguido de grub-install con las opciones --target=x86_64-efi y --efi-directory=/boot.
 **Validates: Requirements 5.1, 5.2**
 
-**Property 12: Configuración de GRUB silencioso completa**
+**Property 13: Configuración de GRUB silencioso completa**
 *Para cualquier* archivo /etc/default/grub generado, debe contener todas las configuraciones para arranque silencioso: GRUB_TIMEOUT=0, GRUB_CMDLINE_LINUX_DEFAULT con los parámetros quiet, loglevel=3, rd.systemd.show_status=false, rd.udev.log_level=3, y GRUB_DISABLE_SUBMENU=y.
 **Validates: Requirements 5.3, 5.4, 5.5**
 
-**Property 13: Generación de configuración de GRUB**
+**Property 14: Generación de configuración de GRUB**
 *Para cualquier* configuración de GRUB modificada, la función debe generar el comando grub-mkconfig con salida a /boot/grub/grub.cfg.
 **Validates: Requirements 5.6**
 
 ### Propiedades de Plymouth
 
-**Property 14: Instalación de paquetes Plymouth**
+**Property 15: Instalación de paquetes Plymouth**
 *Para cualquier* sistema en chroot, la función debe generar el comando pacman para instalar plymouth y plymouth-theme-spinner.
 **Validates: Requirements 6.1**
 
-**Property 15: Estructura de tema Plymouth válida**
+**Property 16: Estructura de tema Plymouth válida**
 *Para cualquier* nombre de tema proporcionado, la función debe crear un directorio en /usr/share/plymouth/themes/ con archivos .plymouth y .script que sigan el formato correcto de Plymouth.
 **Validates: Requirements 6.2**
 
-**Property 16: Escalado de imagen a resolución fija**
+**Property 17: Escalado de imagen a resolución fija**
 *Para cualquier* imagen PNG válida con dimensiones diferentes a 1280x720, la función debe generar el comando de ImageMagick (convert o magick) para escalar la imagen exactamente a 1280x720 píxeles.
 **Validates: Requirements 6.3, 11.3**
 
-**Property 17: Configuración completa de Plymouth en initramfs**
+**Property 18: Configuración completa de Plymouth en initramfs**
 *Para cualquier* sistema con Plymouth instalado, la función debe: agregar el hook plymouth a /etc/mkinitcpio.conf, generar el comando mkinitcpio -P, ejecutar plymouth-set-default-theme, y agregar "splash" a GRUB_CMDLINE_LINUX_DEFAULT.
 **Validates: Requirements 6.4, 6.5, 6.6, 6.7**
 
 ### Propiedades de Drivers
 
-**Property 18: Instalación completa de drivers gráficos**
+**Property 19: Instalación completa de drivers gráficos**
 *Para cualquier* sistema en chroot, la función debe generar el comando pacman para instalar todos los drivers: xf86-video-amdgpu, xf86-video-intel, nvidia-open, y mesa.
 **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
 
-**Property 19: Instalación completa de PipeWire**
+**Property 20: Instalación completa de PipeWire**
 *Para cualquier* sistema en chroot, la función debe generar el comando pacman para instalar todos los componentes de PipeWire: pipewire, pipewire-alsa, pipewire-pulse, pipewire-jack, sof-firmware.
 **Validates: Requirements 8.1**
 
-**Property 20: Habilitación de servicios de PipeWire**
+**Property 21: Habilitación de servicios de PipeWire**
 *Para cualquier* usuario del sistema, la función debe generar los comandos systemctl para habilitar los servicios de PipeWire en el contexto del usuario.
 **Validates: Requirements 8.2, 8.3**
 
 ### Propiedades de Entorno Gráfico
 
-**Property 21: Instalación de OpenBox, X y xterm**
+**Property 22: Instalación de OpenBox, X y xterm**
 *Para cualquier* sistema en chroot, la función debe generar el comando pacman para instalar xorg-server, xorg-xinit, openbox, xterm, xdg-desktop-portal, xdg-desktop-portal-gtk, y gtk3.
 **Validates: Requirements 9.1, 9.2, 9.3, 9.4**
 
-**Property 22: Creación de usuario del sistema**
+**Property 23: Creación de usuario del sistema**
 *Para cualquier* nombre de usuario válido, la función debe generar el comando useradd con las opciones apropiadas para crear un usuario estándar.
 **Validates: Requirements 9.5**
 
-**Property 23: Configuración de autologin**
+**Property 24: Configuración de autologin**
 *Para cualquier* nombre de usuario, la función debe crear el archivo /etc/systemd/system/getty@tty1.service.d/autologin.conf con la configuración correcta de ExecStart para autologin.
 **Validates: Requirements 9.6**
 
-**Property 24: Configuración de autostart de X**
+**Property 25: Configuración de autostart de X**
 *Para cualquier* usuario, la función debe crear .xinitrc con "exec openbox-session" y modificar .bash_profile para ejecutar startx automáticamente si no está en X.
 **Validates: Requirements 9.7, 9.8**
 
-**Property 25: Configuración de xterm con apagado automático**
+**Property 26: Configuración de xterm con apagado automático**
 *Para cualquier* usuario, la función debe crear el archivo .config/openbox/autostart que ejecute xterm, y configurar xterm para que al cerrarse ejecute el comando de apagado del sistema.
 **Validates: Requirements 13.1, 13.2, 13.3, 13.4, 13.5**
 
 ### Propiedades de Ocultación de Mensajes
 
-**Property 26: Configuración completa de ocultación de mensajes**
+**Property 27: Configuración completa de ocultación de mensajes**
 *Para cualquier* usuario del sistema, la función debe: crear .hushlogin, vaciar /etc/motd, configurar ShowStatus=no en /etc/systemd/system.conf, y configurar NAutoVTs=0 en /etc/systemd/logind.conf.
 **Validates: Requirements 10.1, 10.2, 10.3, 10.4**
 
 ### Propiedades de Personalización
 
-**Property 27: Validación de formato PNG**
+**Property 28: Validación de formato PNG**
 *Para cualquier* archivo proporcionado, la función debe detectar correctamente si es un PNG válido usando el comando file o verificando la firma del archivo.
 **Validates: Requirements 11.1**
 
-**Property 28: Copia de imagen al tema Plymouth**
+**Property 29: Copia de imagen al tema Plymouth**
 *Para cualquier* ruta de imagen válida y nombre de tema, la función debe generar el comando cp correcto para copiar la imagen al directorio /usr/share/plymouth/themes/${theme_name}/.
 **Validates: Requirements 11.2**
 
-**Property 29: Instalación de cursor personalizado**
+**Property 30: Instalación de cursor personalizado**
 *Para cualquier* archivo de cursor y usuario, la función debe copiar el cursor a /usr/share/icons/default/ y crear el archivo index.theme con la configuración correcta.
 **Validates: Requirements 11.4, 11.5**
 
 ### Propiedades de Red y Zona Horaria
 
-**Property 30: Configuración de NetworkManager**
+**Property 31: Configuración de NetworkManager**
 *Para cualquier* sistema en chroot, la función debe generar los comandos para instalar networkmanager y habilitar NetworkManager.service.
 **Validates: Requirements 12.1, 12.2**
 
-**Property 31: Configuración de zona horaria**
+**Property 32: Configuración de zona horaria**
 *Para cualquier* zona horaria válida (formato Region/City), la función debe generar el comando timedatectl set-timezone correcto y el comando hwclock --systohc.
 **Validates: Requirements 12.3, 12.4**
 
 ### Propiedades de Finalización
 
-**Property 32: Secuencia de desmontaje correcta**
+**Property 33: Secuencia de desmontaje correcta**
 *Para cualquier* sistema instalado, la función de limpieza debe generar la secuencia correcta: salir de chroot, desmontar /mnt/boot, desmontar /mnt/home, desmontar /mnt, y ejecutar swapoff.
 **Validates: Requirements 14.1, 14.2, 14.3**
 
-**Property 33: Mensajes de finalización**
+**Property 34: Mensajes de finalización**
 *Para cualquier* instalación completada, la función debe mostrar un mensaje de éxito y un mensaje indicando que el usuario puede reiniciar el sistema.
 **Validates: Requirements 14.4, 14.5**
 

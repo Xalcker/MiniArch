@@ -311,7 +311,8 @@ tests/
 ├── test_drivers.bats          # Pruebas de drivers
 ├── test_gui.bats              # Pruebas de OpenBox
 ├── test_customization.bats    # Pruebas de personalización
-└── test_finalization.bats     # Pruebas de finalización
+├── test_finalization.bats     # Pruebas de finalización
+└── test_integration.bats      # Pruebas de integración completa
 ```
 
 ## Estructura del Proyecto

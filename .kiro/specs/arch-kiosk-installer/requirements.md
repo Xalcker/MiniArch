@@ -36,8 +36,12 @@ Este documento especifica los requisitos para un script de instalación automati
 1. WHEN el script se ejecuta, THE Sistema SHALL verificar que se está ejecutando desde el instalador de Arch Linux
 2. WHEN el script se ejecuta, THE Sistema SHALL verificar que existe conexión de red activa
 3. WHEN el script se ejecuta, THE Sistema SHALL verificar que el Disco_Objetivo (/dev/sda) existe y tiene al menos 16GB de capacidad
-4. IF el Disco_Objetivo no existe o tiene menos de 16GB, THEN THE Sistema SHALL mostrar un mensaje de error y terminar la ejecución
-5. IF no hay conexión de red, THEN THE Sistema SHALL mostrar un mensaje de error y terminar la ejecución
+4. WHEN el script se ejecuta, THE Sistema SHALL verificar si el Disco_Objetivo tiene particiones existentes o datos
+5. IF el Disco_Objetivo tiene particiones existentes, THEN THE Sistema SHALL mostrar una advertencia clara indicando que todos los datos serán destruidos
+6. IF el Disco_Objetivo tiene particiones existentes, THEN THE Sistema SHALL solicitar confirmación explícita del usuario antes de continuar
+7. IF el usuario no confirma la destrucción de datos, THEN THE Sistema SHALL terminar la ejecución sin modificar el disco
+8. IF el Disco_Objetivo no existe o tiene menos de 16GB, THEN THE Sistema SHALL mostrar un mensaje de error y terminar la ejecución
+9. IF no hay conexión de red, THEN THE Sistema SHALL mostrar un mensaje de error y terminar la ejecución
 
 ### Requisito 2: Particionamiento Automatizado del Disco
 
