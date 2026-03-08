@@ -1,42 +1,117 @@
-# Logs
+# ============================================================================
+# LOGS Y ARCHIVOS TEMPORALES
+# ============================================================================
 *.log
 /var/log/
+*.tmp
+*.swp
+*.swo
+*~
+*.bak
+*.backup
 
-# Assets personalizados (usuarios deben crear los suyos)
+# ============================================================================
+# ASSETS PERSONALIZADOS
+# ============================================================================
+# Los usuarios deben crear sus propios assets personalizados
+# Los archivos de ejemplo y README se mantienen en el repositorio
 assets/plymouth-image.png
 assets/cursor/*
 !assets/cursor/PLACEHOLDER.txt
 !assets/cursor/README.md
 
-# Archivos temporales
-*.tmp
-*.swp
-*.swo
-*~
+# ============================================================================
+# CONFIGURACIÓN LOCAL Y SENSIBLE
+# ============================================================================
+# Archivos de configuración con datos sensibles o específicos del entorno
+.env
+*.local
+config.local.sh
 
-# Archivos de sistema
+# ============================================================================
+# ARCHIVOS DE SISTEMA
+# ============================================================================
 .DS_Store
 Thumbs.db
+lost+found/
+ehthumbs.db
+Desktop.ini
 
-# Archivos de respaldo
-*.bak
-*.backup
-
-# Archivos de prueba generados
+# ============================================================================
+# DIRECTORIOS DE MONTAJE Y PRUEBAS
+# ============================================================================
+/mnt/
+/test-output/
 test-results.log
 *.tap
+coverage/
 
-# Directorios de montaje (si se ejecutan pruebas locales)
-/mnt/
-
-# Archivos de configuración local
-*.local
-.env
-
-# Archivos de IDE
+# ============================================================================
+# ENTORNOS DE DESARROLLO (IDEs)
+# ============================================================================
+# Visual Studio Code
 .vscode/
-.idea/
-*.sublime-*
+*.code-workspace
 
-# Archivos de sistema Linux
-lost+found/
+# JetBrains IDEs (IntelliJ, PyCharm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+
+# ============================================================================
+# ARCHIVOS DE CONSTRUCCIÓN Y DEPENDENCIAS
+# ============================================================================
+node_modules/
+*.pyc
+__pycache__/
+*.so
+*.o
+*.a
+*.out
+
+# ============================================================================
+# ARCHIVOS DE RESPALDO Y RECUPERACIÓN
+# ============================================================================
+*.orig
+*.rej
+*.swn
+*.bak.*
+*~.nib
+
+# ============================================================================
+# ARCHIVOS ESPECÍFICOS DEL PROYECTO
+# ============================================================================
+# Imágenes de prueba generadas
+test-plymouth-*.png
+test-cursor-*/
+
+# Scripts de configuración personalizados
+custom-install-*.sh
+!install-arch-kiosk.sh
+
+# Archivos de estado de instalación
+.install-state
+.installation-progress

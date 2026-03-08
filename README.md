@@ -101,7 +101,30 @@ curl -O https://tu-servidor.com/install-arch-kiosk.sh
 chmod +x install-arch-kiosk.sh
 ```
 
-### Paso 4: Personalizar Assets (Opcional)
+### Paso 4: Configurar Variables de Entorno (Opcional)
+
+El instalador incluye un archivo `.env.example` con todas las opciones de configuración disponibles. Puedes personalizarlo según tus necesidades:
+
+```bash
+# Copiar el archivo de ejemplo
+cp .env.example .env
+
+# Editar con tu editor preferido
+nano .env
+```
+
+Configuraciones importantes que puedes personalizar:
+
+- `DISK_DEVICE`: Dispositivo de disco a usar (por defecto: /dev/sda)
+- `KIOSK_USER`: Nombre del usuario del sistema (por defecto: kiosk)
+- `KIOSK_PASSWORD`: Contraseña del usuario (por defecto: kiosk123)
+- `TIMEZONE`: Zona horaria del sistema (por defecto: America/Mexico_City)
+- `PLYMOUTH_IMAGE_PATH`: Ruta a la imagen de Plymouth
+- `CURSOR_PATH`: Ruta al cursor personalizado
+
+Si no creas un archivo `.env`, el instalador usará los valores por defecto.
+
+### Paso 5: Personalizar Assets (Opcional)
 
 Si deseas usar una imagen y cursor personalizados:
 
@@ -126,7 +149,7 @@ scp -r cursor/* root@<IP_DE_LA_VM>:/root/arch-kiosk-installer/assets/cursor/
 - Formato: Cualquier formato soportado por X11 (SVG, PNG, etc.)
 - Ubicación: `assets/cursor/`
 
-### Paso 5: Ejecutar el Script
+### Paso 6: Ejecutar el Script
 
 ```bash
 # Dar permisos de ejecución
@@ -154,7 +177,7 @@ El script realizará automáticamente:
 10. Configuración de red y SSH
 11. Limpieza y finalización
 
-### Paso 6: Reiniciar
+### Paso 7: Reiniciar
 
 ```bash
 # Una vez completada la instalación
@@ -325,6 +348,13 @@ tests/
 ```
 arch-kiosk-installer/
 ├── install-arch-kiosk.sh      # Script principal
+├── .env.example                # Plantilla de configuración
+├── README.md                   # Documentación principal
+├── SECURITY.md                 # Guía de seguridad
+├── CONTRIBUTING.md             # Guía de contribución
+├── CHANGELOG.md                # Registro de cambios
+├── LICENSE                     # Licencia MIT
+├── .gitignore                  # Archivos ignorados por Git
 ├── lib/                        # Módulos del script
 │   ├── validation.sh          # Validación de entorno
 │   ├── partitioning.sh        # Particionamiento de disco
@@ -337,9 +367,19 @@ arch-kiosk-installer/
 │   └── finalization.sh        # Finalización y limpieza
 ├── assets/                     # Recursos personalizables
 │   ├── plymouth-image.png     # Imagen para Plymouth
-│   └── cursor/                # Cursor personalizado
-├── tests/                      # Suite de pruebas BATS
-└── README.md                   # Este archivo
+│   ├── cursor/                # Cursor personalizado
+│   └── README.md              # Documentación de assets
+└── tests/                      # Suite de pruebas BATS
+    ├── test_validation.bats
+    ├── test_partitioning.bats
+    ├── test_base_install.bats
+    ├── test_bootloader.bats
+    ├── test_plymouth.bats
+    ├── test_drivers.bats
+    ├── test_gui.bats
+    ├── test_customization.bats
+    ├── test_finalization.bats
+    └── test_integration.bats
 ```
 
 ## Troubleshooting
@@ -502,19 +542,49 @@ bash -c "bats tests/test_validation.bats"
 
 ## Personalización Avanzada
 
-### Cambiar Zona Horaria
+### Usar Archivo de Configuración .env
 
-Edita la variable en `install-arch-kiosk.sh`:
+El instalador soporta configuración mediante variables de entorno usando un archivo `.env`. Esto facilita la personalización sin modificar el script principal:
 
 ```bash
+# 1. Copiar el archivo de ejemplo
+cp .env.example .env
+
+# 2. Editar según tus necesidades
+nano .env
+
+# 3. Ejecutar el instalador (cargará automáticamente .env)
+./install-arch-kiosk.sh
+```
+
+El archivo `.env` tiene prioridad sobre los valores por defecto del script. Si no existe, se usan los valores predeterminados.
+
+### Cambiar Zona Horaria
+
+Opción 1: Usando .env (recomendado)
+```bash
+# En .env
+TIMEZONE="America/New_York"
+```
+
+Opción 2: Editando el script
+```bash
+# En install-arch-kiosk.sh
 TIMEZONE="America/Mexico_City"  # Cambiar a tu zona horaria
 ```
 
 ### Cambiar Usuario y Contraseña
 
-Edita las variables en `install-arch-kiosk.sh`:
-
+Opción 1: Usando .env (recomendado)
 ```bash
+# En .env
+KIOSK_USER="miusuario"
+KIOSK_PASSWORD="mipassword123"
+```
+
+Opción 2: Editando el script
+```bash
+# En install-arch-kiosk.sh
 KIOSK_USER="kiosk"           # Cambiar nombre de usuario
 KIOSK_PASSWORD="kiosk123"    # Cambiar contraseña
 ```
@@ -542,18 +612,40 @@ SWAP_SIZE="2G"     # Tamaño de swap
 
 ## Contribuir
 
-Las contribuciones son bienvenidas. Por favor:
+Las contribuciones son bienvenidas. Para contribuir al proyecto:
 
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Ejecuta las pruebas (`bats tests/*.bats`)
-4. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-5. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-6. Crea un Pull Request
+1. Lee la [Guía de Contribución](CONTRIBUTING.md) para conocer el proceso completo
+2. Fork el repositorio
+3. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+4. Ejecuta las pruebas (`bats tests/*.bats`)
+5. Commit tus cambios siguiendo las convenciones de commits
+6. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+7. Crea un Pull Request
+
+Para más detalles sobre estándares de código, pruebas y proceso de PR, consulta [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Seguridad
+
+### Consideraciones Importantes
+
+- El archivo `.env` puede contener información sensible (contraseñas). NUNCA lo versiones en Git (ya está en .gitignore)
+- Cambia la contraseña predeterminada (`kiosk123`) inmediatamente después de la instalación
+- El usuario `kiosk` tiene permisos limitados, pero considera crear políticas de seguridad adicionales para producción
+- SSH está habilitado por defecto. Considera:
+  - Cambiar el puerto SSH predeterminado
+  - Usar autenticación por clave pública en lugar de contraseña
+  - Configurar fail2ban para prevenir ataques de fuerza bruta
+- Para entornos de producción, revisa y endurece la configuración de seguridad según tus necesidades
+
+Para una guía completa de seguridad, consulta [SECURITY.md](SECURITY.md).
+
+### Reporte de Vulnerabilidades
+
+Si encuentras una vulnerabilidad de seguridad, por favor NO abras un issue público. En su lugar, consulta las instrucciones en [SECURITY.md](SECURITY.md) para reportarla de forma responsable.
 
 ## Licencia
 
-Este proyecto está bajo la licencia MIT. Ver archivo LICENSE para más detalles.
+Este proyecto está bajo la licencia MIT. Ver archivo [LICENSE](LICENSE) para más detalles.
 
 ## Soporte
 

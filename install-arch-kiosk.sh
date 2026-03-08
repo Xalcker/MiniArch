@@ -18,35 +18,11 @@ set -e  # Salir inmediatamente si un comando falla
 set -u  # Tratar variables no definidas como error
 
 ################################################################################
-# Variables Globales de Configuración
+# Funciones de Logging Tempranas
 ################################################################################
 
-# Configuración del disco
-DISK_DEVICE="/dev/sda"
-ESP_SIZE="512M"
-ROOT_SIZE="8G"
-SWAP_SIZE="2G"
-
-# Configuración del usuario
-KIOSK_USER="kiosk"
-KIOSK_PASSWORD="kiosk123"
-
-# Configuración de Plymouth
-PLYMOUTH_THEME_NAME="arch-kiosk"
-PLYMOUTH_IMAGE_PATH="./assets/plymouth-image.png"
-
-# Configuración del cursor
-CURSOR_PATH="./assets/cursor/"
-
-# Configuración de zona horaria
-TIMEZONE="America/Mexico_City"
-
-# Archivo de log
-LOG_FILE="/var/log/arch-kiosk-install.log"
-
-################################################################################
-# Funciones de Logging
-################################################################################
+# Archivo de log temporal (se sobrescribirá con el valor de .env si existe)
+LOG_FILE="${LOG_FILE:-/var/log/arch-kiosk-install.log}"
 
 # Función para logging general
 # Imprime mensajes con timestamp tanto a stdout como al archivo de log
@@ -61,6 +37,50 @@ log_error() {
     local message="$*"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $message" | tee -a "$LOG_FILE" >&2
 }
+
+################################################################################
+# Cargar Configuración desde .env (si existe)
+################################################################################
+
+# Directorio del script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Cargar archivo .env si existe
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+    log "Cargando configuración desde .env..."
+    # Exportar variables del archivo .env (ignorar comentarios y líneas vacías)
+    set -a
+    source <(grep -v '^#' "$SCRIPT_DIR/.env" | grep -v '^$')
+    set +a
+    log "Configuración cargada desde .env"
+fi
+
+################################################################################
+# Variables Globales de Configuración (valores por defecto)
+################################################################################
+
+# Configuración del disco
+DISK_DEVICE="${DISK_DEVICE:-/dev/sda}"
+ESP_SIZE="${ESP_SIZE:-512M}"
+ROOT_SIZE="${ROOT_SIZE:-8G}"
+SWAP_SIZE="${SWAP_SIZE:-2G}"
+
+# Configuración del usuario
+KIOSK_USER="${KIOSK_USER:-kiosk}"
+KIOSK_PASSWORD="${KIOSK_PASSWORD:-kiosk123}"
+
+# Configuración de Plymouth
+PLYMOUTH_THEME_NAME="${PLYMOUTH_THEME_NAME:-arch-kiosk}"
+PLYMOUTH_IMAGE_PATH="${PLYMOUTH_IMAGE_PATH:-./assets/plymouth-image.png}"
+
+# Configuración del cursor
+CURSOR_PATH="${CURSOR_PATH:-./assets/cursor/}"
+
+# Configuración de zona horaria
+TIMEZONE="${TIMEZONE:-America/Mexico_City}"
+
+# Archivo de log
+LOG_FILE="${LOG_FILE:-/var/log/arch-kiosk-install.log}"
 
 ################################################################################
 # Función Principal
