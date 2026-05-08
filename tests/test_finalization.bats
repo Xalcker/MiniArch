@@ -14,21 +14,22 @@
 setup() {
     # Cargar el módulo de finalización
     source lib/finalization.sh
-    
+
     # Mock de funciones de logging
     log() {
         echo "$*"
     }
     export -f log
-    
+
     log_error() {
         echo "ERROR: $*" >&2
     }
     export -f log_error
-    
+
     # Variable de configuración para zona horaria
     export TIMEZONE="America/Mexico_City"
     export DISK_DEVICE="/dev/sda"
+    export ENABLE_SSH="true"
 }
 
 ################################################################################
@@ -42,16 +43,16 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se instaló NetworkManager
     grep -q "arch-chroot /mnt pacman -S --noconfirm networkmanager" /tmp/chroot_commands.log
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -63,16 +64,16 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se habilitó NetworkManager.service
     grep -q "arch-chroot /mnt systemctl enable NetworkManager.service" /tmp/chroot_commands.log
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -84,16 +85,16 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se instaló OpenSSH
     grep -q "arch-chroot /mnt pacman -S --noconfirm openssh" /tmp/chroot_commands.log
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -105,16 +106,16 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se habilitó sshd.service
     grep -q "arch-chroot /mnt systemctl enable sshd.service" /tmp/chroot_commands.log
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -126,16 +127,16 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se configuró la zona horaria
     grep -q "arch-chroot /mnt timedatectl set-timezone America/Mexico_City" /tmp/chroot_commands.log
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -147,16 +148,16 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se sincronizó el reloj del hardware
     grep -q "arch-chroot /mnt hwclock --systohc" /tmp/chroot_commands.log
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -170,7 +171,7 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     run configure_network
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -186,7 +187,7 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     run configure_network
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -202,7 +203,7 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     run configure_network
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -218,7 +219,7 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     run configure_network
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -234,7 +235,7 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     run configure_network
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -250,7 +251,7 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     run configure_network
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -264,17 +265,17 @@ setup() {
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que hay exactamente 6 comandos
     local command_count=$(wc -l < /tmp/chroot_commands.log)
     [[ $command_count -eq 6 ]]
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -282,23 +283,23 @@ setup() {
 @test "configure_network: usa zona horaria personalizada" {
     # Cambiar zona horaria
     export TIMEZONE="Europe/London"
-    
+
     # Mock de arch-chroot que registra comandos
     arch-chroot() {
         echo "arch-chroot $*" >> /tmp/chroot_commands.log
         return 0
     }
     export -f arch-chroot
-    
+
     # Limpiar log de comandos
     rm -f /tmp/chroot_commands.log
-    
+
     run configure_network
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se usó la zona horaria personalizada
     grep -q "arch-chroot /mnt timedatectl set-timezone Europe/London" /tmp/chroot_commands.log
-    
+
     # Limpiar
     rm -f /tmp/chroot_commands.log
 }
@@ -316,41 +317,41 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de umount que registra comandos
     umount() {
         echo "umount $*" >> /tmp/umount_commands.log
         return 0
     }
     export -f umount
-    
+
     # Mock de swapon y swapoff
     swapon() {
         echo ""
         return 1
     }
     export -f swapon
-    
+
     swapoff() {
         return 0
     }
     export -f swapoff
-    
+
     # Mock de grep
     grep() {
         return 1
     }
     export -f grep
-    
+
     # Limpiar log de comandos
     rm -f /tmp/umount_commands.log
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se desmontó /mnt/boot
     grep -q "umount /mnt/boot" /tmp/umount_commands.log
-    
+
     # Limpiar
     rm -f /tmp/umount_commands.log
 }
@@ -364,41 +365,41 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de umount que registra comandos
     umount() {
         echo "umount $*" >> /tmp/umount_commands.log
         return 0
     }
     export -f umount
-    
+
     # Mock de swapon y swapoff
     swapon() {
         echo ""
         return 1
     }
     export -f swapon
-    
+
     swapoff() {
         return 0
     }
     export -f swapoff
-    
+
     # Mock de grep
     grep() {
         return 1
     }
     export -f grep
-    
+
     # Limpiar log de comandos
     rm -f /tmp/umount_commands.log
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se desmontó /mnt/home
     grep -q "umount /mnt/home" /tmp/umount_commands.log
-    
+
     # Limpiar
     rm -f /tmp/umount_commands.log
 }
@@ -412,41 +413,41 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de umount que registra comandos
     umount() {
         echo "umount $*" >> /tmp/umount_commands.log
         return 0
     }
     export -f umount
-    
+
     # Mock de swapon y swapoff
     swapon() {
         echo ""
         return 1
     }
     export -f swapon
-    
+
     swapoff() {
         return 0
     }
     export -f swapoff
-    
+
     # Mock de grep
     grep() {
         return 1
     }
     export -f grep
-    
+
     # Limpiar log de comandos
     rm -f /tmp/umount_commands.log
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se desmontó /mnt
     grep -q "umount /mnt" /tmp/umount_commands.log
-    
+
     # Limpiar
     rm -f /tmp/umount_commands.log
 }
@@ -457,7 +458,7 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de swapon que simula swap activo
     swapon() {
         if [[ "$*" == *"--show"* ]]; then
@@ -468,7 +469,7 @@ setup() {
         return 0
     }
     export -f swapon
-    
+
     # Mock de grep que encuentra swap
     grep() {
         if [[ "$*" == *"/dev/sda3"* ]]; then
@@ -477,23 +478,23 @@ setup() {
         command grep "$@"
     }
     export -f grep
-    
+
     # Mock de swapoff que registra comandos
     swapoff() {
         echo "swapoff $*" >> /tmp/swap_commands.log
         return 0
     }
     export -f swapoff
-    
+
     # Limpiar log de comandos
     rm -f /tmp/swap_commands.log
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se desactivó swap
     grep -q "swapoff /dev/sda3" /tmp/swap_commands.log
-    
+
     # Limpiar
     rm -f /tmp/swap_commands.log
 }
@@ -504,23 +505,23 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de swapon que simula swap no activo
     swapon() {
         echo ""
         return 1
     }
     export -f swapon
-    
+
     # Mock de grep
     grep() {
         return 1
     }
     export -f grep
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se muestra mensaje de éxito
     [[ "$output" == *"INSTALACIÓN COMPLETADA EXITOSAMENTE"* ]]
 }
@@ -531,23 +532,23 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de swapon que simula swap no activo
     swapon() {
         echo ""
         return 1
     }
     export -f swapon
-    
+
     # Mock de grep
     grep() {
         return 1
     }
     export -f grep
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar que se muestra mensaje de reinicio
     [[ "$output" == *"Puede reiniciar el sistema ejecutando: reboot"* ]]
 }
@@ -561,7 +562,7 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de umount que falla en /mnt/boot
     umount() {
         if [[ "$*" == *"/mnt/boot"* ]]; then
@@ -570,7 +571,7 @@ setup() {
         return 0
     }
     export -f umount
-    
+
     run cleanup_and_finish
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -586,7 +587,7 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de umount que falla en /mnt/home
     umount() {
         if [[ "$*" == *"/mnt/home"* ]]; then
@@ -595,7 +596,7 @@ setup() {
         return 0
     }
     export -f umount
-    
+
     run cleanup_and_finish
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -611,7 +612,7 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de umount que falla en /mnt
     umount() {
         if [[ "$*" == "/mnt" ]]; then
@@ -620,7 +621,7 @@ setup() {
         return 0
     }
     export -f umount
-    
+
     run cleanup_and_finish
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -633,7 +634,7 @@ setup() {
         return 1
     }
     export -f mountpoint
-    
+
     # Mock de swapon que simula swap activo
     swapon() {
         if [[ "$*" == *"--show"* ]]; then
@@ -644,7 +645,7 @@ setup() {
         return 0
     }
     export -f swapon
-    
+
     # Mock de grep que encuentra swap
     grep() {
         if [[ "$*" == *"/dev/sda3"* ]]; then
@@ -653,13 +654,13 @@ setup() {
         command grep "$@"
     }
     export -f grep
-    
+
     # Mock de swapoff que falla
     swapoff() {
         return 1
     }
     export -f swapoff
-    
+
     run cleanup_and_finish
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -672,14 +673,14 @@ setup() {
         return 0  # Todas están montadas
     }
     export -f mountpoint
-    
+
     # Mock de umount que registra comandos
     umount() {
         echo "umount $*" >> /tmp/umount_commands.log
         return 0
     }
     export -f umount
-    
+
     # Mock de swapon que simula swap activo
     swapon() {
         if [[ "$*" == *"--show"* ]]; then
@@ -690,7 +691,7 @@ setup() {
         return 0
     }
     export -f swapon
-    
+
     # Mock de grep que encuentra swap
     grep() {
         if [[ "$*" == *"/dev/sda3"* ]]; then
@@ -699,36 +700,36 @@ setup() {
         command grep "$@"
     }
     export -f grep
-    
+
     # Mock de swapoff que registra comandos
     swapoff() {
         echo "swapoff $*" >> /tmp/umount_commands.log
         return 0
     }
     export -f swapoff
-    
+
     # Limpiar log de comandos
     rm -f /tmp/umount_commands.log
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar el orden de las operaciones
     # 1. Desmontar /mnt/boot
     # 2. Desmontar /mnt/home
     # 3. Desmontar /mnt
     # 4. Desactivar swap
-    
+
     local line1=$(sed -n '1p' /tmp/umount_commands.log)
     local line2=$(sed -n '2p' /tmp/umount_commands.log)
     local line3=$(sed -n '3p' /tmp/umount_commands.log)
     local line4=$(sed -n '4p' /tmp/umount_commands.log)
-    
+
     [[ "$line1" == *"umount /mnt/boot"* ]]
     [[ "$line2" == *"umount /mnt/home"* ]]
     [[ "$line3" == *"umount /mnt"* ]]
     [[ "$line4" == *"swapoff /dev/sda3"* ]]
-    
+
     # Limpiar
     rm -f /tmp/umount_commands.log
 }
@@ -739,39 +740,39 @@ setup() {
         return 1  # Nada está montado
     }
     export -f mountpoint
-    
+
     # Mock de umount que registra comandos
     umount() {
         echo "umount $*" >> /tmp/umount_commands.log
         return 0
     }
     export -f umount
-    
+
     # Mock de swapon que simula swap no activo
     swapon() {
         echo ""
         return 1
     }
     export -f swapon
-    
+
     # Mock de grep que no encuentra swap
     grep() {
         return 1
     }
     export -f grep
-    
+
     # Limpiar log de comandos
     rm -f /tmp/umount_commands.log
-    
+
     run cleanup_and_finish
     [ "$status" -eq 0 ]
-    
+
     # Verificar que no se ejecutó ningún comando umount
     if [[ -f /tmp/umount_commands.log ]]; then
         local command_count=$(wc -l < /tmp/umount_commands.log)
         [[ $command_count -eq 0 ]]
     fi
-    
+
     # Limpiar
     rm -f /tmp/umount_commands.log
 }
@@ -848,30 +849,30 @@ setup() {
         "Atlantic/Reykjavik"
         "Atlantic/Azores"
     )
-    
+
     # Contador de pruebas exitosas
     local success_count=0
     local total_tests=50
-    
+
     # Probar con 50 zonas horarias aleatorias
     for i in $(seq 1 $total_tests); do
         # Seleccionar zona horaria aleatoria
         local random_index=$((RANDOM % ${#timezones[@]}))
         local test_timezone="${timezones[$random_index]}"
-        
+
         # Configurar la variable TIMEZONE
         export TIMEZONE="$test_timezone"
-        
+
         # Mock de arch-chroot que registra comandos
         arch-chroot() {
             echo "arch-chroot $*" >> "/tmp/chroot_commands_${i}.log"
             return 0
         }
         export -f arch-chroot
-        
+
         # Limpiar log de comandos
         rm -f "/tmp/chroot_commands_${i}.log"
-        
+
         # Ejecutar configure_network
         if configure_network; then
             # Verificar que se generó el comando timedatectl correcto
@@ -888,11 +889,11 @@ setup() {
             rm -f "/tmp/chroot_commands_${i}.log"
             return 1
         fi
-        
+
         # Limpiar
         rm -f "/tmp/chroot_commands_${i}.log"
     done
-    
+
     # Verificar que todas las 50 pruebas pasaron
     [[ $success_count -eq $total_tests ]]
 }
@@ -907,7 +908,7 @@ setup() {
     # Contador de pruebas exitosas
     local success_count=0
     local total_tests=50
-    
+
     # Probar con 50 escenarios diferentes
     for i in $(seq 1 $total_tests); do
         # Generar escenario aleatorio de particiones montadas
@@ -915,32 +916,58 @@ setup() {
         local home_mounted=$((RANDOM % 2))  # 0 o 1
         local root_mounted=$((RANDOM % 2))  # 0 o 1
         local swap_active=$((RANDOM % 2))   # 0 o 1
-        
+
         # Simular la lógica de cleanup_and_finish
         local operations=0
-        
+
         # Verificar que se ejecutarían las operaciones correctas
         if [[ $boot_mounted -eq 1 ]]; then
             operations=$((operations + 1))
         fi
-        
+
         if [[ $home_mounted -eq 1 ]]; then
             operations=$((operations + 1))
         fi
-        
+
         if [[ $root_mounted -eq 1 ]]; then
             operations=$((operations + 1))
         fi
-        
+
         if [[ $swap_active -eq 1 ]]; then
             operations=$((operations + 1))
         fi
-        
+
         # Verificar que la lógica es correcta
         # (siempre debe retornar 0 si no hay errores)
         success_count=$((success_count + 1))
     done
-    
+
     # Verificar que todas las pruebas pasaron
     [[ $success_count -eq $total_tests ]]
+}
+
+@test "configure_network: ENABLE_SSH=false omite OpenSSH y sshd" {
+    ENABLE_SSH="false"
+    TIMEZONE="America/Mexico_City"
+    rm -f /tmp/finalization_commands.log
+
+    arch-chroot() {
+        echo "arch-chroot $*" >> /tmp/finalization_commands.log
+        return 0
+    }
+    export -f arch-chroot
+
+    run configure_network
+    [ "$status" -eq 0 ]
+    ! grep -q "openssh" /tmp/finalization_commands.log
+    ! grep -q "sshd.service" /tmp/finalization_commands.log
+    grep -q "networkmanager" /tmp/finalization_commands.log
+
+    rm -f /tmp/finalization_commands.log
+}
+
+@test "cleanup_partition_path: /dev/nvme0n1 usa separador p para swap" {
+    run cleanup_partition_path "/dev/nvme0n1" 3
+    [ "$status" -eq 0 ]
+    [[ "$output" == "/dev/nvme0n1p3" ]]
 }
