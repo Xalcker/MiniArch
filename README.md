@@ -117,14 +117,14 @@ Configuraciones importantes que puedes personalizar:
 
 - `DISK_DEVICE`: Dispositivo de disco a usar (por defecto: /dev/sda; soporta nombres tipo `/dev/nvme0n1` y `/dev/mmcblk0`)
 - `KIOSK_USER`: Nombre del usuario del sistema (por defecto: kiosk)
-- `KIOSK_PASSWORD`: Contraseña del usuario (obligatoria; cambia el valor entre comillas `"change-me"` de `.env.example` y conserva las comillas)
+- `KIOSK_PASSWORD`: Contraseña del usuario (obligatoria; cambia el valor `change-me` de `.env.example`)
 - `TIMEZONE`: Zona horaria del sistema (por defecto: America/Mexico_City)
 - `PLYMOUTH_IMAGE_PATH`: Ruta a la imagen de Plymouth
 - `CURSOR_PATH`: Ruta al cursor personalizado
 - `ENABLE_SSH`: Instala y habilita OpenSSH (`true` por defecto)
 - `ALLOW_INSECURE_DEFAULT_PASSWORD`: Permite contraseñas de ejemplo solo para laboratorios/VMs descartables
 
-Debes crear un archivo `.env` y definir una contraseña segura en `KIOSK_PASSWORD`. Conserva las comillas alrededor de la contraseña para que caracteres como espacios, `#`, `$` o `&` se carguen literalmente al hacer `source` del archivo. El instalador rechazará contraseñas vacías o de ejemplo salvo que actives explícitamente `ALLOW_INSECURE_DEFAULT_PASSWORD=true` para pruebas controladas.
+Debes crear un archivo `.env` y definir una contraseña segura en `KIOSK_PASSWORD`. El instalador rechazará contraseñas vacías o de ejemplo salvo que actives explícitamente `ALLOW_INSECURE_DEFAULT_PASSWORD=true` para pruebas controladas.
 
 ### Paso 5: Personalizar Assets (Opcional)
 
