@@ -115,14 +115,16 @@ nano .env
 
 Configuraciones importantes que puedes personalizar:
 
-- `DISK_DEVICE`: Dispositivo de disco a usar (por defecto: /dev/sda)
+- `DISK_DEVICE`: Dispositivo de disco a usar (por defecto: /dev/sda; soporta nombres tipo `/dev/nvme0n1` y `/dev/mmcblk0`)
 - `KIOSK_USER`: Nombre del usuario del sistema (por defecto: kiosk)
-- `KIOSK_PASSWORD`: Contraseña del usuario (por defecto: kiosk123)
+- `KIOSK_PASSWORD`: Contraseña del usuario (obligatoria; cambia el valor `change-me` de `.env.example`)
 - `TIMEZONE`: Zona horaria del sistema (por defecto: America/Mexico_City)
 - `PLYMOUTH_IMAGE_PATH`: Ruta a la imagen de Plymouth
 - `CURSOR_PATH`: Ruta al cursor personalizado
+- `ENABLE_SSH`: Instala y habilita OpenSSH (`true` por defecto)
+- `ALLOW_INSECURE_DEFAULT_PASSWORD`: Permite contraseñas de ejemplo solo para laboratorios/VMs descartables
 
-Si no creas un archivo `.env`, el instalador usará los valores por defecto.
+Debes crear un archivo `.env` y definir una contraseña segura en `KIOSK_PASSWORD`. El instalador rechazará contraseñas vacías o de ejemplo salvo que actives explícitamente `ALLOW_INSECURE_DEFAULT_PASSWORD=true` para pruebas controladas.
 
 ### Paso 5: Personalizar Assets (Opcional)
 
@@ -144,6 +146,7 @@ scp -r cursor/* root@<IP_DE_LA_VM>:/root/arch-kiosk-installer/assets/cursor/
 - Formato: PNG válido
 - Resolución recomendada: 1280x720 (se escalará automáticamente si es diferente)
 - Ubicación: `assets/plymouth-image.png`
+- Si la imagen no existe, el instalador omitirá la personalización de Plymouth; si existe pero no es PNG válido, se detendrá antes de modificar el disco.
 
 **Requisitos del cursor:**
 - Formato: Cualquier formato soportado por X11 (SVG, PNG, etc.)
@@ -585,9 +588,11 @@ KIOSK_PASSWORD="mipassword123"
 Opción 2: Editando el script
 ```bash
 # En install-arch-kiosk.sh
-KIOSK_USER="kiosk"           # Cambiar nombre de usuario
-KIOSK_PASSWORD="kiosk123"    # Cambiar contraseña
+KIOSK_USER="kiosk"              # Cambiar nombre de usuario
+KIOSK_PASSWORD="contraseña-segura"  # Definir una contraseña segura
 ```
+
+Evita valores de ejemplo como `kiosk123` o `change-me`; el instalador los rechazará salvo que actives `ALLOW_INSECURE_DEFAULT_PASSWORD=true` para pruebas controladas.
 
 ### Agregar Paquetes Adicionales
 

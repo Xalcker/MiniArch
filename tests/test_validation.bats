@@ -28,17 +28,17 @@ setup() {
             # En el mock, asumimos que existe
             :
         fi
-        
+
         # Simular que pacstrap existe
         if ! command -v pacstrap &> /dev/null; then
             # En el mock, asumimos que existe
             :
         fi
-        
+
         echo "Entorno de Arch Linux validado correctamente."
         return 0
     }
-    
+
     run validate_environment
     [ "$status" -eq 0 ]
     [[ "$output" == *"Entorno de Arch Linux validado correctamente"* ]]
@@ -51,7 +51,7 @@ setup() {
         echo "ERROR: No se detectó Arch Linux. Este script debe ejecutarse desde el instalador live de Arch Linux." >&2
         return 1
     }
-    
+
     run validate_environment
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -65,7 +65,7 @@ setup() {
         echo "ERROR: No se encontró el comando 'pacstrap'. Este script debe ejecutarse desde el instalador live de Arch Linux." >&2
         return 1
     }
-    
+
     run validate_environment
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -82,7 +82,7 @@ setup() {
         return 0
     }
     export -f ping
-    
+
     run check_network
     [ "$status" -eq 0 ]
     [[ "$output" == *"Conectividad de red verificada correctamente"* ]]
@@ -94,7 +94,7 @@ setup() {
         return 1
     }
     export -f ping
-    
+
     run check_network
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -112,7 +112,7 @@ setup() {
         echo "21474836480"
     }
     export -f lsblk
-    
+
     run check_disk "/dev/sda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Disco '/dev/sda' validado correctamente"* ]]
@@ -126,7 +126,7 @@ setup() {
         echo "17179869184"
     }
     export -f lsblk
-    
+
     run check_disk "/dev/sda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Disco '/dev/sda' validado correctamente"* ]]
@@ -140,7 +140,7 @@ setup() {
         echo "16106127360"
     }
     export -f lsblk
-    
+
     run check_disk "/dev/sda"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -155,7 +155,7 @@ setup() {
         echo "1099511627776"
     }
     export -f lsblk
-    
+
     run check_disk "/dev/sda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Disco '/dev/sda' validado correctamente"* ]]
@@ -169,7 +169,7 @@ setup() {
         echo "ERROR: El dispositivo '$disk_device' no existe o no es un dispositivo de bloque." >&2
         return 1
     }
-    
+
     run check_disk "/dev/sda"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -189,7 +189,7 @@ setup() {
         return 1
     }
     export -f lsblk
-    
+
     run check_disk "/dev/sda"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -205,7 +205,7 @@ setup() {
         echo "Disco '$disk_device' validado correctamente (${disk_size_gb}GB disponibles)."
         return 0
     }
-    
+
     run check_disk "/dev/vda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"/dev/vda"* ]]
@@ -220,7 +220,7 @@ setup() {
         echo "Disco '$disk_device' validado correctamente (${disk_size_gb}GB disponibles)."
         return 0
     }
-    
+
     run check_disk "/dev/nvme0n1"
     [ "$status" -eq 0 ]
     [[ "$output" == *"/dev/nvme0n1"* ]]
@@ -236,18 +236,18 @@ setup() {
     # Contador de pruebas exitosas
     local success_count=0
     local total_tests=100
-    
+
     # Probar con 100 tamaños de disco aleatorios
     for i in $(seq 1 $total_tests); do
         # Generar tamaño aleatorio entre 1GB y 1000GB
         local disk_size_gb=$((1 + RANDOM % 1000))
-        
+
         # Convertir GB a bytes (1 GB = 1024^3 bytes)
         local disk_size_bytes=$((disk_size_gb * 1024 * 1024 * 1024))
-        
+
         # Simular check_disk con el tamaño generado
         local disk_size_gb_calculated=$((disk_size_bytes / 1024 / 1024 / 1024))
-        
+
         # Verificar que el resultado es correcto según el tamaño
         if [[ $disk_size_gb_calculated -ge 16 ]]; then
             # Discos >= 16GB deben pasar la validación
@@ -260,7 +260,7 @@ setup() {
             return 1
         fi
     done
-    
+
     # Verificar que todas las pruebas pasaron
     [[ $success_count -eq $total_tests ]]
 }
@@ -282,7 +282,7 @@ setup() {
         fi
     }
     export -f lsblk
-    
+
     # Mock de grep para contar particiones
     grep() {
         if [[ "$*" == *"-c part"* ]]; then
@@ -293,7 +293,7 @@ setup() {
         fi
     }
     export -f grep
-    
+
     run check_disk_empty "/dev/sda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"El disco '/dev/sda' está vacío"* ]]
@@ -314,7 +314,7 @@ setup() {
         fi
     }
     export -f lsblk
-    
+
     # Mock de grep para contar particiones
     grep() {
         if [[ "$*" == *"-c part"* ]]; then
@@ -325,13 +325,13 @@ setup() {
         fi
     }
     export -f grep
-    
+
     # Mock de read para simular confirmación del usuario
     read() {
         confirmation="sí"
     }
     export -f read
-    
+
     run check_disk_empty "/dev/sda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
@@ -352,7 +352,7 @@ setup() {
         fi
     }
     export -f lsblk
-    
+
     # Mock de grep para contar particiones
     grep() {
         if [[ "$*" == *"-c part"* ]]; then
@@ -363,13 +363,13 @@ setup() {
         fi
     }
     export -f grep
-    
+
     # Mock de read para simular confirmación del usuario (sin acento)
     read() {
         confirmation="si"
     }
     export -f read
-    
+
     run check_disk_empty "/dev/sda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
@@ -393,7 +393,7 @@ setup() {
         fi
     }
     export -f lsblk
-    
+
     # Mock de grep para contar particiones
     grep() {
         if [[ "$*" == *"-c part"* ]]; then
@@ -404,13 +404,13 @@ setup() {
         fi
     }
     export -f grep
-    
+
     # Mock de read para simular confirmación del usuario (mayúsculas)
     read() {
         confirmation="SI"
     }
     export -f read
-    
+
     run check_disk_empty "/dev/sda"
     [ "$status" -eq 0 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
@@ -432,7 +432,7 @@ setup() {
         fi
     }
     export -f lsblk
-    
+
     # Mock de grep para contar particiones
     grep() {
         if [[ "$*" == *"-c part"* ]]; then
@@ -443,13 +443,13 @@ setup() {
         fi
     }
     export -f grep
-    
+
     # Mock de read para simular rechazo del usuario
     read() {
         confirmation="no"
     }
     export -f read
-    
+
     run check_disk_empty "/dev/sda"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
@@ -469,7 +469,7 @@ setup() {
         fi
     }
     export -f lsblk
-    
+
     # Mock de grep para contar particiones
     grep() {
         if [[ "$*" == *"-c part"* ]]; then
@@ -480,13 +480,13 @@ setup() {
         fi
     }
     export -f grep
-    
+
     # Mock de read para simular respuesta inválida
     read() {
         confirmation="maybe"
     }
     export -f read
-    
+
     run check_disk_empty "/dev/sda"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Operación cancelada por el usuario"* ]]
@@ -506,7 +506,7 @@ setup() {
         echo "ERROR: El dispositivo '$disk_device' no existe o no es un dispositivo de bloque." >&2
         return 1
     }
-    
+
     run check_disk_empty "/dev/sda"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
@@ -523,20 +523,20 @@ setup() {
     # Contador de pruebas exitosas
     local success_count=0
     local total_tests=100
-    
+
     # Probar con 100 escenarios diferentes
     for i in $(seq 1 $total_tests); do
         # Generar número aleatorio de particiones (0-10)
         local partition_count=$((RANDOM % 11))
-        
+
         # Generar respuesta aleatoria del usuario
         local responses=("sí" "si" "SI" "SÍ" "no" "NO" "maybe" "")
         local random_index=$((RANDOM % ${#responses[@]}))
         local user_response="${responses[$random_index]}"
-        
+
         # Simular la lógica de check_disk_empty
         local should_succeed=0
-        
+
         # Verificar que el resultado es correcto según el escenario
         if [[ $partition_count -eq 0 ]]; then
             # Disco vacío debe retornar 0 siempre
@@ -555,7 +555,56 @@ setup() {
             fi
         fi
     done
-    
+
     # Verificar que todas las pruebas pasaron
     [[ $success_count -eq $total_tests ]]
+}
+
+################################################################################
+# Pruebas para validate_security_config() y preflight_optional_assets()
+################################################################################
+
+@test "validate_security_config: contraseña vacía retorna 1" {
+    KIOSK_PASSWORD=""
+    ALLOW_INSECURE_DEFAULT_PASSWORD="false"
+
+    run validate_security_config
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"KIOSK_PASSWORD debe definirse"* ]]
+}
+
+@test "validate_security_config: contraseña de ejemplo requiere permiso explícito" {
+    KIOSK_PASSWORD="kiosk123"
+    ALLOW_INSECURE_DEFAULT_PASSWORD="false"
+
+    run validate_security_config
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"valor de ejemplo inseguro"* ]]
+}
+
+@test "validate_security_config: contraseña fuerte retorna 0" {
+    KIOSK_PASSWORD="Una-Contrasena-Segura-2026"
+    ALLOW_INSECURE_DEFAULT_PASSWORD="false"
+    ENABLE_SSH="false"
+
+    run validate_security_config
+    [ "$status" -eq 0 ]
+}
+
+@test "preflight_optional_assets: imagen Plymouth faltante no bloquea instalación" {
+    run preflight_optional_assets "/tmp/no-existe-plymouth.png" "assets/cursor"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"se omitirá la personalización de Plymouth"* ]]
+}
+
+@test "preflight_optional_assets: rechaza imagen existente que no es PNG" {
+    local tmp_file
+    tmp_file=$(mktemp)
+    echo "no soy png" > "$tmp_file"
+
+    run preflight_optional_assets "$tmp_file" "assets/cursor"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"debe ser PNG válido"* ]]
+
+    rm -f "$tmp_file"
 }
