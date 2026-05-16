@@ -45,6 +45,13 @@ create_user() {
         return 1
     fi
     
+    log "Configuring sudoers for group 'wheel'..."
+    # Enable %wheel group in sudoers
+    if ! arch-chroot /mnt bash -c "echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/10-wheel"; then
+        log_error "Failed to configure sudoers for group 'wheel'"
+        return 1
+    fi
+    
     log "User $username created successfully"
     return 0
 }
@@ -136,21 +143,21 @@ EOF
     return 0
 }
 
-# Configure xterm to start automatically and shutdown system on close
+# Configure kiosk application to start automatically and shutdown system on close
 # Arguments:
 #   $1 - username: Name of the user to configure
 # Returns: 0 on success, 1 on failure
-configure_xterm_autostart() {
+configure_kiosk_autostart() {
     local username="$1"
     local user_home="/mnt/home/$username"
     local autostart_dir="$user_home/.config/openbox"
     
     if [[ -z "$username" ]]; then
-        log_error "Username not provided for xterm autostart configuration"
+        log_error "Username not provided for kiosk autostart configuration"
         return 1
     fi
     
-    log "Configuring xterm autostart with shutdown on close for user: $username"
+    log "Configuring kiosk autostart (YARG/xterm) with shutdown on close for user: $username"
     
     # Create OpenBox config directory
     if ! mkdir -p "$autostart_dir"; then
@@ -158,23 +165,33 @@ configure_xterm_autostart() {
         return 1
     fi
     
-    # Create autostart file that launches xterm and shuts down on close
+    # Create autostart file that launches YARG (if exists) or xterm and shuts down on close
     cat > "$autostart_dir/autostart" << 'EOF'
 #!/bin/bash
-# Start xterm and shutdown system when it closes
+# Start kiosk application and shutdown system when it closes
 
 # Wait a moment for X to fully initialize
 sleep 2
 
-# Launch xterm with a persistent shell (without -hold so it closes on exit)
-xterm -e /bin/bash &
-XTERM_PID=$!
+# Path to YARG executable
+YARG_EXE="$HOME/YARG/YARG"
 
-# Wait for xterm to close in background, then shutdown
+if [[ -f "$YARG_EXE" ]]; then
+    echo "Starting YARG..."
+    "$YARG_EXE" &
+    APP_PID=$!
+else
+    echo "YARG not found. Starting xterm for setup..."
+    xterm -e /bin/bash &
+    APP_PID=$!
+fi
+
+# Wait for application to close in background, then shutdown
 (
-    while kill -0 $XTERM_PID 2>/dev/null; do
+    while kill -0 $APP_PID 2>/dev/null; do
         sleep 1
     done
+    echo "Application closed. Shutting down system..."
     /usr/bin/shutdown -h now
 ) &
 EOF
@@ -236,6 +253,6 @@ EOF
     # Set correct ownership for user files
     arch-chroot /mnt chown -R "$username:$username" "/home/$username/.config"
     
-    log "xterm autostart with shutdown configured successfully for $username"
+    log "Kiosk autostart (YARG/xterm) with shutdown configured successfully for $username"
     return 0
 }

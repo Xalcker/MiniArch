@@ -293,12 +293,12 @@ main() {
     fi
     log "Autostart de X configurado correctamente"
 
-    log "Configurando xterm con apagado automático para $KIOSK_USER..."
-    if ! configure_xterm_autostart "$KIOSK_USER"; then
-        log_error "Fallo en configuración de xterm autostart"
+    log "Configurando la aplicación del kiosko con apagado automático para $KIOSK_USER..."
+    if ! configure_kiosk_autostart "$KIOSK_USER"; then
+        log_error "Fallo en configuración de autostart del kiosko"
         exit 1
     fi
-    log "xterm con apagado automático configurado correctamente"
+    log "Aplicación del kiosko con apagado automático configurada correctamente"
 
     log "Ocultando mensajes del sistema..."
     if ! hide_system_messages "$KIOSK_USER"; then
@@ -306,6 +306,13 @@ main() {
         exit 1
     fi
     log "Mensajes del sistema ocultados correctamente"
+
+    log "Instalando scripts adicionales..."
+    if ! install_extra_scripts "$KIOSK_USER"; then
+        log "Advertencia: No se pudieron instalar los scripts adicionales (no crítico)"
+    else
+        log "Scripts adicionales instalados correctamente"
+    fi
 
     log "Instalando cursor personalizado..."
     if ! install_custom_cursor "$CURSOR_PATH" "$KIOSK_USER"; then

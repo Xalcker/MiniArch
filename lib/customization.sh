@@ -289,3 +289,48 @@ apply_plymouth_image() {
     log "Plymouth image applied successfully"
     return 0
 }
+
+################################################################################
+# install_extra_scripts()
+#
+# Copia scripts adicionales útiles (como el de instalación de YARG) al directorio
+# home del usuario kiosko y les da permisos de ejecución.
+#
+# Arguments:
+#   $1 - username: Nombre del usuario para el cual instalar scripts
+#
+# Returns:
+#   0 - Si la instalación fue exitosa
+#   1 - Si hubo algún error
+################################################################################
+install_extra_scripts() {
+    local username="$1"
+    local user_home="/mnt/home/$username"
+    local script_name="setup-yarg.sh"
+    
+    if [[ -z "$username" ]]; then
+        log_error "Username not provided for extra scripts installation"
+        return 1
+    fi
+    
+    log "Installing extra scripts for user: $username"
+    
+    # Verificar si el script de YARG existe en el directorio actual
+    if [[ -f "./$script_name" ]]; then
+        log "Copying $script_name to $user_home"
+        if ! cp "./$script_name" "$user_home/"; then
+            log_error "Failed to copy $script_name"
+            return 1
+        fi
+        
+        # Establecer permisos de ejecución y propiedad
+        chmod +x "$user_home/$script_name"
+        arch-chroot /mnt chown "$username:$username" "/home/$username/$script_name"
+        
+        log "Extra scripts installed successfully"
+    else
+        log "Warning: $script_name not found, skipping installation of extra scripts"
+    fi
+    
+    return 0
+}

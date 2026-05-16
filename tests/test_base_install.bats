@@ -56,7 +56,7 @@ setup() {
     [[ "$output" == *"Sistema base instalado exitosamente"* ]]
     
     # Verificar que se llamó a pacstrap con los paquetes correctos
-    grep -q "pacstrap /mnt base linux linux-firmware" /tmp/pacstrap_commands.log
+    grep -q "pacstrap /mnt base linux linux-firmware sudo wget curl unzip" /tmp/pacstrap_commands.log
     
     # Limpiar
     rm -f /tmp/pacstrap_commands.log
@@ -93,8 +93,8 @@ setup() {
     [[ "$command" == *"linux"* ]]
     [[ "$command" == *"linux-firmware"* ]]
     
-    # Verificar que el comando es exactamente: pacstrap /mnt base linux linux-firmware
-    [[ "$command" == "pacstrap /mnt base linux linux-firmware" ]]
+    # Verificar que el comando es exactamente: pacstrap /mnt base linux linux-firmware sudo wget curl unzip
+    [[ "$command" == "pacstrap /mnt base linux linux-firmware sudo wget curl unzip" ]]
     
     # Limpiar
     rm -f /tmp/pacstrap_commands.log
@@ -482,18 +482,18 @@ setup() {
     # Leer el comando ejecutado
     local command=$(cat /tmp/pacstrap_commands.log)
     
-    # Verificar que el comando contiene exactamente los tres paquetes requeridos
+    # Verificar que el comando contiene exactamente los paquetes requeridos
     # y que están en el orden correcto
-    [[ "$command" == "pacstrap /mnt base linux linux-firmware" ]]
+    [[ "$command" == "pacstrap /mnt base linux linux-firmware sudo wget curl unzip" ]]
     
     # Verificar que contiene cada paquete individualmente
     [[ "$command" == *"base"* ]]
     [[ "$command" == *"linux"* ]]
     [[ "$command" == *"linux-firmware"* ]]
     
-    # Verificar que no contiene paquetes adicionales
+    # Verificar que no contiene paquetes inesperados (total: pacstrap + /mnt + base + linux + linux-firmware + sudo + wget + curl + unzip = 9 palabras)
     local word_count=$(echo "$command" | wc -w)
-    [[ $word_count -eq 5 ]]  # pacstrap + /mnt + base + linux + linux-firmware = 5 palabras
+    [[ $word_count -eq 9 ]]
     
     # Limpiar
     rm -f /tmp/pacstrap_commands.log

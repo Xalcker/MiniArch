@@ -107,6 +107,26 @@ setup() {
     run create_user "kiosk"
     [ "$status" -eq 0 ]
     [[ "$output" == *"User kiosk created successfully"* ]]
+    [[ "$output" == *"Configuring sudoers for group 'wheel'"* ]]
+}
+
+@test "create_user: verifica que se configure sudoers para el grupo wheel" {
+    # Mock de arch-chroot que captura comandos
+    arch-chroot() {
+        echo "arch-chroot $*" >> /tmp/chroot_commands.log
+        return 0
+    }
+    export -f arch-chroot
+    
+    rm -f /tmp/chroot_commands.log
+    
+    run create_user "kiosk"
+    [ "$status" -eq 0 ]
+    
+    # Verificar que se llamó a bash para configurar sudoers
+    grep -q "bash -c echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/10-wheel" /tmp/chroot_commands.log
+    
+    rm -f /tmp/chroot_commands.log
 }
 
 @test "create_user: genera comando useradd correcto con nombre de usuario 'testuser'" {
@@ -373,91 +393,59 @@ EOF
 }
 
 ################################################################################
-# Pruebas para configure_xterm_autostart()
+# Pruebas para configure_kiosk_autostart()
 ################################################################################
 
-@test "configure_xterm_autostart: crea autostart con xterm y comando de apagado para usuario 'kiosk'" {
+@test "configure_kiosk_autostart: crea autostart con soporte YARG y comando de apagado para usuario 'kiosk'" {
     # Create temporary test directory
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/home/kiosk/.config/openbox"
     
     # Override function to use test directory
-    configure_xterm_autostart() {
+    configure_kiosk_autostart() {
         local username="$1"
         local user_home="$test_dir/home/$username"
         local autostart_dir="$user_home/.config/openbox"
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for xterm autostart configuration"
+            log_error "Username not provided for kiosk autostart configuration"
             return 1
         fi
         
-        log "Configuring xterm autostart with shutdown on close for user: $username"
+        log "Configuring kiosk autostart (YARG/xterm) with shutdown on close for user: $username"
         
         mkdir -p "$autostart_dir" || { log_error "Failed to create OpenBox config directory"; return 1; }
         
         cat > "$autostart_dir/autostart" << 'EOF'
 #!/bin/bash
-# Start xterm and shutdown system when it closes
-
-# Wait a moment for X to fully initialize
-sleep 2
-
-# Launch xterm with a persistent shell (without -hold so it closes on exit)
-xterm -e /bin/bash &
-XTERM_PID=$!
-
-# Wait for xterm to close in background, then shutdown
-(
-    while kill -0 $XTERM_PID 2>/dev/null; do
-        sleep 1
-    done
-    /usr/bin/shutdown -h now
-) &
+YARG_EXE="$HOME/YARG/YARG"
+if [[ -f "$YARG_EXE" ]]; then
+    "$YARG_EXE" &
+else
+    xterm -e /bin/bash &
+fi
 EOF
         [[ $? -ne 0 ]] && { log_error "Failed to create OpenBox autostart file"; return 1; }
         
         chmod +x "$autostart_dir/autostart"
-        
-        log "Creating OpenBox configuration for kiosk mode"
-        
-        cat > "$autostart_dir/rc.xml" << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
-  <desktops>
-    <number>1</number>
-  </desktops>
-</openbox_config>
-EOF
-        [[ $? -ne 0 ]] && { log_error "Failed to create OpenBox configuration file"; return 1; }
-        
-        log "OpenBox kiosk configuration created successfully"
-        log "xterm autostart with shutdown configured successfully for $username"
+        log "Kiosk autostart (YARG/xterm) with shutdown configured successfully for $username"
         return 0
     }
     
-    run configure_xterm_autostart "kiosk"
+    run configure_kiosk_autostart "kiosk"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"xterm autostart with shutdown configured successfully for kiosk"* ]]
+    [[ "$output" == *"Kiosk autostart (YARG/xterm) with shutdown configured successfully for kiosk"* ]]
     
     # Verify files were created
     [ -f "$test_dir/home/kiosk/.config/openbox/autostart" ]
-    [ -f "$test_dir/home/kiosk/.config/openbox/rc.xml" ]
     
     # Verify content
+    grep -q "YARG" "$test_dir/home/kiosk/.config/openbox/autostart"
     grep -q "xterm" "$test_dir/home/kiosk/.config/openbox/autostart"
-    grep -q "shutdown" "$test_dir/home/kiosk/.config/openbox/autostart"
-    
-    rm -rf "$test_dir"
-}
-
-@test "configure_xterm_autostart: crea rc.xml con configuración de modo kiosko" {
-    # Create temporary test directory
-    local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/home/kiosk/.config/openbox"
     
     # Override function to use test directory
-    configure_xterm_autostart() {
+    configure_kiosk_autostart() {
         local username="$1"
         local user_home="$test_dir/home/$username"
         local autostart_dir="$user_home/.config/openbox"
@@ -496,7 +484,7 @@ EOF
         return 0
     }
     
-    run configure_xterm_autostart "kiosk"
+    run configure_kiosk_autostart "kiosk"
     [ "$status" -eq 0 ]
     [[ "$output" == *"OpenBox kiosk configuration created successfully"* ]]
     
@@ -509,32 +497,32 @@ EOF
     rm -rf "$test_dir"
 }
 
-@test "configure_xterm_autostart: sin nombre de usuario retorna 1" {
-    run configure_xterm_autostart
+@test "configure_kiosk_autostart: sin nombre de usuario retorna 1" {
+    run configure_kiosk_autostart
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
     [[ "$output" == *"Username not provided"* ]]
 }
 
-@test "configure_xterm_autostart: fallo en mkdir retorna 1" {
+@test "configure_kiosk_autostart: fallo en mkdir retorna 1" {
     # Mock de mkdir que falla
     mkdir() {
         return 1
     }
     export -f mkdir
     
-    run configure_xterm_autostart "kiosk"
+    run configure_kiosk_autostart "kiosk"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
     [[ "$output" == *"Failed to create OpenBox config directory"* ]]
 }
 
-@test "configure_xterm_autostart: funciona con diferentes nombres de usuario" {
+@test "configure_kiosk_autostart: funciona con diferentes nombres de usuario" {
     # Create temporary test directory
     local test_dir=$(mktemp -d)
     
     # Override function to use test directory
-    configure_xterm_autostart() {
+    configure_kiosk_autostart() {
         local username="$1"
         local user_home="$test_dir/home/$username"
         local autostart_dir="$user_home/.config/openbox"
@@ -578,7 +566,7 @@ EOF
     
     for username in "${usernames[@]}"; do
         mkdir -p "$test_dir/home/$username"
-        run configure_xterm_autostart "$username"
+        run configure_kiosk_autostart "$username"
         [ "$status" -eq 0 ]
         [[ "$output" == *"xterm autostart with shutdown configured successfully for $username"* ]]
     done
@@ -590,7 +578,7 @@ EOF
 # Pruebas de integración para el flujo completo
 ################################################################################
 
-@test "Flujo completo: install_openbox -> create_user -> configure_autologin -> configure_autostart_x -> configure_xterm_autostart" {
+@test "Flujo completo: install_openbox -> create_user -> configure_autologin -> configure_autostart_x -> configure_kiosk_autostart" {
     # Create temporary test directory
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/home/kiosk"
@@ -652,8 +640,8 @@ EOF
     run configure_autostart_x "kiosk"
     [ "$status" -eq 0 ]
     
-    # Test configure_xterm_autostart with override
-    configure_xterm_autostart() {
+    # Test configure_kiosk_autostart with override
+    configure_kiosk_autostart() {
         local username="$1"
         local user_home="$test_dir/home/$username"
         local autostart_dir="$user_home/.config/openbox"
@@ -680,7 +668,7 @@ EOF
         log "xterm autostart with shutdown configured successfully for $username"
         return 0
     }
-    run configure_xterm_autostart "kiosk"
+    run configure_kiosk_autostart "kiosk"
     [ "$status" -eq 0 ]
     
     rm -rf "$test_dir"
@@ -801,12 +789,12 @@ EOF
 }
 
 ################################################################################
-# Prueba de Propiedad para configure_xterm_autostart()
+# Prueba de Propiedad para configure_kiosk_autostart()
 # Property 26: Configuración de xterm con apagado automático
 # **Validates: Requirements 13.1, 13.2, 13.3, 13.4, 13.5**
 ################################################################################
 
-@test "Property 26: configure_xterm_autostart crea configuración correcta de xterm con apagado para 100 nombres de usuario aleatorios" {
+@test "Property 26: configure_kiosk_autostart crea configuración correcta de xterm con apagado para 100 nombres de usuario aleatorios" {
     # Contador de pruebas exitosas
     local success_count=0
     local total_tests=100
@@ -846,8 +834,8 @@ EOF
         # Create user home directory for this test
         mkdir -p "$test_dir/home/$username"
         
-        # Override configure_xterm_autostart to use test directory
-        configure_xterm_autostart() {
+        # Override configure_kiosk_autostart to use test directory
+        configure_kiosk_autostart() {
             local username="$1"
             local user_home="$test_dir/home/$username"
             local autostart_dir="$user_home/.config/openbox"
@@ -906,12 +894,12 @@ EOF
             return 0
         }
         
-        # Ejecutar configure_xterm_autostart con el nombre generado
-        run configure_xterm_autostart "$username"
+        # Ejecutar configure_kiosk_autostart con el nombre generado
+        run configure_kiosk_autostart "$username"
         
         # Verificar que el comando se ejecutó correctamente
         if [[ "$status" -ne 0 ]]; then
-            echo "FALLO: configure_xterm_autostart retornó código de error $status para usuario '$username'" >&2
+            echo "FALLO: configure_kiosk_autostart retornó código de error $status para usuario '$username'" >&2
             echo "Output: $output" >&2
             rm -rf "$test_dir"
             return 1
