@@ -174,31 +174,31 @@ configure_kiosk_autostart() {
 sleep 2
 
 # Determine which application to start (Priority: YARG > RetroArch > Web > xterm)
-if [ -f "\$HOME/YARG/YARG" ]; then
+if [ -f "$HOME/YARG/YARG" ]; then
     echo "Starting YARG..."
-    "\$HOME/YARG/YARG" &
-    APP_PID=\$!
+    "$HOME/YARG/YARG" &
+    APP_PID=$!
 elif command -v retroarch &> /dev/null; then
     echo "Starting RetroArch..."
     retroarch --fullscreen &
-    APP_PID=\$!
-elif [ -f "\$HOME/kiosk_url" ]; then
-    URL=\$(cat "\$HOME/kiosk_url")
-    echo "Starting Web Kiosk at \$URL..."
-    chromium --kiosk --no-first-run --disable-infobars --window-position=0,0 "\$URL" &
-    APP_PID=\$!
+    APP_PID=$!
+elif [ -f "$HOME/kiosk_url" ]; then
+    URL=$(cat "$HOME/kiosk_url")
+    echo "Starting Web Kiosk at $URL..."
+    chromium --kiosk --no-first-run --disable-infobars --window-position=0,0 "$URL" &
+    APP_PID=$!
 else
     echo "No game found. Starting xterm for maintenance..."
     xterm -e /bin/bash &
-    APP_PID=\$!
+    APP_PID=$!
 fi
 
 # Wait for application to close in background, then shutdown
 (
-    wait \$APP_PID
-    EXIT_STATUS=\$?
-    if [ \$EXIT_STATUS -ne 0 ]; then
-        echo "Application failed with status \$EXIT_STATUS. Rebooting..."
+    wait $APP_PID
+    EXIT_STATUS=$?
+    if [ $EXIT_STATUS -ne 0 ]; then
+        echo "Application failed with status $EXIT_STATUS. Rebooting..."
         /usr/bin/sudo /usr/bin/reboot
     else
         echo "Application closed normally. Shutting down system..."
