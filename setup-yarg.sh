@@ -34,10 +34,48 @@ fi
 echo "Configurando permisos..."
 find "$INSTALL_DIR" -type f -name "YARG*" -exec chmod +x {} \;
 
+# Crear carpeta de canciones
+SONGS_DIR="$INSTALL_DIR/Songs"
+echo "Creando carpeta de canciones en $SONGS_DIR..."
+mkdir -p "$SONGS_DIR"
+
+# Configuración de Samba
+echo "==================================================================="
+echo "Configurando Samba para compartir canciones..."
+echo "==================================================================="
+
+# Crear archivo de configuración básico si no existe
+if [[ ! -f /etc/samba/smb.conf ]]; then
+    echo "Generando /etc/samba/smb.conf..."
+    sudo bash -c 'cat > /etc/samba/smb.conf' << EOF
+[global]
+   workgroup = WORKGROUP
+   server string = YARG Kiosk
+   security = user
+   map to guest = Bad User
+   log file = /var/log/samba/%m.log
+   max log size = 50
+
+[YARG-Songs]
+   path = $SONGS_DIR
+   writable = yes
+   browsable = yes
+   guest ok = yes
+   create mask = 0775
+   directory mask = 0775
+   force user = $USER
+EOF
+fi
+
+# Habilitar y arrancar servicios de Samba
+echo "Iniciando servicios de red..."
+sudo systemctl enable --now smb nmb
+
 # Limpiar
 rm -f "$ZIP_FILE"
 
 echo "==================================================================="
-echo "YARG instalado correctamente en $INSTALL_DIR"
-echo "Puedes ejecutarlo con: $INSTALL_DIR/YARG"
+echo "Instalación completada!"
+echo "YARG instalado en: $INSTALL_DIR"
+echo "Carpeta SONGS compartida en red como: \\\\$(hostname)\\YARG-Songs"
 echo "==================================================================="

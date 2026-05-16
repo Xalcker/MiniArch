@@ -5,12 +5,14 @@ Script de instalación automatizada de Arch Linux que configura un sistema tipo 
 ## Características
 
 - ✅ Instalación completamente automatizada de Arch Linux
-- 🎨 Arranque silencioso con GRUB (Plymouth opcional)
+- 🎨 Arranque silencioso con Plymouth (Logo de YARG por defecto)
 - 🖥️ Entorno gráfico minimalista con OpenBox en modo kiosko
 - 🔒 Autologin automático al usuario kiosko
+- 🛡️ Usuario con privilegios sudoer para mantenimiento fácil
 - 🎯 Configuración optimizada para modo kiosko (1 escritorio, sin cambio con rueda del mouse)
+- 🎸 Soporte nativo para YARG (Yet Another Rhythm Game)
 - 🔌 SSH habilitado para acceso remoto
-- 🪟 xterm se inicia automáticamente y apaga el sistema al cerrar
+- 🪟 Aplicación del kiosko (YARG/xterm) con apagado automático al cerrar
 - 🧪 Suite completa de pruebas con BATS
 
 ## Requisitos Previos
@@ -170,15 +172,16 @@ El script realizará automáticamente:
 1. Validación del entorno y requisitos
 2. Verificación de disco vacío y confirmación del usuario
 3. Particionamiento y formateo del disco
-4. Instalación del sistema base
+4. Instalación del sistema base (incluye `sudo`, `wget`, `curl`, `unzip`)
 4. Configuración de GRUB silencioso
-5. Instalación y configuración de Plymouth (opcional, continúa si falla)
+5. Instalación y configuración de Plymouth (con logo de YARG)
 6. Instalación de drivers gráficos y audio
 7. Configuración de OpenBox en modo kiosko y autologin
-8. Configuración de xterm con apagado automático
-9. Personalización visual
-10. Configuración de red y SSH
-11. Limpieza y finalización
+8. Configuración de autostart (prioriza YARG, fallback a xterm)
+9. Copia de scripts adicionales (`setup-yarg.sh`)
+10. Personalización visual y del cursor
+11. Configuración de red y SSH
+12. Limpieza y finalización
 
 ### Paso 7: Reiniciar
 
@@ -210,10 +213,29 @@ ssh kiosk@<IP_DE_LA_VM>
 
 ### Comportamiento del Sistema
 
-- **Inicio automático**: El sistema arranca directamente a X con OpenBox
-- **xterm automático**: Se abre xterm al iniciar
-- **Apagado automático**: Al cerrar xterm (escribiendo `exit` o Ctrl+D), el sistema se apaga
-- **Modo kiosko**: OpenBox está configurado con 1 solo escritorio, sin cambio con rueda del mouse
+- **Inicio automático**: El sistema arranca directamente a X con OpenBox.
+- **Modo Kiosko**: OpenBox está configurado con 1 solo escritorio y sin cambio de escritorio con la rueda del mouse.
+- **Prioridad YARG**: El sistema busca YARG en `~/YARG/YARG`. Si lo encuentra, lo inicia automáticamente.
+- **Fallback a xterm**: Si YARG no está instalado, se abre una terminal `xterm` para permitir el mantenimiento.
+- **Apagado automático**: Al cerrar la aplicación principal (YARG o xterm), el sistema se apaga inmediatamente por seguridad.
+- **Mantenimiento**: El usuario `kiosk` tiene permisos de `sudo`. La cuenta `root` está bloqueada por defecto para mayor seguridad.
+- **Intercambio de Archivos (SMB)**: El sistema incluye Samba preinstalado. El script de YARG configura automáticamente una carpeta compartida en red.
+
+### Instalación de YARG y Canciones
+
+El sistema incluye un script para facilitar la descarga de YARG y la configuración de red:
+
+1. Inicia el sistema y espera a que aparezca la terminal (si YARG no está instalado aún).
+2. Ejecuta el script de configuración:
+   ```bash
+   ./setup-yarg.sh
+   ```
+3. El script realizará lo siguiente:
+   * Descargará y extraerá YARG en `~/YARG`.
+   * Creará una carpeta `~/YARG/Songs`.
+   * **Configurará Samba**: Compartirá la carpeta de canciones en tu red local.
+4. **Subir canciones**: Desde tu computadora principal, podrás acceder a `\\nombre-del-kiosko\YARG-Songs` para subir tus archivos `.chart` o `.mid` de forma inalámbrica.
+5. Al reiniciar, el sistema iniciará YARG automáticamente.
 
 ### Cambiar Contraseña
 
@@ -633,14 +655,15 @@ Para más detalles sobre estándares de código, pruebas y proceso de PR, consul
 
 ### Consideraciones Importantes
 
-- El archivo `.env` puede contener información sensible (contraseñas). NUNCA lo versiones en Git (ya está en .gitignore)
-- Cambia la contraseña predeterminada (`kiosk123`) inmediatamente después de la instalación
-- El usuario `kiosk` tiene permisos limitados, pero considera crear políticas de seguridad adicionales para producción
+- El archivo `.env` puede contener información sensible (contraseñas). NUNCA lo versiones en Git.
+- **Cuenta Root**: Por defecto, la cuenta `root` no tiene contraseña configurada (está bloqueada para login directo). Esto es una medida de seguridad.
+- **Administración**: Usa `sudo` desde la cuenta `kiosk` para realizar tareas administrativas.
+- Cambia la contraseña predeterminada (`kiosk123`) inmediatamente después de la instalación.
+- El usuario `kiosk` tiene permisos de sudoer, pero considera restringirlos en entornos de producción altamente sensibles.
 - SSH está habilitado por defecto. Considera:
-  - Cambiar el puerto SSH predeterminado
-  - Usar autenticación por clave pública en lugar de contraseña
-  - Configurar fail2ban para prevenir ataques de fuerza bruta
-- Para entornos de producción, revisa y endurece la configuración de seguridad según tus necesidades
+  - Cambiar el puerto SSH predeterminado.
+  - Usar autenticación por clave pública en lugar de contraseña.
+  - Configurar fail2ban para prevenir ataques de fuerza bruta.
 
 Para una guía completa de seguridad, consulta [SECURITY.md](SECURITY.md).
 

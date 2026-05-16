@@ -49,6 +49,57 @@ setup() {
     export -f pacstrap
     
     # Limpiar log de comandos
+#!/usr/bin/env bats
+
+################################################################################
+# Pruebas Unitarias para el Módulo de Instalación Base
+#
+# Este archivo contiene pruebas BATS para validar las funciones del módulo
+# lib/base_install.sh. Las pruebas usan mocks para simular el comportamiento
+# del sistema sin modificar el entorno real.
+#
+# Requisitos probados: 4.1, 4.2, 4.3, 14.4
+################################################################################
+
+# Setup: cargar el módulo de instalación base antes de cada prueba
+setup() {
+    # Cargar el módulo de instalación base
+    source lib/base_install.sh
+    
+    # Mock de funciones de logging
+    log() {
+        echo "$*"
+    }
+    export -f log
+    
+    log_error() {
+        echo "ERROR: $*" >&2
+    }
+    export -f log_error
+}
+
+################################################################################
+# Pruebas para install_base_system()
+################################################################################
+
+@test "install_base_system: instalación exitosa con pacstrap retorna 0" {
+    # Mock de mountpoint que simula /mnt montado
+    mountpoint() {
+        if [[ "$*" == *"-q /mnt"* ]]; then
+            return 0
+        fi
+        command mountpoint "$@"
+    }
+    export -f mountpoint
+    
+    # Mock de pacstrap que registra los comandos
+    pacstrap() {
+        echo "pacstrap $*" >> /tmp/pacstrap_commands.log
+        return 0
+    }
+    export -f pacstrap
+    
+    # Limpiar log de comandos
     rm -f /tmp/pacstrap_commands.log
     
     run install_base_system
@@ -56,7 +107,7 @@ setup() {
     [[ "$output" == *"Sistema base instalado exitosamente"* ]]
     
     # Verificar que se llamó a pacstrap con los paquetes correctos
-    grep -q "pacstrap /mnt base linux linux-firmware sudo wget curl unzip" /tmp/pacstrap_commands.log
+    grep -q "pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba" /tmp/pacstrap_commands.log
     
     # Limpiar
     rm -f /tmp/pacstrap_commands.log
@@ -93,8 +144,8 @@ setup() {
     [[ "$command" == *"linux"* ]]
     [[ "$command" == *"linux-firmware"* ]]
     
-    # Verificar que el comando es exactamente: pacstrap /mnt base linux linux-firmware sudo wget curl unzip
-    [[ "$command" == "pacstrap /mnt base linux linux-firmware sudo wget curl unzip" ]]
+    # Verificar que el comando es exactamente: pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba
+    [[ "$command" == "pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba" ]]
     
     # Limpiar
     rm -f /tmp/pacstrap_commands.log
@@ -484,16 +535,16 @@ setup() {
     
     # Verificar que el comando contiene exactamente los paquetes requeridos
     # y que están en el orden correcto
-    [[ "$command" == "pacstrap /mnt base linux linux-firmware sudo wget curl unzip" ]]
+    [[ "$command" == "pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba" ]]
     
     # Verificar que contiene cada paquete individualmente
     [[ "$command" == *"base"* ]]
     [[ "$command" == *"linux"* ]]
     [[ "$command" == *"linux-firmware"* ]]
     
-    # Verificar que no contiene paquetes inesperados (total: pacstrap + /mnt + base + linux + linux-firmware + sudo + wget + curl + unzip = 9 palabras)
+    # Verificar que no contiene paquetes inesperados (total: pacstrap + /mnt + base + linux + linux-firmware + sudo + wget + curl + unzip + samba = 10 palabras)
     local word_count=$(echo "$command" | wc -w)
-    [[ $word_count -eq 9 ]]
+    [[ $word_count -eq 10 ]]
     
     # Limpiar
     rm -f /tmp/pacstrap_commands.log

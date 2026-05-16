@@ -37,7 +37,7 @@ install_base_system() {
     log "Instalando sistema base con pacstrap (base, linux, linux-firmware)"
     
     # Ejecutar pacstrap para instalar el sistema base y utilidades esenciales
-    if ! pacstrap /mnt base linux linux-firmware sudo wget curl unzip; then
+    if ! pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba; then
         log_error "Fallo al instalar el sistema base y utilidades (sudo, wget, curl, unzip) con pacstrap"
         return 1
     fi

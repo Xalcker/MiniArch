@@ -321,16 +321,19 @@ EOF
     rm -rf "$temp_dir"
 }
 
-@test "configure_plymouth: modifica /etc/mkinitcpio.conf correctamente" {
+@test "configure_plymouth: modifica /etc/mkinitcpio.conf correctamente (MODULES y HOOKS)" {
     # Crear archivo temporal de mkinitcpio.conf
     local temp_mkinitcpio=$(mktemp)
-    echo 'HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)' > "$temp_mkinitcpio"
+    echo 'MODULES=()' > "$temp_mkinitcpio"
+    echo 'HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)' >> "$temp_mkinitcpio"
     
-    # Aplicar modificación
-    sed -i 's/^HOOKS=(\(.*\)udev\(.*\))/HOOKS=(\1udev plymouth\2)/' "$temp_mkinitcpio"
+    # 1. Verificar que se habilita KMS en MODULES
+    sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 i915 amdgpu nouveau virtio_gpu qxl bochs_drm)/' "$temp_mkinitcpio"
+    grep -q "qxl" "$temp_mkinitcpio"
+    grep -q "bochs_drm" "$temp_mkinitcpio"
     
     # Verificar que plymouth fue agregado después de udev
-    grep -q "HOOKS=(base udev plymouth" "$temp_mkinitcpio"
+    grep -q "udev plymouth" "$temp_mkinitcpio"
     
     # Limpiar
     rm -f "$temp_mkinitcpio"
@@ -611,15 +614,23 @@ EOF
     local temp_grub=$(mktemp)
     
     # Crear contenido inicial
-    echo 'HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)' > "$temp_mkinitcpio"
+    echo 'MODULES=()' > "$temp_mkinitcpio"
+    echo 'HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)' >> "$temp_mkinitcpio"
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3 rd.systemd.show_status=false rd.udev.log_level=3"' > "$temp_grub"
     
-    # 1. Verificar que plymouth se agrega a HOOKS después de udev
-    sed -i 's/^HOOKS=(\(.*\)udev\(.*\))/HOOKS=(\1udev plymouth\2)/' "$temp_mkinitcpio"
+    # 1. Verificar que se habilita KMS en MODULES
+    sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 i915 amdgpu nouveau virtio_gpu qxl bochs_drm)/' "$temp_mkinitcpio"
+    grep -q "virtio_gpu" "$temp_mkinitcpio"
+    grep -q "qxl" "$temp_mkinitcpio"
+
+    # 2. Verificar que plymouth se agrega a HOOKS después de udev
+    sed -i 's/\budev\b/& plymouth/' "$temp_mkinitcpio"
     grep -q "udev plymouth" "$temp_mkinitcpio"
     
-    # 2. Verificar que splash se agrega a GRUB_CMDLINE_LINUX_DEFAULT
-    sed -i 's/^\(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*\)"/\1 splash"/' "$temp_grub"
+    # 3. Verificar que splash se agrega a GRUB_CMDLINE_LINUX_DEFAULT si no está
+    if ! grep -q "splash" "$temp_grub"; then
+        sed -i 's/^\(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*\)"/\1 splash"/' "$temp_grub"
+    fi
     grep -q "splash" "$temp_grub"
     
     # 3. Verificar que los comandos necesarios se generan

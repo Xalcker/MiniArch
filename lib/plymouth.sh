@@ -213,14 +213,22 @@ configure_plymouth() {
     # Limpiar archivo temporal
     rm -f "$temp_image"
     
-    log "Actualizando /etc/mkinitcpio.conf para agregar hook de Plymouth"
+    log "Actualizando /etc/mkinitcpio.conf para habilitar KMS y Plymouth"
     
     # Backup del archivo original
     cp /mnt/etc/mkinitcpio.conf /mnt/etc/mkinitcpio.conf.backup
     
-    # Agregar plymouth hook después de base y udev
-    # La línea HOOKS debe incluir: base udev plymouth ...
-    sed -i 's/^HOOKS=(\(.*\)udev\(.*\))/HOOKS=(\1udev plymouth\2)/' /mnt/etc/mkinitcpio.conf
+    # Habilitar KMS (Kernel Mode Setting) agregando drivers de video a MODULES
+    # Esto es crucial para que Plymouth se muestre temprano en Proxmox y otros entornos
+    sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 i915 amdgpu nouveau virtio_gpu qxl bochs_drm)/' /mnt/etc/mkinitcpio.conf
+    
+    # Agregar plymouth hook después de udev de forma más robusta
+    if grep -q "plymouth" /mnt/etc/mkinitcpio.conf; then
+        log "El hook de Plymouth ya está presente en mkinitcpio.conf"
+    else
+        # Intentar insertar después de udev
+        sed -i 's/\budev\b/& plymouth/' /mnt/etc/mkinitcpio.conf
+    fi
     
     log "Regenerando initramfs con mkinitcpio"
     
@@ -248,8 +256,10 @@ configure_plymouth() {
         return 1
     fi
     
-    # Agregar "splash" al final de GRUB_CMDLINE_LINUX_DEFAULT
-    sed -i 's/^\(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*\)"/\1 splash"/' "$grub_config"
+    # Agregar "splash" si no está presente
+    if ! grep -q "splash" "$grub_config"; then
+        sed -i 's/^\(GRUB_CMDLINE_LINUX_DEFAULT="[^"]*\)"/\1 splash"/' "$grub_config"
+    fi
     
     log "Regenerando configuración de GRUB"
     
