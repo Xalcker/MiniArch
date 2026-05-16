@@ -28,7 +28,7 @@ echo -e "${BLUE}================================================================
 # Activar multilib e instalar dependencias
 echo -e "${BLUE}[0/5]${NC} Configurando repositorio multilib e instalando dependencias..."
 sudo sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
-sudo pacman -Syu --noconfirm lib32-pipewire lib32-alsa-plugins lib32-libpulse
+sudo pacman -Syu --noconfirm lib32-pipewire lib32-alsa-plugins lib32-libpulse hidapi pulseaudio-alsa
 
 # Crear directorio de instalación con el usuario correcto
 sudo -u "$REAL_USER" mkdir -p "$INSTALL_DIR"
@@ -50,6 +50,11 @@ fi
 # Dar permisos de ejecución al binario (buscando el correcto)
 echo "Configurando permisos..."
 sudo -u "$REAL_USER" find "$INSTALL_DIR" -maxdepth 1 -type f -name "YARG*" -exec chmod +x {} \;
+
+# Configurar permisos para instrumentos (udev)
+echo "Configurando acceso a instrumentos USB..."
+sudo bash -c "echo 'KERNEL==\"hidraw*\", TAG+=\"uaccess\"' > /etc/udev/rules.d/69-hid.rules"
+sudo udevadm control --reload-rules && sudo udevadm trigger
 
 # Crear carpeta de canciones
 SONGS_DIR="$INSTALL_DIR/Songs"
