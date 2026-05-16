@@ -316,7 +316,7 @@ install_extra_scripts() {
     log "Installing extra scripts for user: $username"
     
     # Lista de scripts a copiar
-    local scripts=("setup-yarg.sh" "setup-retroarch.sh" "setup-web.sh")
+    local scripts=("setup-yarg.sh")
     
     for script in "${scripts[@]}"; do
         if [[ -f "./$script" ]]; then

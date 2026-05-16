@@ -1597,7 +1597,6 @@ EOF
     
     # Crear scripts falsos
     touch "./setup-yarg.sh"
-    touch "./setup-retroarch.sh"
     
     # Mock de arch-chroot
     arch-chroot() {
@@ -1609,7 +1608,7 @@ EOF
     install_extra_scripts() {
         local username="$1"
         local user_home="$test_dir/home/$username"
-        local scripts=("setup-yarg.sh" "setup-retroarch.sh")
+        local scripts=("setup-yarg.sh")
         
         for script in "${scripts[@]}"; do
             if [[ -f "./$script" ]]; then
@@ -1626,11 +1625,9 @@ EOF
     run install_extra_scripts "kiosk"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installed setup-yarg.sh"* ]]
-    [[ "$output" == *"Installed setup-retroarch.sh"* ]]
     [ -f "$test_dir/home/kiosk/setup-yarg.sh" ]
-    [ -f "$test_dir/home/kiosk/setup-retroarch.sh" ]
     
     # Limpiar
-    rm -f "./setup-yarg.sh" "./setup-retroarch.sh"
+    rm -f "./setup-yarg.sh"
     rm -rf "$test_dir"
 }

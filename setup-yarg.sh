@@ -140,7 +140,7 @@ echo -e "${YELLOW}El sistema se reiniciará en 5 segundos para aplicar todos los
 echo -e "${BLUE}===================================================================${NC}"
 
 # Autolimpieza segura
-rm -f "$REAL_HOME/setup-yarg.sh" "$REAL_HOME/setup-retroarch.sh"
+rm -f "$REAL_HOME/setup-yarg.sh"
 
 sleep 5
 sudo reboot

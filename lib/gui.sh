@@ -172,23 +172,13 @@ configure_kiosk_autostart() {
 # Wait a moment for X to fully initialize
 sleep 2
 
-# Determine which application to start (Priority: YARG > RetroArch > Web > xterm)
+# Determine which application to start (Priority: YARG > xterm)
 # YARG binary can have different names depending on version, limit to maxdepth 1
 YARG_BIN=$(find "$HOME/YARG" -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)
 
 if [ -n "$YARG_BIN" ] && [ -f "$YARG_BIN" ]; then
     echo "Starting YARG ($YARG_BIN)..."
     "$YARG_BIN" &
-    APP_PID=$!
-elif command -v retroarch &> /dev/null; then
-    echo "Starting RetroArch..."
-    retroarch --fullscreen &
-    APP_PID=$!
-elif [ -f "$HOME/kiosk_url" ]; then
-    URL=$(cat "$HOME/kiosk_url")
-    echo "Starting Web Kiosk at $URL..."
-    # Flags para evitar pantalla negra en VMs (Proxmox) y mejorar estabilidad
-    chromium --kiosk --no-first-run --disable-infobars --window-position=0,0 --disable-gpu --no-sandbox --disable-dev-shm-usage "$URL" &
     APP_PID=$!
 else
     echo "No game found. Starting xterm for maintenance..."

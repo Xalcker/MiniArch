@@ -220,30 +220,22 @@ ssh kiosk@<IP_DE_LA_VM>
 - **Intercambio de Archivos (SMB)**: Los scripts de configuración habilitan carpetas compartidas para subir juegos/canciones remotamente.
 - **Protección contra Fallos**: Si la aplicación principal falla (crash), el sistema se reinicia automáticamente. Si se cierra normalmente, el sistema se apaga.
 
-### Sabores de Kiosko Disponibles
+### Kiosko YARG
 
-Al iniciar por primera vez, tendrás tres scripts disponibles en tu carpeta personal (`~/`). **Solo puedes elegir uno**, ya que al finalizar se auto-eliminarán para dejar el sistema limpio.
+Al iniciar por primera vez, tendrás el script de configuración en tu carpeta personal (`~/`). Al finalizar se auto-eliminará para dejar el sistema limpio.
 
-#### 1. Kiosko YARG (`setup-yarg.sh`)
+#### Instalación de YARG (`setup-yarg.sh`)
 *   Descarga e instala la última versión de **YARG (Yet Another Rhythm Game)**.
 *   Crea la carpeta `~/YARG/Songs` y la comparte en red (`\\nombre\YARG-Songs`).
 *   Optimiza la CPU en modo *performance* y desactiva el ahorro de energía.
 
-#### 2. Kiosko RetroArch (`setup-retroarch.sh`)
-*   Instala **RetroArch** y los núcleos (cores) más populares (NES, SNES, Genesis, GBA, PS1, Arcade).
-*   Crea la carpeta `~/ROMS` y la comparte en red (`\\nombre\Retro-ROMS`).
-
-#### 3. Kiosko Web (`setup-web.sh`)
-*   Instala **Chromium** y lo configura en modo Kiosko estricto.
-*   Te permite introducir una URL personalizada (ej: un dashboard o juego web).
-
 ### Pasos para el despliegue:
 
-1. Inicia el sistema y elige tu sabor ejecutando el script correspondiente:
+1. Inicia el sistema y ejecuta el script de instalación:
    ```bash
-   ./setup-yarg.sh  # O ./setup-retroarch.sh, o ./setup-web.sh
+   ./setup-yarg.sh
    ```
-2. Sigue las instrucciones (en el caso de Web, introduce la URL).
+2. Sigue las instrucciones en pantalla.
 3. El script realizará la instalación, optimizará el sistema y **se auto-eliminará**.
 4. El sistema se reiniciará automáticamente en 5 segundos y entrará en "Modo Producción".
 
