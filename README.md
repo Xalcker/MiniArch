@@ -215,28 +215,37 @@ ssh kiosk@<IP_DE_LA_VM>
 
 - **Inicio automático**: El sistema arranca directamente a X con OpenBox.
 - **Modo Kiosko**: OpenBox está configurado con 1 solo escritorio y sin cambio de escritorio con la rueda del mouse.
-- **Prioridad YARG**: El sistema busca YARG en `~/YARG/YARG`. Si lo encuentra, lo inicia automáticamente.
-- **Fallback a xterm**: Si YARG no está instalado, se abre una terminal `xterm` para permitir el mantenimiento.
-- **Apagado automático**: Al cerrar la aplicación principal (YARG o xterm), el sistema se apaga inmediatamente por seguridad.
-- **Mantenimiento**: El usuario `kiosk` tiene permisos de `sudo`. La cuenta `root` está bloqueada por defecto para mayor seguridad.
-- **Intercambio de Archivos (SMB)**: El sistema incluye Samba preinstalado. El script de YARG configura automáticamente una carpeta compartida en red.
+- **Optimización de Audio**: Configurado con PipeWire (ALSA/Pulse/JACK) y prioridad de tiempo real para evitar stuttering.
+- **Soporte de Hardware**: Soporte nativo para instrumentos USB/MIDI y dispositivos Bluetooth (habilitado por defecto).
+- **Intercambio de Archivos (SMB)**: Los scripts de configuración habilitan carpetas compartidas para subir juegos/canciones remotamente.
+- **Protección contra Fallos**: Si la aplicación principal falla (crash), el sistema se reinicia automáticamente. Si se cierra normalmente, el sistema se apaga.
 
-### Instalación de YARG y Canciones
+### Sabores de Kiosko Disponibles
 
-El sistema incluye un script para facilitar la descarga de YARG y la configuración de red:
+Al iniciar por primera vez, tendrás tres scripts disponibles en tu carpeta personal (`~/`). **Solo puedes elegir uno**, ya que al finalizar se auto-eliminarán para dejar el sistema limpio.
 
-1. Inicia el sistema y espera a que aparezca la terminal (si YARG no está instalado aún).
-2. Ejecuta el script de configuración:
+#### 1. Kiosko YARG (`setup-yarg.sh`)
+*   Descarga e instala la última versión de **YARG (Yet Another Rhythm Game)**.
+*   Crea la carpeta `~/YARG/Songs` y la comparte en red (`\\nombre\YARG-Songs`).
+*   Optimiza la CPU en modo *performance* y desactiva el ahorro de energía.
+
+#### 2. Kiosko RetroArch (`setup-retroarch.sh`)
+*   Instala **RetroArch** y los núcleos (cores) más populares (NES, SNES, Genesis, GBA, PS1, Arcade).
+*   Crea la carpeta `~/ROMS` y la comparte en red (`\\nombre\Retro-ROMS`).
+
+#### 3. Kiosko Web (`setup-web.sh`)
+*   Instala **Chromium** y lo configura en modo Kiosko estricto.
+*   Te permite introducir una URL personalizada (ej: un dashboard o juego web).
+
+### Pasos para el despliegue:
+
+1. Inicia el sistema y elige tu sabor ejecutando el script correspondiente:
    ```bash
-   ./setup-yarg.sh
+   ./setup-yarg.sh  # O ./setup-retroarch.sh, o ./setup-web.sh
    ```
-3. El script realizará lo siguiente:
-   * Descargará y extraerá YARG en `~/YARG`.
-   * Creará una carpeta `~/YARG/Songs`.
-   * **Configurará Samba**: Compartirá la carpeta de canciones en tu red local.
-   * **Optimizará el Sistema**: Configurará prioridad de tiempo real para audio, modo de alto rendimiento para la CPU y deshabilitará el ahorro de energía de la pantalla.
-4. **Subir canciones**: Desde tu computadora principal, podrás acceder a `\\nombre-del-kiosko\YARG-Songs` para subir tus archivos `.chart` o `.mid` de forma inalámbrica.
-5. **Finalización Automática**: Una vez ejecutado el script, este eliminará ambos archivos de configuración (`setup-yarg.sh` y `setup-retroarch.sh`) y reiniciará el sistema automáticamente para entrar en modo producción.
+2. Sigue las instrucciones (en el caso de Web, introduce la URL).
+3. El script realizará la instalación, optimizará el sistema y **se auto-eliminará**.
+4. El sistema se reiniciará automáticamente en 5 segundos y entrará en "Modo Producción".
 
 ### Cambiar Contraseña
 

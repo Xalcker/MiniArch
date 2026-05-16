@@ -3,25 +3,33 @@
 # Script para descargar e instalar RetroArch y configurar el kiosko
 # Este script instalará RetroArch y núcleos comunes de libretro.
 
+# Colores ANSI
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
 set -e
 
-echo "==================================================================="
-echo "Iniciando instalación y configuración de RetroArch"
-echo "==================================================================="
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${CYAN}        🕹️  Iniciando instalación de RetroArch 🕹️${NC}"
+echo -e "${BLUE}===================================================================${NC}"
 
 # 1. Instalar RetroArch y cores básicos
-echo "Instalando paquetes desde los repositorios oficiales..."
+echo -e "${BLUE}[1/4]${NC} Instalando paquetes desde los repositorios oficiales..."
 sudo pacman -S --noconfirm retroarch libretro-cores libretro-nestopia libretro-snes9x libretro-genesis-plus-gx libretro-mgba libretro-beetle-psx libretro-fbneo
 
 # 2. Crear directorios para ROMS
 ROM_DIR="$HOME/ROMS"
-echo "Creando directorios para juegos en $ROM_DIR..."
+echo -e "${BLUE}[2/4]${NC} Creando directorios para juegos en ${YELLOW}$ROM_DIR${NC}..."
 mkdir -p "$ROM_DIR/NES" "$ROM_DIR/SNES" "$ROM_DIR/Genesis" "$ROM_DIR/GBA" "$ROM_DIR/PS1" "$ROM_DIR/Arcade"
 
 # 3. Configurar Samba para compartir ROMS
-echo "==================================================================="
-echo "Configurando Samba para compartir ROMS..."
-echo "==================================================================="
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${CYAN}        📡 Configurando Samba para compartir ROMS${NC}"
+echo -e "${BLUE}===================================================================${NC}"
 
 if [[ -f /etc/samba/smb.conf ]]; then
     # Si ya existe (posiblemente por YARG), añadir la sección de ROMS
@@ -67,13 +75,14 @@ fi
 AUTOSTART_FILE="$HOME/.config/openbox/autostart"
 
 echo ""
-echo "==================================================================="
-echo "Instalación completada!"
-echo "RetroArch instalado y cores básicos configurados."
-echo "Carpeta de ROMS compartida en: \\\\$(hostname)\\Retro-ROMS"
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${GREEN}        ✅ ¡Instalación completada!${NC}"
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "RetroArch instalado y cores básicos configurados."
+echo -e "Carpeta de ROMS compartida en: ${GREEN}\\\\$(hostname)\\Retro-ROMS${NC}"
 echo ""
-echo "Finalizando configuración del kiosko... el sistema se reiniciará en 5 segundos."
-echo "==================================================================="
+echo -e "${YELLOW}Finalizando configuración del kiosko... el sistema se reiniciará en 5 segundos.${NC}"
+echo -e "${BLUE}===================================================================${NC}"
 
 # Autolimpieza: eliminar scripts de configuración después del éxito
 rm -f "$HOME/setup-yarg.sh" "$HOME/setup-retroarch.sh"

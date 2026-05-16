@@ -17,6 +17,15 @@
 set -e  # Salir inmediatamente si un comando falla
 set -u  # Tratar variables no definidas como error
 
+# Colores ANSI para terminal
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m' # No Color
+
 ################################################################################
 # Funciones de Logging Tempranas
 ################################################################################
@@ -25,17 +34,21 @@ set -u  # Tratar variables no definidas como error
 LOG_FILE="${LOG_FILE:-/var/log/arch-kiosk-install.log}"
 
 # Función para logging general
-# Imprime mensajes con timestamp tanto a stdout como al archivo de log
 log() {
     local message="$*"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $message" | tee -a "$LOG_FILE"
+    echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] ${GREEN}INFO:${NC} $message" | tee -a "$LOG_FILE"
+}
+
+# Función para logging de alertas (acciones en curso)
+log_action() {
+    local message="$*"
+    echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] ${CYAN}ACTION:${NC} $message" | tee -a "$LOG_FILE"
 }
 
 # Función para logging de errores
-# Imprime mensajes de error con timestamp a stderr y al archivo de log
 log_error() {
     local message="$*"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $message" | tee -a "$LOG_FILE" >&2
+    echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] ${RED}ERROR:${NC} $message" | tee -a "$LOG_FILE" >&2
 }
 
 ################################################################################
@@ -93,9 +106,9 @@ LOG_FILE="${LOG_FILE:-/var/log/arch-kiosk-install.log}"
 
 # Función main que orquesta la ejecución secuencial de todos los módulos
 main() {
-    log "==================================================================="
-    log "Iniciando instalación de Arch Linux Modo Kiosko"
-    log "==================================================================="
+    echo -e "${BLUE}===================================================================${NC}"
+    echo -e "${CYAN}        🚀 INSTALADOR DE ARCH LINUX MODO KIOSKO 🚀${NC}"
+    echo -e "${BLUE}===================================================================${NC}"
 
     # Importar todos los módulos
     log "Importando módulos del sistema..."
@@ -352,10 +365,14 @@ main() {
     INSTALL_MOUNTS_CREATED=0
     log "Limpieza completada correctamente"
 
-    log "==================================================================="
-    log "Instalación completada exitosamente"
-    log "==================================================================="
-    log "El sistema está listo. Puede reiniciar con: reboot"
+    log "Instalación completada exitosamente!"
+    echo -e "${BLUE}===================================================================${NC}"
+    echo -e "${GREEN}        ✅ ¡ARCH LINUX KIOSKO INSTALADO CON ÉXITO!${NC}"
+    echo -e "${BLUE}===================================================================${NC}"
+    echo -e "${YELLOW}Próximos pasos:${NC}"
+    echo -e "1. Reinicia el sistema: ${CYAN}reboot${NC}"
+    echo -e "2. Al iniciar, elige tu 'Sabor' (YARG, RetroArch o Web)."
+    echo -e "${BLUE}===================================================================${NC}"
     INSTALL_SUCCESS=1
 }
 

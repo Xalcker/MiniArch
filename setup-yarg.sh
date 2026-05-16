@@ -3,30 +3,38 @@
 # Script para descargar e instalar la última versión de YARG (Yet Another Rhythm Game)
 # Versión: 0.14.0 (o superior si se actualiza el link)
 
+# Colores ANSI
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
 set -e
 
 YARG_URL="https://github.com/YARC-Official/YARG/releases/download/v0.14.0/YARG_v0.14.0-Linux-x86_64.zip"
 INSTALL_DIR="$HOME/YARG"
 ZIP_FILE="/tmp/YARG_Linux.zip"
 
-echo "==================================================================="
-echo "Iniciando descarga e instalación de YARG"
-echo "==================================================================="
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${CYAN}        🎸 Iniciando descarga e instalación de YARG 🎸${NC}"
+echo -e "${BLUE}===================================================================${NC}"
 
 # Crear directorio de instalación
 mkdir -p "$INSTALL_DIR"
 
 # Descargar el archivo
-echo "Descargando YARG desde: $YARG_URL"
+echo -e "${BLUE}[1/5]${NC} Descargando YARG desde: ${YELLOW}$YARG_URL${NC}"
 if ! wget -O "$ZIP_FILE" "$YARG_URL"; then
-    echo "ERROR: No se pudo descargar el archivo."
+    echo -e "${RED}ERROR: No se pudo descargar el archivo.${NC}"
     exit 1
 fi
 
 # Descomprimir
-echo "Descomprimiendo en $INSTALL_DIR..."
+echo -e "${BLUE}[2/5]${NC} Descomprimiendo en ${YELLOW}$INSTALL_DIR${NC}..."
 if ! unzip -o "$ZIP_FILE" -d "$INSTALL_DIR"; then
-    echo "ERROR: Fallo al descomprimir el archivo."
+    echo -e "${RED}ERROR: Fallo al descomprimir el archivo.${NC}"
     exit 1
 fi
 
@@ -40,9 +48,9 @@ echo "Creando carpeta de canciones en $SONGS_DIR..."
 mkdir -p "$SONGS_DIR"
 
 # Configuración de Samba
-echo "==================================================================="
-echo "Configurando Samba para compartir canciones..."
-echo "==================================================================="
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${CYAN}        📡 Configurando Samba para compartir canciones${NC}"
+echo -e "${BLUE}===================================================================${NC}"
 
 # Crear archivo de configuración básico si no existe
 if [[ ! -f /etc/samba/smb.conf ]]; then
@@ -72,9 +80,9 @@ echo "Iniciando servicios de red..."
 sudo systemctl enable --now smb nmb
 
 # Optimizaciones de Rendimiento para Kiosko YARG
-echo "==================================================================="
-echo "Aplicando optimizaciones de rendimiento..."
-echo "==================================================================="
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${CYAN}        🚀 Aplicando optimizaciones de rendimiento${NC}"
+echo -e "${BLUE}===================================================================${NC}"
 
 # 1. Configurar prioridad de tiempo real para el usuario (mejor audio)
 sudo bash -c "cat > /etc/security/limits.d/99-yarg.conf" << EOF
@@ -109,13 +117,14 @@ sudo bash -c "echo 'unclutter -idle 2 -root &' >> /home/$USER/.config/openbox/au
 # Limpiar
 rm -f "$ZIP_FILE"
 
-echo "==================================================================="
-echo "Instalación completada!"
-echo "YARG instalado en: $INSTALL_DIR"
-echo "Carpeta SONGS compartida en red como: \\\\$(hostname)\\YARG-Songs"
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${GREEN}        ✅ ¡Instalación completada!${NC}"
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "YARG instalado en: ${YELLOW}$INSTALL_DIR${NC}"
+echo -e "Carpeta SONGS compartida en red como: ${GREEN}\\\\$(hostname)\\YARG-Songs${NC}"
 echo ""
-echo "Finalizando configuración del kiosko... el sistema se reiniciará en 5 segundos."
-echo "==================================================================="
+echo -e "${YELLOW}Finalizando configuración del kiosko... el sistema se reiniciará en 5 segundos.${NC}"
+echo -e "${BLUE}===================================================================${NC}"
 
 # Autolimpieza: eliminar scripts de configuración después del éxito
 rm -f "$HOME/setup-yarg.sh" "$HOME/setup-retroarch.sh"
