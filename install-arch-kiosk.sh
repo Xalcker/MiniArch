@@ -371,7 +371,7 @@ main() {
     echo -e "${BLUE}===================================================================${NC}"
     echo -e "${YELLOW}Próximos pasos:${NC}"
     echo -e "1. Reinicia el sistema: ${CYAN}reboot${NC}"
-    echo -e "2. Al iniciar, elige tu 'Sabor' (YARG, RetroArch o Web)."
+    echo -e "2. Al iniciar, ejecuta el script de instalación de YARG."
     echo -e "${BLUE}===================================================================${NC}"
     INSTALL_SUCCESS=1
 }
