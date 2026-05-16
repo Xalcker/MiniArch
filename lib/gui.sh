@@ -173,8 +173,8 @@ configure_kiosk_autostart() {
 sleep 2
 
 # Determine which application to start (Priority: YARG > RetroArch > Web > xterm)
-# YARG binary can have different names depending on version
-YARG_BIN=$(find "$HOME/YARG" -type f -name "YARG*" -executable -print -quit 2>/dev/null)
+# YARG binary can have different names depending on version, limit to maxdepth 1
+YARG_BIN=$(find "$HOME/YARG" -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)
 
 if [ -n "$YARG_BIN" ] && [ -f "$YARG_BIN" ]; then
     echo "Starting YARG ($YARG_BIN)..."

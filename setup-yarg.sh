@@ -44,7 +44,7 @@ fi
 
 # Dar permisos de ejecución al binario (buscando el correcto)
 echo "Configurando permisos..."
-find "$INSTALL_DIR" -type f -name "YARG*" -exec chmod +x {} \;
+sudo -u "$REAL_USER" find "$INSTALL_DIR" -maxdepth 1 -type f -name "YARG*" -exec chmod +x {} \;
 
 # Crear carpeta de canciones
 SONGS_DIR="$INSTALL_DIR/Songs"
