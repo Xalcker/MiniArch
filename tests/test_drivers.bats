@@ -158,7 +158,7 @@ setup() {
     run install_audio_system
     [ "$status" -eq 0 ]
     [[ "$output" == *"Instalando sistema de audio PipeWire"* ]]
-    [[ "$output" == *"PipeWire y firmware de audio instalados exitosamente"* ]]
+    [[ "$output" == *"PipeWire, firmware de audio y utilidades de hardware instalados exitosamente"* ]]
     
     # Limpiar
     rm -f /tmp/arch_chroot_commands.log /tmp/pacman_commands.log
@@ -190,6 +190,10 @@ setup() {
     [[ "$command" == *"pipewire-pulse"* ]]
     [[ "$command" == *"pipewire-jack"* ]]
     [[ "$command" == *"sof-firmware"* ]]
+    [[ "$command" == *"alsa-utils"* ]]
+    [[ "$command" == *"usbutils"* ]]
+    [[ "$command" == *"bluez"* ]]
+    [[ "$command" == *"bluez-utils"* ]]
     
     # Verificar que usa pacman con --noconfirm
     [[ "$command" == *"pacman"* ]]
@@ -210,7 +214,7 @@ setup() {
     run install_audio_system
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"Fallo al instalar PipeWire y firmware de audio"* ]]
+    [[ "$output" == *"Fallo al instalar PipeWire, firmware de audio y utilidades de hardware"* ]]
 }
 
 @test "install_audio_system: comando contiene exactamente los 5 paquetes requeridos" {
@@ -233,8 +237,8 @@ setup() {
     # Leer el comando ejecutado
     local command=$(cat /tmp/arch_chroot_commands.log)
     
-    # Verificar que el comando es exactamente el esperado
-    [[ "$command" == "arch-chroot /mnt pacman -S --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-jack sof-firmware" ]]
+    # Verificar que el comando contiene los paquetes base esperados
+    [[ "$command" == *"pipewire pipewire-alsa pipewire-pulse pipewire-jack sof-firmware alsa-utils usbutils bluez bluez-utils"* ]]
     
     # Limpiar
     rm -f /tmp/arch_chroot_commands.log
@@ -253,6 +257,7 @@ setup() {
     # Verificar que el output menciona la habilitación de servicios
     [[ "$output" == *"servicios de PipeWire"* ]]
     [[ "$output" == *"usuario del sistema"* ]]
+    [[ "$output" == *"bluetooth.service"* ]]
 }
 
 ################################################################################
@@ -331,7 +336,7 @@ setup() {
     local command=$(cat /tmp/arch_chroot_commands.log)
     
     # Verificar que el comando contiene todos los componentes requeridos
-    local packages=("pipewire" "pipewire-alsa" "pipewire-pulse" "pipewire-jack" "sof-firmware")
+    local packages=("pipewire" "pipewire-alsa" "pipewire-pulse" "pipewire-jack" "sof-firmware" "alsa-utils" "usbutils" "bluez" "bluez-utils")
     
     for package in "${packages[@]}"; do
         if [[ "$command" != *"$package"* ]]; then

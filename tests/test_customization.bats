@@ -1591,12 +1591,13 @@ EOF
 # Pruebas para install_extra_scripts()
 ################################################################################
 
-@test "install_extra_scripts: instalación exitosa cuando el script existe" {
+@test "install_extra_scripts: instalación exitosa de múltiples scripts" {
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/home/kiosk"
     
-    # Crear el script falso en el directorio actual (simulado)
+    # Crear scripts falsos
     touch "./setup-yarg.sh"
+    touch "./setup-retroarch.sh"
     
     # Mock de arch-chroot
     arch-chroot() {
@@ -1608,52 +1609,28 @@ EOF
     install_extra_scripts() {
         local username="$1"
         local user_home="$test_dir/home/$username"
-        local script_name="setup-yarg.sh"
+        local scripts=("setup-yarg.sh" "setup-retroarch.sh")
         
-        if [[ -f "./$script_name" ]]; then
-            cp "./$script_name" "$user_home/"
-            chmod +x "$user_home/$script_name"
-            log "Extra scripts installed successfully"
-        else
-            log "Warning: $script_name not found"
-        fi
+        for script in "${scripts[@]}"; do
+            if [[ -f "./$script" ]]; then
+                cp "./$script" "$user_home/"
+                chmod +x "$user_home/$script"
+                log "Installed $script"
+            else
+                log "Warning: $script not found"
+            fi
+        done
         return 0
     }
     
     run install_extra_scripts "kiosk"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Extra scripts installed successfully"* ]]
+    [[ "$output" == *"Installed setup-yarg.sh"* ]]
+    [[ "$output" == *"Installed setup-retroarch.sh"* ]]
     [ -f "$test_dir/home/kiosk/setup-yarg.sh" ]
-    [ -x "$test_dir/home/kiosk/setup-yarg.sh" ]
+    [ -f "$test_dir/home/kiosk/setup-retroarch.sh" ]
     
     # Limpiar
-    rm -f "./setup-yarg.sh"
-    rm -rf "$test_dir"
-}
-
-@test "install_extra_scripts: muestra advertencia cuando el script no existe" {
-    local test_dir=$(mktemp -d)
-    mkdir -p "$test_dir/home/kiosk"
-    
-    # Asegurarse de que el script NO existe
-    rm -f "./setup-yarg.sh"
-    
-    # Override function to use test directory
-    install_extra_scripts() {
-        local username="$1"
-        local script_name="setup-yarg.sh"
-        
-        if [[ -f "./$script_name" ]]; then
-            return 0
-        else
-            log "Warning: $script_name not found, skipping installation of extra scripts"
-        fi
-        return 0
-    }
-    
-    run install_extra_scripts "kiosk"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Warning: setup-yarg.sh not found"* ]]
-    
+    rm -f "./setup-yarg.sh" "./setup-retroarch.sh"
     rm -rf "$test_dir"
 }

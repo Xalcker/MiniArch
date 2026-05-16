@@ -71,6 +71,41 @@ fi
 echo "Iniciando servicios de red..."
 sudo systemctl enable --now smb nmb
 
+# Optimizaciones de Rendimiento para Kiosko YARG
+echo "==================================================================="
+echo "Aplicando optimizaciones de rendimiento..."
+echo "==================================================================="
+
+# 1. Configurar prioridad de tiempo real para el usuario (mejor audio)
+sudo bash -c "cat > /etc/security/limits.d/99-yarg.conf" << EOF
+$USER - rtprio 99
+$USER - memlock unlimited
+$USER - nice -20
+EOF
+
+# 2. Ajustar Swappiness para evitar uso de disco innecesario
+sudo bash -c "echo 'vm.swappiness=10' > /etc/sysctl.d/99-yarg.conf"
+sudo sysctl -p /etc/sysctl.d/99-yarg.conf
+
+# 3. Intentar configurar CPU en modo performance (si cpupower está disponible)
+if command -v cpupower &> /dev/null; then
+    sudo cpupower frequency-set -g performance
+else
+    echo "Instalando cpupower para gestión de energía..."
+    sudo pacman -S --noconfirm cpupower
+    sudo systemctl enable --now cpupower
+    sudo cpupower frequency-set -g performance
+fi
+
+# 4. Deshabilitar ahorro de energía de pantalla
+echo "Deshabilitando ahorro de energía de pantalla..."
+sudo bash -c "echo 'xset s off && xset -dpms' >> /home/$USER/.config/openbox/autostart"
+
+# 5. Ocultar el cursor del mouse automáticamente (unclutter)
+echo "Instalando unclutter para ocultar el cursor..."
+sudo pacman -S --noconfirm unclutter
+sudo bash -c "echo 'unclutter -idle 2 -root &' >> /home/$USER/.config/openbox/autostart"
+
 # Limpiar
 rm -f "$ZIP_FILE"
 
@@ -78,4 +113,12 @@ echo "==================================================================="
 echo "Instalación completada!"
 echo "YARG instalado en: $INSTALL_DIR"
 echo "Carpeta SONGS compartida en red como: \\\\$(hostname)\\YARG-Songs"
+echo ""
+echo "Finalizando configuración del kiosko... el sistema se reiniciará en 5 segundos."
 echo "==================================================================="
+
+# Autolimpieza: eliminar scripts de configuración después del éxito
+rm -f "$HOME/setup-yarg.sh" "$HOME/setup-retroarch.sh"
+
+sleep 5
+sudo reboot

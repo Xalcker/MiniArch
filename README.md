@@ -234,8 +234,9 @@ El sistema incluye un script para facilitar la descarga de YARG y la configuraci
    * Descargará y extraerá YARG en `~/YARG`.
    * Creará una carpeta `~/YARG/Songs`.
    * **Configurará Samba**: Compartirá la carpeta de canciones en tu red local.
+   * **Optimizará el Sistema**: Configurará prioridad de tiempo real para audio, modo de alto rendimiento para la CPU y deshabilitará el ahorro de energía de la pantalla.
 4. **Subir canciones**: Desde tu computadora principal, podrás acceder a `\\nombre-del-kiosko\YARG-Songs` para subir tus archivos `.chart` o `.mid` de forma inalámbrica.
-5. Al reiniciar, el sistema iniciará YARG automáticamente.
+5. **Finalización Automática**: Una vez ejecutado el script, este eliminará ambos archivos de configuración (`setup-yarg.sh` y `setup-retroarch.sh`) y reiniciará el sistema automáticamente para entrar en modo producción.
 
 ### Cambiar Contraseña
 

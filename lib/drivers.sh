@@ -58,9 +58,20 @@ install_graphics_drivers() {
 install_audio_system() {
     log "Instalando sistema de audio PipeWire y firmware de audio"
     
-    # Instalar todos los componentes de PipeWire y firmware de audio
-    if ! arch-chroot /mnt pacman -S --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-jack sof-firmware; then
-        log_error "Fallo al instalar PipeWire y firmware de audio"
+    # Instalar todos los componentes de PipeWire, firmware de audio y utilidades de hardware
+    # - pipewire-*: Sistema de audio moderno con compatibilidad ALSA/Pulse/JACK
+    # - sof-firmware: Firmware para audio Intel moderno
+    # - alsa-utils: Herramientas para MIDI (amidi) y control de volumen (amixer)
+    # - usbutils: Herramientas para diagnóstico de instrumentos USB (lsusb)
+    # - bluez*: Soporte para guitarras y periféricos Bluetooth
+    if ! arch-chroot /mnt pacman -S --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-jack sof-firmware alsa-utils usbutils bluez bluez-utils; then
+        log_error "Fallo al instalar PipeWire, firmware de audio y utilidades de hardware"
+        return 1
+    fi
+
+    # Habilitar servicio de Bluetooth
+    if ! arch-chroot /mnt systemctl enable bluetooth.service; then
+        log_error "Fallo al habilitar bluetooth.service"
         return 1
     fi
     

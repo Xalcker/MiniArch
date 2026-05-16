@@ -173,26 +173,37 @@ configure_kiosk_autostart() {
 # Wait a moment for X to fully initialize
 sleep 2
 
-# Path to YARG executable
-YARG_EXE="$HOME/YARG/YARG"
-
-if [[ -f "$YARG_EXE" ]]; then
+# Determine which application to start (Priority: YARG > RetroArch > Web > xterm)
+if [ -f "\$HOME/YARG/YARG" ]; then
     echo "Starting YARG..."
-    "$YARG_EXE" &
-    APP_PID=$!
+    "\$HOME/YARG/YARG" &
+    APP_PID=\$!
+elif command -v retroarch &> /dev/null; then
+    echo "Starting RetroArch..."
+    retroarch --fullscreen &
+    APP_PID=\$!
+elif [ -f "\$HOME/kiosk_url" ]; then
+    URL=\$(cat "\$HOME/kiosk_url")
+    echo "Starting Web Kiosk at \$URL..."
+    chromium --kiosk --no-first-run --disable-infobars --window-position=0,0 "\$URL" &
+    APP_PID=\$!
 else
-    echo "YARG not found. Starting xterm for setup..."
+    echo "No game found. Starting xterm for maintenance..."
     xterm -e /bin/bash &
-    APP_PID=$!
+    APP_PID=\$!
 fi
 
 # Wait for application to close in background, then shutdown
 (
-    while kill -0 $APP_PID 2>/dev/null; do
-        sleep 1
-    done
-    echo "Application closed. Shutting down system..."
-    /usr/bin/shutdown -h now
+    wait \$APP_PID
+    EXIT_STATUS=\$?
+    if [ \$EXIT_STATUS -ne 0 ]; then
+        echo "Application failed with status \$EXIT_STATUS. Rebooting..."
+        /usr/bin/sudo /usr/bin/reboot
+    else
+        echo "Application closed normally. Shutting down system..."
+        /usr/bin/sudo /usr/bin/shutdown -h now
+    fi
 ) &
 EOF
     

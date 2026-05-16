@@ -315,22 +315,22 @@ install_extra_scripts() {
     
     log "Installing extra scripts for user: $username"
     
-    # Verificar si el script de YARG existe en el directorio actual
-    if [[ -f "./$script_name" ]]; then
-        log "Copying $script_name to $user_home"
-        if ! cp "./$script_name" "$user_home/"; then
-            log_error "Failed to copy $script_name"
-            return 1
+    # Lista de scripts a copiar
+    local scripts=("setup-yarg.sh" "setup-retroarch.sh" "setup-web.sh")
+    
+    for script in "${scripts[@]}"; do
+        if [[ -f "./$script" ]]; then
+            log "Copying $script to $user_home"
+            if cp "./$script" "$user_home/"; then
+                chmod +x "$user_home/$script"
+                arch-chroot /mnt chown "$username:$username" "/home/$username/$script"
+            else
+                log_error "Failed to copy $script"
+            fi
+        else
+            log "Warning: $script not found, skipping"
         fi
-        
-        # Establecer permisos de ejecución y propiedad
-        chmod +x "$user_home/$script_name"
-        arch-chroot /mnt chown "$username:$username" "/home/$username/$script_name"
-        
-        log "Extra scripts installed successfully"
-    else
-        log "Warning: $script_name not found, skipping installation of extra scripts"
-    fi
+    done
     
     return 0
 }
