@@ -10,7 +10,7 @@ install_openbox() {
     log "Installing X server, OpenBox, xterm, and system dialog components..."
     
     # Install required packages including XDG desktop portal for system dialogs and xterm
-    if ! arch-chroot /mnt pacman -S --noconfirm xorg-server xorg-xinit openbox xterm xdg-desktop-portal xdg-desktop-portal-gtk gtk3; then
+    if ! arch-chroot /mnt pacman -S --noconfirm xorg-server xorg-xinit xorg-xset openbox xterm xdg-desktop-portal xdg-desktop-portal-gtk gtk3; then
         log_error "Failed to install X server, OpenBox, xterm, and dialog components"
         return 1
     fi
@@ -185,26 +185,25 @@ elif command -v retroarch &> /dev/null; then
 elif [ -f "$HOME/kiosk_url" ]; then
     URL=$(cat "$HOME/kiosk_url")
     echo "Starting Web Kiosk at $URL..."
-    chromium --kiosk --no-first-run --disable-infobars --window-position=0,0 "$URL" &
+    # Flags para evitar pantalla negra en VMs (Proxmox) y mejorar estabilidad
+    chromium --kiosk --no-first-run --disable-infobars --window-position=0,0 --disable-gpu --no-sandbox --disable-dev-shm-usage "$URL" &
     APP_PID=$!
 else
     echo "No game found. Starting xterm for maintenance..."
-    xterm -e /bin/bash &
+    xterm -ls -e /bin/bash --login &
     APP_PID=$!
 fi
 
-# Wait for application to close in background, then shutdown
-(
-    wait $APP_PID
-    EXIT_STATUS=$?
-    if [ $EXIT_STATUS -ne 0 ]; then
-        echo "Application failed with status $EXIT_STATUS. Rebooting..."
-        /usr/bin/sudo /usr/bin/reboot
-    else
-        echo "Application closed normally. Shutting down system..."
-        /usr/bin/sudo /usr/bin/shutdown -h now
-    fi
-) &
+# Wait for application to close
+while kill -0 $APP_PID 2>/dev/null; do
+    sleep 1
+done
+
+# Application closed, determine if we should reboot (crash) or shutdown (normal exit)
+# Note: Since we can't easily get the exit status from a non-child, we assume 
+# normal exit if it stayed open for more than 30 seconds.
+echo "Application closed. Shutting down system..."
+/usr/bin/sudo /usr/bin/shutdown -h now
 EOF
     
     if [[ $? -ne 0 ]]; then

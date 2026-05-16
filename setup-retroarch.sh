@@ -18,8 +18,11 @@ echo -e "${CYAN}        🕹️  Iniciando instalación de RetroArch 🕹️${NC
 echo -e "${BLUE}===================================================================${NC}"
 
 # 1. Instalar RetroArch y cores básicos
-echo -e "${BLUE}[1/4]${NC} Instalando paquetes desde los repositorios oficiales..."
-sudo pacman -S --noconfirm retroarch libretro-cores libretro-nestopia libretro-snes9x libretro-genesis-plus-gx libretro-mgba libretro-beetle-psx libretro-fbneo
+echo -e "${BLUE}[1/4]${NC} Sincronizando repositorios e instalando paquetes..."
+# Sincronizar para asegurar que encontramos los paquetes actualizados
+sudo pacman -Sy
+# Instalamos retroarch y cores individuales verificados en repositorios oficiales
+sudo pacman -S --noconfirm retroarch libretro-nestopia libretro-snes9x libretro-genesis-plus-gx libretro-mgba libretro-beetle-psx libretro-gambatte
 
 # 2. Crear directorios para ROMS
 ROM_DIR="$HOME/ROMS"

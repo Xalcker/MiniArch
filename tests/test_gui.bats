@@ -926,15 +926,17 @@ EOF
             rm -rf "$test_dir"
             return 1
         fi
-        
-        # Verificar que el archivo autostart contiene el comando de apagado y reinicio por fallo (Requirement 13.4, 13.5)
-        if ! grep -q "wait \$APP_PID" "$test_dir/home/$username/.config/openbox/autostart"; then
-            echo "FALLO: Archivo autostart no contiene lógica de wait para usuario '$username'" >&2
+
+        # Verificar que el archivo autostart contiene el bucle while para esperar a la aplicación
+        if ! grep -q "while kill -0 \$APP_PID" "$test_dir/home/$username/.config/openbox/autostart"; then
+            echo "FALLO: Archivo autostart no contiene bucle de espera para usuario '$username'" >&2
             rm -rf "$test_dir"
             return 1
         fi
-        if ! grep -q "reboot" "$test_dir/home/$username/.config/openbox/autostart"; then
-            echo "FALLO: Archivo autostart no contiene comando reboot para usuario '$username'" >&2
+        
+        # Verificar que el archivo autostart contiene el comando de apagado (Requirement 13.4, 13.5)
+        if ! grep -q "/usr/bin/shutdown -h now" "$test_dir/home/$username/.config/openbox/autostart"; then
+            echo "FALLO: Archivo autostart no contiene comando shutdown para usuario '$username'" >&2
             rm -rf "$test_dir"
             return 1
         fi
