@@ -41,8 +41,10 @@ configure_network() {
         log "SSH deshabilitado por configuración (ENABLE_SSH=false)"
     fi
 
-    # Configurar zona horaria
-    if ! arch-chroot /mnt timedatectl set-timezone "${TIMEZONE:-America/Mexico_City}"; then
+    # Configurar zona horaria usando symlink (timedatectl no funciona en chroot)
+    local tz="${TIMEZONE:-America/Mexico_City}"
+    log "Configurando zona horaria a $tz..."
+    if ! arch-chroot /mnt ln -sf "/usr/share/zoneinfo/$tz" /etc/localtime; then
         log_error "Fallo al configurar zona horaria"
         return 1
     fi

@@ -66,7 +66,7 @@ install_audio_system() {
     if ! arch-chroot /mnt pacman -S --noconfirm \
         pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber \
         libpulse alsa-plugins alsa-utils \
-        ffmpeg gst-libav gst-plugins-good libvorbis libopus \
+        ffmpeg gst-libav gst-plugins-good libvorbis opus \
         sof-firmware usbutils bluez bluez-utils; then
         log_error "Fallo al instalar PipeWire, códecs y utilidades de hardware"
         return 1

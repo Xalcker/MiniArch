@@ -95,7 +95,9 @@ configure_grub_silent() {
     sed -i '/^GRUB_CMDLINE_LINUX_DEFAULT=/d' "$grub_config"
     
     # Agregar la nueva línea con todos los parámetros
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3 rd.systemd.show_status=false rd.udev.log_level=3"' >> "$grub_config"
+    # quiet: menos mensajes, loglevel=3: solo errores, rd.*: silencio en initramfs
+    # vt.global_cursor_default=0: oculta el cursor de la terminal, fbcon=nodefer: evita retrasos en fb
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3 rd.systemd.show_status=false rd.udev.log_level=3 vt.global_cursor_default=0 fbcon=nodefer"' >> "$grub_config"
     
     # Agregar o modificar GRUB_DISABLE_SUBMENU
     if grep -q "^GRUB_DISABLE_SUBMENU=" "$grub_config"; then

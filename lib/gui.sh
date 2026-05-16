@@ -45,9 +45,8 @@ create_user() {
         return 1
     fi
     
-    log "Configuring sudoers for group 'wheel'..."
-    # Enable %wheel group in sudoers
-    if ! arch-chroot /mnt bash -c "echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/10-wheel"; then
+    # Enable %wheel group in sudoers with NOPASSWD for kiosk operations (like shutdown)
+    if ! arch-chroot /mnt bash -c "echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/10-wheel"; then
         log_error "Failed to configure sudoers for group 'wheel'"
         return 1
     fi
@@ -174,9 +173,12 @@ configure_kiosk_autostart() {
 sleep 2
 
 # Determine which application to start (Priority: YARG > RetroArch > Web > xterm)
-if [ -f "$HOME/YARG/YARG" ]; then
-    echo "Starting YARG..."
-    "$HOME/YARG/YARG" &
+# YARG binary can have different names depending on version
+YARG_BIN=$(find "$HOME/YARG" -type f -name "YARG*" -executable -print -quit 2>/dev/null)
+
+if [ -n "$YARG_BIN" ] && [ -f "$YARG_BIN" ]; then
+    echo "Starting YARG ($YARG_BIN)..."
+    "$YARG_BIN" &
     APP_PID=$!
 elif command -v retroarch &> /dev/null; then
     echo "Starting RetroArch..."
