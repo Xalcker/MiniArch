@@ -172,7 +172,7 @@ El script realizará automáticamente:
 1. Validación del entorno y requisitos
 2. Verificación de disco vacío y confirmación del usuario
 3. Particionamiento y formateo del disco
-4. Instalación del sistema base (incluye `sudo`, `wget`, `curl`, `unzip`)
+4. Instalación del sistema base (incluye `sudo`, `wget`, `curl`, `unzip`, `nano`, `git`, `wpa_supplicant`)
 4. Configuración de GRUB silencioso
 5. Instalación y configuración de Plymouth (con logo de YARG)
 6. Instalación de drivers gráficos y audio

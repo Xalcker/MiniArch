@@ -10,8 +10,8 @@ install_openbox() {
     log "Installing X server, OpenBox, xterm, and system dialog components..."
     
     # Install required packages including XDG desktop portal for system dialogs and xterm
-    if ! arch-chroot /mnt pacman -S --noconfirm xorg-server xorg-xinit xorg-xset openbox xterm xdg-desktop-portal xdg-desktop-portal-gtk gtk3; then
-        log_error "Failed to install X server, OpenBox, xterm, and dialog components"
+    if ! arch-chroot /mnt pacman -S --noconfirm xorg-server xorg-xinit xorg-xset openbox xterm xdg-desktop-portal xdg-desktop-portal-gtk gtk3 unclutter; then
+        log_error "Failed to install X server, OpenBox, xterm, unclutter, and dialog components"
         return 1
     fi
     
@@ -171,6 +171,12 @@ configure_kiosk_autostart() {
 
 # Wait a moment for X to fully initialize
 sleep 2
+
+# Deshabilitar ahorro de energía y pantalla negra
+xset s off && xset -dpms &
+
+# Ocultar el cursor después de 2 segundos de inactividad
+unclutter -idle 2 -root &
 
 # Determine which application to start (Priority: YARG > xterm)
 # YARG binary can have different names depending on version, limit to maxdepth 1

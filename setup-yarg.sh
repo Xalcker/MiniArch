@@ -28,7 +28,7 @@ echo -e "${BLUE}================================================================
 # Activar multilib e instalar dependencias
 echo -e "${BLUE}[0/5]${NC} Configurando repositorio multilib e instalando dependencias..."
 sudo sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
-sudo pacman -Syu --noconfirm lib32-pipewire lib32-alsa-plugins lib32-libpulse hidapi pulseaudio-alsa
+sudo pacman -Syu --noconfirm lib32-pipewire lib32-alsa-plugins lib32-libpulse hidapi pulseaudio-alsa pulsemixer
 
 # Crear directorio de instalación con el usuario correcto
 sudo -u "$REAL_USER" mkdir -p "$INSTALL_DIR"
@@ -66,9 +66,11 @@ echo -e "${BLUE}================================================================
 echo -e "${CYAN}        📡 Configurando Samba para compartir canciones${NC}"
 echo -e "${BLUE}===================================================================${NC}"
 
-# Generar smb.conf (sobreescribir si es necesario para asegurar consistencia)
-echo "Generando /etc/samba/smb.conf..."
-sudo bash -c "cat > /etc/samba/smb.conf" << EOF
+# Configurar smb.conf de forma idempotente (no borrar configuraciones previas)
+echo "Configurando /etc/samba/smb.conf..."
+
+if [ ! -f /etc/samba/smb.conf ] || ! grep -q "\[global\]" /etc/samba/smb.conf; then
+    sudo bash -c "cat > /etc/samba/smb.conf" << EOF
 [global]
    workgroup = WORKGROUP
    server string = YARG Kiosk
@@ -76,6 +78,11 @@ sudo bash -c "cat > /etc/samba/smb.conf" << EOF
    map to guest = Bad User
    log file = /var/log/samba/%m.log
    max log size = 50
+EOF
+fi
+
+if ! grep -q "\[YARG-Songs\]" /etc/samba/smb.conf; then
+    sudo bash -c "cat >> /etc/samba/smb.conf" << EOF
 
 [YARG-Songs]
    path = $SONGS_DIR
@@ -86,6 +93,7 @@ sudo bash -c "cat > /etc/samba/smb.conf" << EOF
    directory mask = 0775
    force user = $REAL_USER
 EOF
+fi
 
 # Habilitar y arrancar servicios de Samba
 echo "Iniciando servicios de red..."
@@ -121,16 +129,7 @@ else
     sudo cpupower frequency-set -g performance || true
 fi
 
-# 4. Deshabilitar ahorro de energía y cursor (evitando duplicados)
-AUTOSTART_FILE="$REAL_HOME/.config/openbox/autostart"
-if [ -f "$AUTOSTART_FILE" ]; then
-    # Solo agregar si no están presentes
-    grep -q "xset s off" "$AUTOSTART_FILE" || echo "xset s off && xset -dpms &" >> "$AUTOSTART_FILE"
-    grep -q "unclutter" "$AUTOSTART_FILE" || {
-        sudo pacman -S --noconfirm unclutter
-        echo "unclutter -idle 2 -root &" >> "$AUTOSTART_FILE"
-    }
-fi
+# 4. CPU en modo performance está listo
 
 # Limpiar
 rm -f "$ZIP_FILE"
@@ -144,8 +143,10 @@ echo ""
 echo -e "${YELLOW}El sistema se reiniciará en 5 segundos para aplicar todos los cambios.${NC}"
 echo -e "${BLUE}===================================================================${NC}"
 
-# Autolimpieza segura
-rm -f "$REAL_HOME/setup-yarg.sh"
+# Mover script para permitir futuras actualizaciones
+echo "Instalando script de actualización en /usr/local/bin/update-yarg..."
+sudo mv "$REAL_HOME/setup-yarg.sh" /usr/local/bin/update-yarg
+sudo chmod +x /usr/local/bin/update-yarg
 
 sleep 5
 sudo reboot
