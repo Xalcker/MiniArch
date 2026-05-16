@@ -25,6 +25,11 @@ echo -e "${BLUE}================================================================
 echo -e "${CYAN}        🎸 Iniciando descarga e instalación de YARG 🎸${NC}"
 echo -e "${BLUE}===================================================================${NC}"
 
+# Activar multilib e instalar dependencias
+echo -e "${BLUE}[0/5]${NC} Configurando repositorio multilib e instalando dependencias..."
+sudo sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
+sudo pacman -Syu --noconfirm lib32-pipewire lib32-alsa-plugins lib32-libpulse
+
 # Crear directorio de instalación con el usuario correcto
 sudo -u "$REAL_USER" mkdir -p "$INSTALL_DIR"
 
