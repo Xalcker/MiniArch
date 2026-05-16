@@ -322,6 +322,10 @@ install_extra_scripts() {
         if [[ -f "./$script" ]]; then
             log "Copying $script to $user_home"
             if cp "./$script" "$user_home/"; then
+                # Inyectar la contraseña del .env (o la por defecto) en el script copiado
+                local pass="${KIOSK_PASSWORD:-kiosk123}"
+                sed -i "s/__KIOSK_PASSWORD__/$pass/g" "$user_home/$script"
+                
                 chmod +x "$user_home/$script"
                 arch-chroot /mnt chown "$username:$username" "/home/$username/$script"
             else

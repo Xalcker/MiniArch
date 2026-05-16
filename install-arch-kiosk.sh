@@ -80,7 +80,7 @@ SWAP_SIZE="${SWAP_SIZE:-2G}"
 
 # Configuración del usuario
 KIOSK_USER="${KIOSK_USER:-kiosk}"
-KIOSK_PASSWORD="${KIOSK_PASSWORD:-}"
+KIOSK_PASSWORD="${KIOSK_PASSWORD:-kiosk123}"
 
 # Configuración de Plymouth
 PLYMOUTH_THEME_NAME="${PLYMOUTH_THEME_NAME:-arch-kiosk}"

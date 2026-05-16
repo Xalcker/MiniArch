@@ -79,12 +79,17 @@ fi
 echo "Iniciando servicios de red..."
 sudo systemctl enable --now smb nmb
 
+# Sincronizar el usuario con la base de datos de Samba (necesario para acceso con credenciales)
+echo "Sincronizando usuario $USER con Samba..."
+(echo "__KIOSK_PASSWORD__"; echo "__KIOSK_PASSWORD__") | sudo smbpasswd -s -a $USER
+
 # Optimizaciones de Rendimiento para Kiosko YARG
 echo -e "${BLUE}===================================================================${NC}"
 echo -e "${CYAN}        🚀 Aplicando optimizaciones de rendimiento${NC}"
 echo -e "${BLUE}===================================================================${NC}"
 
 # 1. Configurar prioridad de tiempo real para el usuario (mejor audio)
+sudo mkdir -p /etc/security/limits.d
 sudo bash -c "cat > /etc/security/limits.d/99-yarg.conf" << EOF
 $USER - rtprio 99
 $USER - memlock unlimited

@@ -29,7 +29,24 @@ ROM_DIR="$HOME/ROMS"
 echo -e "${BLUE}[2/4]${NC} Creando directorios para juegos en ${YELLOW}$ROM_DIR${NC}..."
 mkdir -p "$ROM_DIR/NES" "$ROM_DIR/SNES" "$ROM_DIR/Genesis" "$ROM_DIR/GBA" "$ROM_DIR/PS1" "$ROM_DIR/Arcade"
 
-# 3. Configurar Samba para compartir ROMS
+# 3. Configurar RetroArch para compatibilidad con VM (evitar pantalla negra)
+echo -e "${BLUE}[3/4]${NC} Optimizando configuración para entorno virtual..."
+mkdir -p "$HOME/.config/retroarch"
+cat > "$HOME/.config/retroarch/retroarch.cfg" << EOF
+# Driver de video compatible con Proxmox/VM
+video_driver = "sdl2"
+video_vsync = "false"
+# Menú ligero (RGUI) que no requiere aceleración 3D
+menu_driver = "rgui"
+# Pantalla completa
+video_fullscreen = "true"
+# Rutas de búsqueda
+libretro_directory = "/usr/lib/libretro"
+content_directory = "$ROM_DIR"
+EOF
+chown -R $USER:$USER "$HOME/.config/retroarch"
+
+# 4. Configurar Samba para compartir ROMS
 echo -e "${BLUE}===================================================================${NC}"
 echo -e "${CYAN}        📡 Configurando Samba para compartir ROMS${NC}"
 echo -e "${BLUE}===================================================================${NC}"
@@ -72,6 +89,10 @@ else
 EOF
     sudo systemctl enable --now smb nmb
 fi
+
+# Sincronizar el usuario con la base de datos de Samba
+echo "Sincronizando usuario $USER con Samba..."
+(echo "__KIOSK_PASSWORD__"; echo "__KIOSK_PASSWORD__") | sudo smbpasswd -s -a $USER
 
 # 4. Actualizar autostart para priorizar RetroArch (si el usuario lo desea)
 # Por ahora, solo informamos al usuario o creamos un respaldo.
