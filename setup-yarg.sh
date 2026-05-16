@@ -102,12 +102,15 @@ sudo sysctl -p /etc/sysctl.d/99-yarg.conf
 
 # 3. Intentar configurar CPU en modo performance (si cpupower está disponible)
 if command -v cpupower &> /dev/null; then
-    sudo cpupower frequency-set -g performance
+    echo "Configurando CPU en modo performance..."
+    sudo cpupower frequency-set -g performance || echo -e "${YELLOW}Aviso: No se pudo cambiar el modo de CPU (típico en VMs). Continuando...${NC}"
 else
     echo "Instalando cpupower para gestión de energía..."
-    sudo pacman -S --noconfirm cpupower
-    sudo systemctl enable --now cpupower
-    sudo cpupower frequency-set -g performance
+    sudo pacman -S --noconfirm cpupower || true
+    if command -v cpupower &> /dev/null; then
+        sudo systemctl enable --now cpupower || true
+        sudo cpupower frequency-set -g performance || echo -e "${YELLOW}Aviso: No se pudo cambiar el modo de CPU (típico en VMs). Continuando...${NC}"
+    fi
 fi
 
 # 4. Deshabilitar ahorro de energía de pantalla

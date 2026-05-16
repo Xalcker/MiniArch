@@ -58,14 +58,17 @@ install_graphics_drivers() {
 install_audio_system() {
     log "Instalando sistema de audio PipeWire y firmware de audio"
     
-    # Instalar todos los componentes de PipeWire, firmware de audio y utilidades de hardware
-    # - pipewire-*: Sistema de audio moderno con compatibilidad ALSA/Pulse/JACK
-    # - sof-firmware: Firmware para audio Intel moderno
-    # - alsa-utils: Herramientas para MIDI (amidi) y control de volumen (amixer)
-    # - usbutils: Herramientas para diagnóstico de instrumentos USB (lsusb)
+    # Instalar componentes de PipeWire, gestor de sesión, códecs y utilidades de hardware
+    # - pipewire-*: Audio moderno con compatibilidad ALSA/Pulse/JACK
+    # - wireplumber: Gestor de sesión indispensable para PipeWire
+    # - ffmpeg/gst-*: Códecs multimedia para decodificación de canciones (YARG)
     # - bluez*: Soporte para guitarras y periféricos Bluetooth
-    if ! arch-chroot /mnt pacman -S --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-jack sof-firmware alsa-utils usbutils bluez bluez-utils; then
-        log_error "Fallo al instalar PipeWire, firmware de audio y utilidades de hardware"
+    if ! arch-chroot /mnt pacman -S --noconfirm \
+        pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber \
+        libpulse alsa-plugins alsa-utils \
+        ffmpeg gst-libav gst-plugins-good libvorbis libopus \
+        sof-firmware usbutils bluez bluez-utils; then
+        log_error "Fallo al instalar PipeWire, códecs y utilidades de hardware"
         return 1
     fi
 

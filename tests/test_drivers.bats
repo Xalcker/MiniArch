@@ -184,11 +184,13 @@ setup() {
     # Leer el comando ejecutado
     local command=$(cat /tmp/arch_chroot_commands.log)
     
-    # Verificar que contiene todos los componentes de PipeWire requeridos
+    # Verificar que contiene todos los componentes de PipeWire y códecs requeridos
     [[ "$command" == *"pipewire"* ]]
     [[ "$command" == *"pipewire-alsa"* ]]
     [[ "$command" == *"pipewire-pulse"* ]]
     [[ "$command" == *"pipewire-jack"* ]]
+    [[ "$command" == *"wireplumber"* ]]
+    [[ "$command" == *"ffmpeg"* ]]
     [[ "$command" == *"sof-firmware"* ]]
     [[ "$command" == *"alsa-utils"* ]]
     [[ "$command" == *"usbutils"* ]]

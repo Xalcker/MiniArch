@@ -94,6 +94,30 @@ fi
 echo "Sincronizando usuario $USER con Samba..."
 (echo "__KIOSK_PASSWORD__"; echo "__KIOSK_PASSWORD__") | sudo smbpasswd -s -a $USER
 
+# Optimizaciones de Rendimiento
+echo -e "${BLUE}===================================================================${NC}"
+echo -e "${CYAN}        🚀 Aplicando optimizaciones de rendimiento${NC}"
+echo -e "${BLUE}===================================================================${NC}"
+
+# 1. Ajustar Swappiness
+sudo bash -c "echo 'vm.swappiness=10' > /etc/sysctl.d/99-retroarch.conf"
+sudo sysctl -p /etc/sysctl.d/99-retroarch.conf
+
+# 2. Configurar CPU en modo performance
+if command -v cpupower &> /dev/null; then
+    sudo cpupower frequency-set -g performance || echo -e "${YELLOW}Aviso: No se pudo cambiar el modo de CPU (típico en VMs). Continuando...${NC}"
+else
+    sudo pacman -S --noconfirm cpupower || true
+    if command -v cpupower &> /dev/null; then
+        sudo systemctl enable --now cpupower || true
+        sudo cpupower frequency-set -g performance || echo -e "${YELLOW}Aviso: No se pudo cambiar el modo de CPU (típico en VMs). Continuando...${NC}"
+    fi
+fi
+
+# 3. Deshabilitar ahorro de energía de pantalla
+echo "Deshabilitando ahorro de energía de pantalla..."
+sudo bash -c "echo 'xset s off && xset -dpms' >> /home/$USER/.config/openbox/autostart"
+
 # 4. Actualizar autostart para priorizar RetroArch (si el usuario lo desea)
 # Por ahora, solo informamos al usuario o creamos un respaldo.
 AUTOSTART_FILE="$HOME/.config/openbox/autostart"
