@@ -140,7 +140,7 @@ check_disk_empty() {
 
     # Verificar si el disco tiene particiones usando lsblk
     local partition_count
-    partition_count=$(lsblk -n -o TYPE "$disk_device" 2>/dev/null | grep -c "part")
+    partition_count=$(lsblk -n -o TYPE "$disk_device" 2>/dev/null | awk '$1 == "part" { count++ } END { print count + 0 }')
 
     # Si no hay particiones, el disco está vacío
     if [[ $partition_count -eq 0 ]]; then
