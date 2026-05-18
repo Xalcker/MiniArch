@@ -221,12 +221,25 @@ configure_hid_access() {
 install_yarg() {
     log "Descargando e instalando YARG en /opt/YARG"
 
-    if ! arch-chroot /mnt curl -L -o /tmp/YARG.zip "$YARG_URL"; then
+    local yarg_zip="/mnt/tmp/YARG.zip"
+
+    mkdir -p /mnt/tmp /mnt/opt/YARG
+
+    if ! curl -fL --retry 3 --retry-delay 2 -o "$yarg_zip" "$YARG_URL"; then
         log_error "Fallo al descargar YARG"
         return 1
     fi
 
-    arch-chroot /mnt mkdir -p /opt/YARG
+    if [[ ! -s "$yarg_zip" ]]; then
+        log_error "La descarga de YARG no genero un ZIP valido en $yarg_zip"
+        return 1
+    fi
+
+    if ! arch-chroot /mnt unzip -tq /tmp/YARG.zip >/dev/null; then
+        log_error "El ZIP descargado de YARG no es valido"
+        return 1
+    fi
+
     if ! arch-chroot /mnt unzip -o /tmp/YARG.zip -d /opt/YARG; then
         log_error "Fallo al descomprimir YARG"
         return 1
@@ -235,7 +248,7 @@ install_yarg() {
     arch-chroot /mnt find /opt/YARG -maxdepth 1 -type f -name 'YARG*' -exec chmod +x {} +
     arch-chroot /mnt mkdir -p /opt/YARG/Songs
     arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/YARG
-    arch-chroot /mnt rm -f /tmp/YARG.zip
+    rm -f "$yarg_zip"
 }
 
 configure_yarg_samba_share() {
