@@ -72,6 +72,8 @@ Plymouth, limpieza y ocultacion de mensajes. La capa especifica de Cage vive en
 - Cage como compositor de kiosko.
 - Wayland y XWayland para ejecutar YARG.
 - Mesa, Vulkan Intel/AMD y soporte opcional NVIDIA.
+- DBus de sesion para ejecutar Cage, PipeWire/WirePlumber y YARG en un entorno
+  de usuario mas completo.
 - Plymouth y tema personalizado opcional. Si Plymouth falla, el instalador
   continua sin pantalla de arranque personalizada.
 - YARG en `/opt/YARG`.
@@ -230,6 +232,7 @@ Ese servicio toma `tty1`, prepara `XDG_RUNTIME_DIR` y ejecuta:
 El wrapper:
 
 - Habilita ajustes para VM si detecta `hypervisor`.
+- Se re-ejecuta con `dbus-run-session` si no existe un bus DBus de sesion.
 - Exporta variables Wayland/Cage.
 - Arranca PipeWire, PipeWire Pulse y WirePlumber si no estan corriendo.
 - Busca un binario ejecutable `YARG*` en `/opt/YARG`.

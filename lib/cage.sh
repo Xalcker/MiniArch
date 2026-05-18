@@ -5,7 +5,7 @@
 install_cage_base_system() {
     local packages=(
         base linux linux-firmware linux-headers
-        sudo nano curl wget unzip git
+        sudo nano curl wget unzip git dbus
         networkmanager grub efibootmgr samba cpupower
         mesa wayland xorg-xwayland cage foot
         ttf-dejavu
@@ -164,6 +164,15 @@ if grep -q "hypervisor" /proc/cpuinfo 2>/dev/null; then
     export WLR_NO_HARDWARE_CURSORS=1
     export LIBGL_ALWAYS_SOFTWARE=1
     export GALLIUM_DRIVER=llvmpipe
+fi
+
+if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" && -z "${YARG_DBUS_SESSION_STARTED:-}" ]]; then
+    if command -v dbus-run-session >/dev/null 2>&1; then
+        export YARG_DBUS_SESSION_STARTED=1
+        exec dbus-run-session -- "$0"
+    fi
+
+    echo "Aviso: dbus-run-session no esta disponible; continuando sin DBus de sesion." >&2
 fi
 
 export XDG_SESSION_TYPE=wayland
