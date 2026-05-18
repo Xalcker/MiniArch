@@ -16,7 +16,7 @@
 ################################################################################
 # install_plymouth()
 #
-# Instala los paquetes necesarios de Plymouth: plymouth y plymouth-theme-spinner.
+# Instala los paquetes necesarios de Plymouth.
 #
 # Precondiciones:
 #   - Debe ejecutarse dentro de arch-chroot
@@ -29,8 +29,7 @@
 install_plymouth() {
     log "Instalando paquetes de Plymouth"
     
-    # Instalar plymouth y plymouth-theme-spinner
-    if ! arch-chroot /mnt pacman -S --noconfirm plymouth plymouth-theme-spinner; then
+    if ! arch-chroot /mnt pacman -S --noconfirm plymouth; then
         log_error "Fallo al instalar paquetes de Plymouth"
         return 1
     fi

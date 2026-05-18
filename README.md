@@ -33,8 +33,8 @@ adaptado a Cage sobre Wayland/XWayland.
 
 `install-arch-cage.sh` es ahora un orquestador propio que importa modulos
 compartidos desde `lib/` para validacion, particionado, fstab, GRUB, audio,
-Plymouth, limpieza y ocultacion de mensajes. La capa especifica de Cage/YARG
-vive solo en ese script.
+Plymouth, limpieza y ocultacion de mensajes. La capa especifica de Cage vive en
+`lib/cage.sh` y la capa de YARG vive en `lib/yarg.sh`.
 
 ## Caracteristicas
 
@@ -72,7 +72,8 @@ vive solo en ese script.
 - Cage como compositor de kiosko.
 - Wayland y XWayland para ejecutar YARG.
 - Mesa, Vulkan Intel/AMD y soporte opcional NVIDIA.
-- Plymouth y tema personalizado opcional.
+- Plymouth y tema personalizado opcional. Si Plymouth falla, el instalador
+  continua sin pantalla de arranque personalizada.
 - YARG en `/opt/YARG`.
 - Wrapper `/usr/local/bin/run-yarg.sh`.
 - Servicio `cage-kiosk.service`.
@@ -354,6 +355,8 @@ MiniArch/
 │   ├── bootloader.sh          # GRUB UEFI y arranque silencioso
 │   ├── plymouth.sh            # Plymouth compartido por OpenBox y Cage
 │   ├── drivers.sh             # Drivers, PipeWire, codecs y Bluetooth
+│   ├── cage.sh                # Cage, usuario, servicio y wrapper Wayland
+│   ├── yarg.sh                # Descarga, settings, Samba y updater de YARG
 │   ├── gui.sh                 # OpenBox/X11 y autostart
 │   ├── customization.sh       # Mensajes, cursor, assets y scripts extra
 │   └── finalization.sh        # Red, SSH opcional, limpieza y desmontaje
@@ -375,8 +378,8 @@ MiniArch/
 ```
 
 Nota: la suite BATS cubre principalmente los modulos compartidos y el flujo
-OpenBox original. `install-arch-cage.sh` reutiliza esos modulos, pero sus
-funciones especificas de Cage/YARG todavia no tienen una suite dedicada.
+OpenBox original. `lib/cage.sh` y `lib/yarg.sh` todavia no tienen una suite
+dedicada.
 
 ## Desarrollo Y Pruebas
 
