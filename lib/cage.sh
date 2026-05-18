@@ -166,6 +166,8 @@ if grep -q "hypervisor" /proc/cpuinfo 2>/dev/null; then
     export GALLIUM_DRIVER=llvmpipe
 fi
 
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
 if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" && -z "${YARG_DBUS_SESSION_STARTED:-}" ]]; then
     if command -v dbus-run-session >/dev/null 2>&1; then
         export YARG_DBUS_SESSION_STARTED=1
@@ -180,15 +182,27 @@ export XDG_CURRENT_DESKTOP=cage
 export WLR_XWAYLAND=1
 
 if command -v pipewire >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1; then
-    pipewire &
+    pipewire 2>&1 | sed 's/^/[pipewire] /' &
+fi
+
+for _ in {1..50}; do
+    [[ -S "$XDG_RUNTIME_DIR/pipewire-0" ]] && break
+    sleep 0.1
+done
+
+if command -v wireplumber >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1; then
+    wireplumber 2>&1 | sed 's/^/[wireplumber] /' &
 fi
 
 if command -v pipewire-pulse >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire-pulse >/dev/null 2>&1; then
-    pipewire-pulse &
+    pipewire-pulse 2>&1 | sed 's/^/[pipewire-pulse] /' &
 fi
 
-if command -v wireplumber >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1; then
-    wireplumber &
+if command -v pactl >/dev/null 2>&1; then
+    for _ in {1..50}; do
+        pactl info >/dev/null 2>&1 && break
+        sleep 0.1
+    done
 fi
 
 YARG_BIN=$(find /opt/YARG -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)

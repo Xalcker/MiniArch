@@ -186,10 +186,17 @@ check_disk_empty() {
 ################################################################################
 validate_security_config() {
     local password="${KIOSK_PASSWORD:-}"
+    local root_password="${ROOT_PASSWORD:-}"
+    local require_root_password="${REQUIRE_ROOT_PASSWORD:-false}"
     local allow_insecure="${ALLOW_INSECURE_DEFAULT_PASSWORD:-false}"
 
     if [[ -z "$password" ]]; then
         echo "ERROR: KIOSK_PASSWORD debe definirse en .env antes de ejecutar el instalador." >&2
+        return 1
+    fi
+
+    if [[ "$require_root_password" == "true" && -z "$root_password" ]]; then
+        echo "ERROR: ROOT_PASSWORD debe definirse en .env antes de ejecutar el instalador." >&2
         return 1
     fi
 
@@ -199,6 +206,14 @@ validate_security_config() {
             return 1
         fi
         echo "ADVERTENCIA: Se permitió una contraseña de ejemplo insegura para un entorno de pruebas." >&2
+    fi
+
+    if [[ "$require_root_password" == "true" && ( "$root_password" == "root" || "$root_password" == "change-root" ) ]]; then
+        if [[ "$allow_insecure" != "true" ]]; then
+            echo "ERROR: ROOT_PASSWORD usa un valor de ejemplo inseguro. Cambie la contraseña o use ALLOW_INSECURE_DEFAULT_PASSWORD=true solo en pruebas." >&2
+            return 1
+        fi
+        echo "ADVERTENCIA: Se permitió una contraseña root de ejemplo insegura para un entorno de pruebas." >&2
     fi
 
     if [[ "${ENABLE_SSH:-true}" == "true" ]]; then

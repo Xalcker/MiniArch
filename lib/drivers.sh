@@ -72,6 +72,17 @@ install_audio_system() {
         return 1
     fi
 
+    log "Configurando ALSA default hacia PipeWire"
+    cat > /mnt/etc/asound.conf << 'EOF'
+pcm.!default {
+    type pipewire
+}
+
+ctl.!default {
+    type pipewire
+}
+EOF
+
     # Habilitar servicio de Bluetooth
     if ! arch-chroot /mnt systemctl enable bluetooth.service; then
         log_error "Fallo al habilitar bluetooth.service"
