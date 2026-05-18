@@ -65,7 +65,8 @@ create_custom_theme() {
         return 1
     fi
     
-    local theme_dir="/usr/share/plymouth/themes/${theme_name}"
+    local target_theme_dir="/usr/share/plymouth/themes/${theme_name}"
+    local theme_dir="/mnt${target_theme_dir}"
     
     log "Creando tema personalizado de Plymouth: $theme_name"
     
@@ -85,8 +86,8 @@ Description=Custom kiosk theme with image
 ModuleName=script
 
 [script]
-ImageDir=${theme_dir}
-ScriptFile=${theme_dir}/${theme_name}.script
+ImageDir=${target_theme_dir}
+ScriptFile=${target_theme_dir}/${theme_name}.script
 EOF
     
     if [[ ! -f "${theme_dir}/${theme_name}.plymouth" ]]; then
@@ -169,7 +170,7 @@ configure_plymouth() {
         return 1
     fi
     
-    local theme_dir="/usr/share/plymouth/themes/${theme_name}"
+    local theme_dir="/mnt/usr/share/plymouth/themes/${theme_name}"
     
     # Verificar que el directorio del tema existe
     if [[ ! -d "$theme_dir" ]]; then
@@ -195,6 +196,7 @@ configure_plymouth() {
     
     # Copiar la imagen al directorio temporal en el chroot
     local temp_image="/mnt/tmp/plymouth-temp.png"
+    mkdir -p /mnt/tmp
     if ! cp "$image_path" "$temp_image"; then
         log_error "Fallo al copiar imagen al sistema instalado"
         return 1

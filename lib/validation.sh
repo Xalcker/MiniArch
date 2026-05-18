@@ -193,7 +193,7 @@ validate_security_config() {
         return 1
     fi
 
-    if [[ "$password" == "kiosk123" || "$password" == "change-me" ]]; then
+    if [[ "$password" == "kiosk" || "$password" == "kiosk123" || "$password" == "change-me" ]]; then
         if [[ "$allow_insecure" != "true" ]]; then
             echo "ERROR: KIOSK_PASSWORD usa un valor de ejemplo inseguro. Cambie la contraseña o use ALLOW_INSECURE_DEFAULT_PASSWORD=true solo en pruebas." >&2
             return 1
