@@ -225,7 +225,8 @@ El servicio ejecuta:
 El wrapper:
 
 - Aplica ajustes de render software si detecta VM.
-- Crea un DBus de sesion con `dbus-run-session` si no existe.
+- Valida DBus de sesion; si falta o apunta a un socket viejo, lo recrea con
+  `dbus-run-session`.
 - Exporta variables Wayland/Cage.
 - Arranca PipeWire, WirePlumber y PipeWire Pulse en orden.
 - Espera unos segundos a que exista un sink Pulse/PipeWire; si no aparece,

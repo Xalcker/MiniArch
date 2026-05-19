@@ -168,6 +168,34 @@ fi
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
+dbus_session_is_usable() {
+    local dbus_path=""
+
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+        return 1
+    fi
+
+    case "$DBUS_SESSION_BUS_ADDRESS" in
+        unix:path=*)
+            dbus_path="${DBUS_SESSION_BUS_ADDRESS#unix:path=}"
+            dbus_path="${dbus_path%%,*}"
+            [[ -S "$dbus_path" ]] || return 1
+            ;;
+    esac
+
+    if command -v dbus-send >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
+        timeout 1 dbus-send --session --dest=org.freedesktop.DBus \
+            --type=method_call / org.freedesktop.DBus.ListNames >/dev/null 2>&1
+        return $?
+    fi
+
+    return 0
+}
+
+if ! dbus_session_is_usable; then
+    unset DBUS_SESSION_BUS_ADDRESS
+fi
+
 if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" && -z "${YARG_DBUS_SESSION_STARTED:-}" ]]; then
     if command -v dbus-run-session >/dev/null 2>&1; then
         export YARG_DBUS_SESSION_STARTED=1
