@@ -138,8 +138,8 @@ Para YARG:
 sudo update-yarg
 ```
 
-Nota: si instalaste nightly, el updater actual reinstala el URL resuelto durante
-la instalacion. Ver `TODO.md`.
+Nota: si instalaste `stable-latest` o `nightly`, `update-yarg` consulta el
+latest correspondiente al actualizar.
 
 ## Proteccion Fisica
 

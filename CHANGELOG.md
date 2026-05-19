@@ -23,7 +23,6 @@ semantico cuando se publiquen releases formales.
   `/usr/local/bin/run-yarg.sh`.
 - `update-yarg` respeta `YARG_RELEASE_CHANNEL`; en `stable-latest` consulta el
   latest estable y en `nightly` consulta el latest de `YARG-BleedingEdge`.
-- Archivo `TODO.md` con riesgos pendientes del camino Cage/YARG.
 
 ### Cambiado
 

@@ -362,7 +362,6 @@ MiniArch/
 |   |-- test_customization.bats
 |   |-- test_finalization.bats
 |   `-- test_integration.bats
-`-- TODO.md
 ```
 
 La suite BATS cubre principalmente modulos compartidos y el flujo OpenBox. Los
