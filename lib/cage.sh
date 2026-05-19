@@ -5,7 +5,7 @@
 install_cage_base_system() {
     local packages=(
         base linux linux-firmware linux-headers
-        sudo nano curl wget unzip git dbus
+        sudo nano curl wget unzip git dbus file
         networkmanager grub efibootmgr samba cpupower
         mesa wayland xorg-xwayland cage foot
         ttf-dejavu

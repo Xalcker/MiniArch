@@ -15,7 +15,6 @@
 # ============================================================================
 # Los usuarios deben crear sus propios assets personalizados
 # Los archivos de ejemplo y README se mantienen en el repositorio
-assets/plymouth-image.png
 assets/cursor/*
 !assets/cursor/PLACEHOLDER.txt
 !assets/cursor/README.md

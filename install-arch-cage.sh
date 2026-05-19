@@ -312,6 +312,11 @@ main() {
         exit 1
     fi
 
+    if ! install_yarg_song_download_script; then
+        log_error "Fallo en instalacion del descargador de canciones YARG"
+        exit 1
+    fi
+
     if ! install_cage_wrapper; then
         log_error "Fallo en creacion del wrapper de Cage/YARG"
         exit 1
