@@ -141,10 +141,21 @@ configure_multilib_yarg_deps() {
 
     if ! run_quiet arch-chroot /mnt pacman -Syu --noconfirm \
         lib32-pipewire lib32-alsa-plugins lib32-libpulse \
-        hidapi systemd-libs pulseaudio-alsa pulsemixer; then
+        hidapi systemd-libs alsa-plugins pipewire-alsa pulsemixer; then
         log_error "Fallo al instalar dependencias multilib/YARG"
         return 1
     fi
+
+    log "Reafirmando ALSA default hacia PipeWire para YARG"
+    cat > /mnt/etc/asound.conf << 'EOF'
+pcm.!default {
+    type pipewire
+}
+
+ctl.!default {
+    type pipewire
+}
+EOF
 }
 
 configure_hid_access() {
@@ -317,9 +328,16 @@ TTYVTDisallocate=yes
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
 Environment=XDG_RUNTIME_DIR=/run/user/%U
 ExecStartPre=+/usr/bin/mkdir -p /run/user/%U
+ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x pipewire-pulse
+ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x wireplumber
+ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x pipewire
+ExecStartPre=-/usr/bin/rm -f /run/user/%U/pipewire-0 /run/user/%U/pipewire-0.lock /run/user/%U/pulse/native
 ExecStartPre=+/usr/bin/chown $KIOSK_USER:$KIOSK_USER /run/user/%U
 ExecStartPre=+/usr/bin/chmod 700 /run/user/%U
 ExecStart=/usr/bin/dbus-run-session -- /usr/local/bin/run-yarg.sh
+ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x pipewire-pulse
+ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x wireplumber
+ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x pipewire
 Restart=always
 RestartSec=5
 

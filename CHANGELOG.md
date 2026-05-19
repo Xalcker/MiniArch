@@ -48,6 +48,9 @@ semantico cuando se publiquen releases formales.
 - La validacion de disco vacio ya no depende de `grep -c` bajo `pipefail`.
 - El wrapper de YARG deja trazas claras en journal antes de iniciar DBus,
   PipeWire y Cage para diagnosticar pantallas negras.
+- El camino Cage/YARG ya no instala `pulseaudio-alsa` encima de
+  `pipewire-alsa`; despues de multilib reafirma `/etc/asound.conf` hacia
+  PipeWire para evitar el error de `pipewire-alsa` al iniciar YARG.
 
 ## [1.0.0] - Version Inicial
 
