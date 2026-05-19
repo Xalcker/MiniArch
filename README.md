@@ -220,13 +220,13 @@ cage-kiosk.service
 El servicio ejecuta:
 
 ```text
-/usr/local/bin/run-yarg.sh
+/usr/bin/dbus-run-session -- /usr/local/bin/run-yarg.sh
 ```
 
 El wrapper:
 
 - Aplica ajustes de render software si detecta VM.
-- Valida DBus de sesion; si falta o apunta a un socket viejo, lo recrea con
+- Valida DBus de sesion; normalmente ya viene creado por systemd mediante
   `dbus-run-session`.
 - Exporta variables Wayland/Cage.
 - Arranca PipeWire, WirePlumber y PipeWire Pulse en orden.

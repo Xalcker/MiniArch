@@ -163,7 +163,10 @@ install_cage_wrapper() {
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "run-yarg: iniciado como $(id -un) pid=$$" >&2
+
 if grep -q "hypervisor" /proc/cpuinfo 2>/dev/null; then
+    echo "run-yarg: entorno virtual detectado; usando render por software" >&2
     export WLR_RENDERER_ALLOW_SOFTWARE=1
     export WLR_NO_HARDWARE_CURSORS=1
     export LIBGL_ALWAYS_SOFTWARE=1
@@ -171,6 +174,7 @@ if grep -q "hypervisor" /proc/cpuinfo 2>/dev/null; then
 fi
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+echo "run-yarg: XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >&2
 
 dbus_session_is_usable() {
     local dbus_path=""
@@ -197,17 +201,21 @@ dbus_session_is_usable() {
 }
 
 if ! dbus_session_is_usable; then
+    echo "run-yarg: DBus de sesion ausente o invalido" >&2
     unset DBUS_SESSION_BUS_ADDRESS
 fi
 
 if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" && -z "${YARG_DBUS_SESSION_STARTED:-}" ]]; then
     if command -v dbus-run-session >/dev/null 2>&1; then
+        echo "run-yarg: iniciando DBus de sesion" >&2
         export YARG_DBUS_SESSION_STARTED=1
         exec dbus-run-session -- "$0"
     fi
 
     echo "Aviso: dbus-run-session no esta disponible; continuando sin DBus de sesion." >&2
 fi
+
+echo "run-yarg: DBus=${DBUS_SESSION_BUS_ADDRESS:-sin-dbus}" >&2
 
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=cage
@@ -248,6 +256,7 @@ wait_for_pulse_sink() {
 }
 
 if command -v pipewire >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1; then
+    echo "run-yarg: iniciando pipewire" >&2
     pipewire 2>&1 | sed 's/^/[pipewire] /' &
 fi
 
@@ -255,15 +264,18 @@ wait_for_path "$XDG_RUNTIME_DIR/pipewire-0" 100 || \
     echo "Aviso: PipeWire no creo $XDG_RUNTIME_DIR/pipewire-0 a tiempo." >&2
 
 if command -v wireplumber >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1; then
+    echo "run-yarg: iniciando wireplumber" >&2
     wireplumber 2>&1 | sed 's/^/[wireplumber] /' &
 fi
 
 sleep 1
 
 if command -v pipewire-pulse >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire-pulse >/dev/null 2>&1; then
+    echo "run-yarg: iniciando pipewire-pulse" >&2
     pipewire-pulse 2>&1 | sed 's/^/[pipewire-pulse] /' &
 fi
 
+echo "run-yarg: esperando sink Pulse/PipeWire" >&2
 wait_for_pulse_sink 50 || \
     echo "Aviso: no se encontro un sink Pulse/PipeWire antes de iniciar YARG." >&2
 
@@ -307,7 +319,7 @@ Environment=XDG_RUNTIME_DIR=/run/user/%U
 ExecStartPre=+/usr/bin/mkdir -p /run/user/%U
 ExecStartPre=+/usr/bin/chown $KIOSK_USER:$KIOSK_USER /run/user/%U
 ExecStartPre=+/usr/bin/chmod 700 /run/user/%U
-ExecStart=/usr/local/bin/run-yarg.sh
+ExecStart=/usr/bin/dbus-run-session -- /usr/local/bin/run-yarg.sh
 Restart=always
 RestartSec=5
 

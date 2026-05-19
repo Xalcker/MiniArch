@@ -19,8 +19,8 @@ semantico cuando se publiquen releases formales.
 - Configuracion fija de canciones con `YARG_SONGS_DIR` y
   `YARG_PERSISTENT_DATA_DIR`.
 - Share Samba `YARG-Songs` para cargar canciones por red.
-- Arranque de YARG con DBus de sesion y PipeWire ordenado desde
-  `/usr/local/bin/run-yarg.sh`.
+- Arranque de YARG con DBus de sesion desde `cage-kiosk.service` y PipeWire
+  ordenado desde `/usr/local/bin/run-yarg.sh`.
 - `update-yarg` respeta `YARG_RELEASE_CHANNEL`; en `stable-latest` consulta el
   latest estable y en `nightly` consulta el latest de `YARG-BleedingEdge`.
 
@@ -46,6 +46,8 @@ semantico cuando se publiquen releases formales.
 - Plymouth ya no falla si ImageMagick no esta disponible; copia el PNG sin
   escalar como fallback.
 - La validacion de disco vacio ya no depende de `grep -c` bajo `pipefail`.
+- El wrapper de YARG deja trazas claras en journal antes de iniciar DBus,
+  PipeWire y Cage para diagnosticar pantallas negras.
 
 ## [1.0.0] - Version Inicial
 

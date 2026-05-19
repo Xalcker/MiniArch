@@ -358,7 +358,9 @@ main() {
     fi
 
     section "Finalizacion"
-    if ! cleanup_and_finish; then
+    if ! cleanup_and_finish \
+        "Cage + YARG quedan instalados en /opt/YARG." \
+        "El sistema arrancara automaticamente con cage-kiosk.service en modo grafico."; then
         log_error "Fallo en limpieza/finalizacion de la instalacion"
         exit 1
     fi
@@ -366,12 +368,9 @@ main() {
     INSTALL_SUCCESS=1
 
     echo -e "${GREEN}"
-    echo "Instalacion completada."
-    echo "Cage + YARG quedan instalados en /opt/YARG."
     echo "Servicio habilitado: cage-kiosk.service."
     echo "Wrapper: /usr/local/bin/run-yarg.sh."
     echo -e "${NC}"
-    echo "Reinicia con: reboot"
 }
 
 main "$@"
