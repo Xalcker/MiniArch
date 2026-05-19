@@ -228,6 +228,12 @@ set -euo pipefail
 LINKS_FILE="\${1:-\$HOME/links.csv}"
 SONGS_DIR="${YARG_SONGS_DIR}"
 
+if [[ -r /dev/tty ]]; then
+    exec 3</dev/tty
+else
+    exec 3<&0
+fi
+
 trim() {
     local value="\$1"
     value="\${value#"\${value%%[![:space:]]*}"}"
@@ -426,7 +432,7 @@ download_link() {
     mv "\$tmp_file" "\$target"
 
     if [[ "\$target" == *.zip ]]; then
-        read -rp "Extraer ZIP en Songs y borrar el ZIP? [s/N]: " unzip_answer
+        read -r -p "Extraer ZIP en Songs y borrar el ZIP? [s/N]: " unzip_answer <&3
         case "\${unzip_answer,,}" in
             s|y|si|yes)
                 unzip -o "\$target" -d "\$SONGS_DIR"
@@ -468,7 +474,7 @@ while IFS= read -r raw_line || [[ -n "\$raw_line" ]]; do
     echo ""
     echo "[\$line_number] \$label"
     echo "\$url"
-    read -rp "Descargar este enlace? [s/N]: " answer
+    read -r -p "Descargar este enlace? [s/N]: " answer <&3
     case "\${answer,,}" in
         s|y|si|yes)
             if ! download_link "\$url" "\$label"; then

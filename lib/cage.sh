@@ -180,30 +180,56 @@ fi
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=cage
 export WLR_XWAYLAND=1
+export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+
+wait_for_path() {
+    local path="$1"
+    local attempts="${2:-100}"
+
+    for _ in $(seq 1 "$attempts"); do
+        [[ -e "$path" ]] && return 0
+        sleep 0.1
+    done
+
+    return 1
+}
+
+wait_for_pulse_sink() {
+    local attempts="${1:-200}"
+
+    if ! command -v pactl >/dev/null 2>&1; then
+        return 1
+    fi
+
+    for _ in $(seq 1 "$attempts"); do
+        if pactl list short sinks 2>/dev/null | grep -q .; then
+            return 0
+        fi
+        sleep 0.1
+    done
+
+    return 1
+}
 
 if command -v pipewire >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1; then
     pipewire 2>&1 | sed 's/^/[pipewire] /' &
 fi
 
-for _ in {1..50}; do
-    [[ -S "$XDG_RUNTIME_DIR/pipewire-0" ]] && break
-    sleep 0.1
-done
+wait_for_path "$XDG_RUNTIME_DIR/pipewire-0" 100 || \
+    echo "Aviso: PipeWire no creo $XDG_RUNTIME_DIR/pipewire-0 a tiempo." >&2
 
 if command -v wireplumber >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1; then
     wireplumber 2>&1 | sed 's/^/[wireplumber] /' &
 fi
 
+sleep 1
+
 if command -v pipewire-pulse >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire-pulse >/dev/null 2>&1; then
     pipewire-pulse 2>&1 | sed 's/^/[pipewire-pulse] /' &
 fi
 
-if command -v pactl >/dev/null 2>&1; then
-    for _ in {1..50}; do
-        pactl info >/dev/null 2>&1 && break
-        sleep 0.1
-    done
-fi
+wait_for_pulse_sink 200 || \
+    echo "Aviso: no se encontro un sink Pulse/PipeWire antes de iniciar YARG." >&2
 
 YARG_BIN=$(find /opt/YARG -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)
 
