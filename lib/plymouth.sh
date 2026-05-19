@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 ################################################################################
 # Módulo de Plymouth
 #
@@ -29,7 +33,7 @@
 install_plymouth() {
     log "Instalando paquetes de Plymouth"
     
-    if ! arch-chroot /mnt pacman -S --noconfirm plymouth; then
+    if ! run_quiet arch-chroot /mnt pacman -S --noconfirm plymouth; then
         log_error "Fallo al instalar paquetes de Plymouth"
         return 1
     fi
@@ -148,7 +152,7 @@ EOF
 #   - Debe ejecutarse dentro de arch-chroot
 #   - Plymouth debe estar instalado
 #   - El tema personalizado debe estar creado
-#   - ImageMagick debe estar instalado para escalado de imagen
+#   - ImageMagick es opcional; si no esta disponible se copia el PNG sin escalar
 #
 # Returns:
 #   0 - Si la configuración fue exitosa
@@ -183,30 +187,45 @@ configure_plymouth() {
         return 1
     fi
     
-    log "Instalando ImageMagick para escalado de imagen"
-    
-    # Instalar ImageMagick para escalado
-    if ! arch-chroot /mnt pacman -S --noconfirm imagemagick; then
-        log_error "Fallo al instalar ImageMagick"
-        return 1
-    fi
-    
     log "Copiando imagen al sistema instalado"
     
     # Copiar la imagen al directorio temporal en el chroot
     local temp_image="/mnt/tmp/plymouth-temp.png"
+    local target_image="/usr/share/plymouth/themes/${theme_name}/background.png"
     mkdir -p /mnt/tmp
     if ! cp "$image_path" "$temp_image"; then
         log_error "Fallo al copiar imagen al sistema instalado"
         return 1
     fi
     
-    log "Escalando imagen a 1280x720"
-    
-    # Escalar la imagen a 1280x720 y copiarla al directorio del tema
-    if ! arch-chroot /mnt convert /tmp/plymouth-temp.png -resize 1280x720! "/usr/share/plymouth/themes/${theme_name}/background.png"; then
-        log_error "Fallo al escalar y copiar la imagen"
-        # Limpiar archivo temporal
+    log "Preparando imagen de Plymouth"
+
+    if arch-chroot /mnt command -v magick >/dev/null 2>&1; then
+        if ! run_quiet arch-chroot /mnt magick /tmp/plymouth-temp.png -resize 1280x720! "$target_image"; then
+            log "Advertencia: No se pudo escalar la imagen con magick; se copiara sin escalar."
+            cp "$temp_image" "/mnt${target_image}"
+        fi
+    elif arch-chroot /mnt command -v convert >/dev/null 2>&1; then
+        if ! run_quiet arch-chroot /mnt convert /tmp/plymouth-temp.png -resize 1280x720! "$target_image"; then
+            log "Advertencia: No se pudo escalar la imagen con convert; se copiara sin escalar."
+            cp "$temp_image" "/mnt${target_image}"
+        fi
+    elif run_quiet arch-chroot /mnt pacman -S --noconfirm imagemagick; then
+        if arch-chroot /mnt command -v magick >/dev/null 2>&1; then
+            run_quiet arch-chroot /mnt magick /tmp/plymouth-temp.png -resize 1280x720! "$target_image" || cp "$temp_image" "/mnt${target_image}"
+        elif arch-chroot /mnt command -v convert >/dev/null 2>&1; then
+            run_quiet arch-chroot /mnt convert /tmp/plymouth-temp.png -resize 1280x720! "$target_image" || cp "$temp_image" "/mnt${target_image}"
+        else
+            log "Advertencia: ImageMagick se instalo, pero no se encontro magick/convert; se copiara sin escalar."
+            cp "$temp_image" "/mnt${target_image}"
+        fi
+    else
+        log "Advertencia: No se pudo instalar ImageMagick; se copiara la imagen Plymouth sin escalar."
+        cp "$temp_image" "/mnt${target_image}"
+    fi
+
+    if [[ ! -s "/mnt${target_image}" ]]; then
+        log_error "No se pudo preparar la imagen de Plymouth en /mnt${target_image}"
         rm -f "$temp_image"
         return 1
     fi
@@ -234,7 +253,7 @@ configure_plymouth() {
     log "Regenerando initramfs con mkinitcpio"
     
     # Regenerar initramfs
-    if ! arch-chroot /mnt mkinitcpio -P; then
+    if ! run_quiet arch-chroot /mnt mkinitcpio -P; then
         log_error "Fallo al regenerar initramfs"
         return 1
     fi
@@ -242,7 +261,7 @@ configure_plymouth() {
     log "Activando tema de Plymouth: $theme_name"
     
     # Activar el tema personalizado
-    if ! arch-chroot /mnt plymouth-set-default-theme -R "$theme_name"; then
+    if ! run_quiet arch-chroot /mnt plymouth-set-default-theme -R "$theme_name"; then
         log_error "Fallo al activar tema de Plymouth"
         return 1
     fi
@@ -265,7 +284,7 @@ configure_plymouth() {
     log "Regenerando configuración de GRUB"
     
     # Regenerar configuración de GRUB
-    if ! arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
+    if ! run_quiet arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
         log_error "Fallo al regenerar configuración de GRUB"
         return 1
     fi

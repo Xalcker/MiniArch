@@ -3,7 +3,7 @@
 Gracias por contribuir a MiniArch. El repositorio mantiene dos caminos de
 instalacion:
 
-- Cage/YARG: `install-arch-cage.sh`, `lib/cage.sh`, `lib/yarg.sh`.
+- Cage/YARG: `install-cage-yarg.sh`, `lib/cage.sh`, `lib/yarg.sh`.
 - OpenBox/X11: `install-arch-kiosk.sh`, `setup-yarg.sh`, `lib/gui.sh`.
 
 Cuando cambies modulos compartidos en `lib/`, revisa ambos caminos.
@@ -60,7 +60,7 @@ Valida sintaxis de Bash:
 
 ```bash
 bash -n install-arch-kiosk.sh
-bash -n install-arch-cage.sh
+bash -n install-cage-yarg.sh
 for file in lib/*.sh; do bash -n "$file"; done
 bash -n setup-yarg.sh
 ```

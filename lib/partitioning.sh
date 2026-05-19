@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 ################################################################################
 # Módulo de Particionamiento
 #
@@ -93,41 +97,41 @@ partition_disk() {
     log "Creando tabla de particiones GPT en $device"
 
     # Crear tabla GPT
-    if ! parted -s "$device" mklabel gpt; then
+    if ! run_quiet parted -s "$device" mklabel gpt; then
         log_error "Fallo al crear tabla GPT en $device"
         return 1
     fi
 
     log "Creando partición ESP (512MB)"
     # Crear partición ESP: 1MB - 513MB
-    if ! parted -s "$device" mkpart ESP fat32 1MiB 513MiB; then
+    if ! run_quiet parted -s "$device" mkpart ESP fat32 1MiB 513MiB; then
         log_error "Fallo al crear partición ESP"
         return 1
     fi
 
     # Marcar partición como ESP
-    if ! parted -s "$device" set 1 esp on; then
+    if ! run_quiet parted -s "$device" set 1 esp on; then
         log_error "Fallo al marcar partición como ESP"
         return 1
     fi
 
     log "Creando partición Root (8GB)"
     # Crear partición Root: 513MB - 8705MB (513 + 8192)
-    if ! parted -s "$device" mkpart primary ext4 513MiB 8705MiB; then
+    if ! run_quiet parted -s "$device" mkpart primary ext4 513MiB 8705MiB; then
         log_error "Fallo al crear partición Root"
         return 1
     fi
 
     log "Creando partición Swap (2GB)"
     # Crear partición Swap: 8705MB - 10753MB (8705 + 2048)
-    if ! parted -s "$device" mkpart primary linux-swap 8705MiB 10753MiB; then
+    if ! run_quiet parted -s "$device" mkpart primary linux-swap 8705MiB 10753MiB; then
         log_error "Fallo al crear partición Swap"
         return 1
     fi
 
     log "Creando partición Home (espacio restante)"
     # Crear partición Home: 10753MB - 100%
-    if ! parted -s "$device" mkpart primary ext4 10753MiB 100%; then
+    if ! run_quiet parted -s "$device" mkpart primary ext4 10753MiB 100%; then
         log_error "Fallo al crear partición Home"
         return 1
     fi
@@ -164,25 +168,25 @@ format_partitions() {
     home_partition=$(get_partition_path "$device" 4) || return 1
 
     log "Formateando partición ESP con FAT32"
-    if ! mkfs.fat -F32 "$esp_partition"; then
+    if ! run_quiet mkfs.fat -F32 "$esp_partition"; then
         log_error "Fallo al formatear partición ESP"
         return 1
     fi
 
     log "Formateando partición Root con ext4"
-    if ! mkfs.ext4 -F "$root_partition"; then
+    if ! run_quiet mkfs.ext4 -F "$root_partition"; then
         log_error "Fallo al formatear partición Root"
         return 1
     fi
 
     log "Inicializando partición Swap"
-    if ! mkswap "$swap_partition"; then
+    if ! run_quiet mkswap "$swap_partition"; then
         log_error "Fallo al inicializar partición Swap"
         return 1
     fi
 
     log "Formateando partición Home con ext4"
-    if ! mkfs.ext4 -F "$home_partition"; then
+    if ! run_quiet mkfs.ext4 -F "$home_partition"; then
         log_error "Fallo al formatear partición Home"
         return 1
     fi
@@ -249,7 +253,7 @@ mount_partitions() {
     fi
 
     log "Activando partición Swap"
-    if ! swapon "$swap_partition"; then
+    if ! run_quiet swapon "$swap_partition"; then
         log_error "Fallo al activar partición Swap"
         return 1
     fi

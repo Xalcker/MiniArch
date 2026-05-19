@@ -16,10 +16,21 @@ set -e
 # Variables dinámicas para evitar errores con sudo
 REAL_USER="${SUDO_USER:-$USER}"
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+LOG_FILE="${LOG_FILE:-$REAL_HOME/setup-yarg.log}"
+VERBOSE_INSTALL="${VERBOSE_INSTALL:-false}"
 
 YARG_URL="https://github.com/YARC-Official/YARG/releases/download/v0.14.0/YARG_v0.14.0-Linux-x86_64.zip"
 INSTALL_DIR="$REAL_HOME/YARG"
 ZIP_FILE="/tmp/YARG_Linux.zip"
+
+run_quiet() {
+    if [[ "${VERBOSE_INSTALL:-false}" == "true" ]]; then
+        "$@"
+        return $?
+    fi
+
+    "$@" >> "$LOG_FILE" 2>&1
+}
 
 echo -e "${BLUE}===================================================================${NC}"
 echo -e "${CYAN}        🎸 Iniciando descarga e instalación de YARG 🎸${NC}"
@@ -28,22 +39,24 @@ echo -e "${BLUE}================================================================
 # Activar multilib e instalar dependencias
 echo -e "${BLUE}[0/5]${NC} Configurando repositorio multilib e instalando dependencias..."
 sudo sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
-sudo pacman -Syu --noconfirm lib32-pipewire lib32-alsa-plugins lib32-libpulse hidapi pulseaudio-alsa pulsemixer
+run_quiet sudo pacman -Syu --noconfirm lib32-pipewire lib32-alsa-plugins lib32-libpulse hidapi pulseaudio-alsa pulsemixer
 
 # Crear directorio de instalación con el usuario correcto
 sudo -u "$REAL_USER" mkdir -p "$INSTALL_DIR"
 
 # Descargar el archivo
 echo -e "${BLUE}[1/5]${NC} Descargando YARG desde: ${YELLOW}$YARG_URL${NC}"
-if ! wget -O "$ZIP_FILE" "$YARG_URL"; then
+if ! run_quiet wget -O "$ZIP_FILE" "$YARG_URL"; then
     echo -e "${RED}ERROR: No se pudo descargar el archivo.${NC}"
+    echo -e "${YELLOW}Revise el log: $LOG_FILE${NC}"
     exit 1
 fi
 
 # Descomprimir como el usuario real
 echo -e "${BLUE}[2/5]${NC} Descomprimiendo en ${YELLOW}$INSTALL_DIR${NC}..."
-if ! sudo -u "$REAL_USER" unzip -o "$ZIP_FILE" -d "$INSTALL_DIR"; then
+if ! run_quiet sudo -u "$REAL_USER" unzip -o "$ZIP_FILE" -d "$INSTALL_DIR"; then
     echo -e "${RED}ERROR: Fallo al descomprimir el archivo.${NC}"
+    echo -e "${YELLOW}Revise el log: $LOG_FILE${NC}"
     exit 1
 fi
 
@@ -124,9 +137,9 @@ sudo sysctl -p /etc/sysctl.d/99-yarg.conf
 if command -v cpupower &> /dev/null; then
     sudo cpupower frequency-set -g performance || true
 else
-    sudo pacman -S --noconfirm cpupower || true
-    sudo systemctl enable --now cpupower || true
-    sudo cpupower frequency-set -g performance || true
+    run_quiet sudo pacman -S --noconfirm cpupower || true
+    run_quiet sudo systemctl enable --now cpupower || true
+    run_quiet sudo cpupower frequency-set -g performance || true
 fi
 
 # 4. CPU en modo performance está listo
@@ -150,4 +163,3 @@ sudo chmod +x /usr/local/bin/update-yarg
 
 sleep 5
 sudo reboot
-

@@ -1,42 +1,60 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 # YARG download, configuration, Samba and updater helpers.
 
 resolve_yarg_download_url() {
-    if [[ "$YARG_RELEASE_CHANNEL" != "nightly" ]]; then
-        return 0
-    fi
+    local api_url asset_regex channel_label
 
-    log "Resolviendo URL del nightly mas reciente de YARG"
+    case "$YARG_RELEASE_CHANNEL" in
+        stable-latest|latest)
+            api_url="$YARG_STABLE_API_URL"
+            asset_regex="$YARG_STABLE_ASSET_REGEX"
+            channel_label="stable"
+            ;;
+        nightly)
+            api_url="$YARG_NIGHTLY_API_URL"
+            asset_regex="$YARG_NIGHTLY_ASSET_REGEX"
+            channel_label="nightly"
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    log "Resolviendo URL del $channel_label mas reciente de YARG"
 
     local release_json
-    if ! release_json=$(curl -fsSL "$YARG_NIGHTLY_API_URL"); then
-        log_error "Fallo al consultar $YARG_NIGHTLY_API_URL"
+    if ! release_json=$(curl -fsSL "$api_url"); then
+        log_error "Fallo al consultar $api_url"
         return 1
     fi
 
-    local nightly_url
-    nightly_url=$(printf '%s\n' "$release_json" \
+    local release_url
+    release_url=$(printf '%s\n' "$release_json" \
         | grep -E '"browser_download_url":' \
         | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
-        | grep -Ei "$YARG_NIGHTLY_ASSET_REGEX" \
+        | grep -Ei "$asset_regex" \
         | head -n 1 || true)
 
-    if [[ -z "$nightly_url" ]]; then
-        nightly_url=$(printf '%s\n' "$release_json" \
+    if [[ -z "$release_url" ]]; then
+        release_url=$(printf '%s\n' "$release_json" \
             | grep -E '"browser_download_url":' \
             | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
             | grep -Ei 'linux.*\.zip' \
             | head -n 1 || true)
     fi
 
-    if [[ -z "$nightly_url" ]]; then
-        log_error "No se encontro asset Linux ZIP en el ultimo release nightly"
+    if [[ -z "$release_url" ]]; then
+        log_error "No se encontro asset Linux ZIP en el ultimo release $channel_label"
         return 1
     fi
 
-    YARG_URL="$nightly_url"
-    log "Nightly seleccionado: $YARG_URL"
+    YARG_URL="$release_url"
+    log "YARG $channel_label seleccionado: $YARG_URL"
 }
 
 install_yarg() {
@@ -47,7 +65,7 @@ install_yarg() {
 
     mkdir -p /mnt/root /mnt/opt/YARG
 
-    if ! curl -fL --retry 3 --retry-delay 2 -o "$yarg_zip" "$YARG_URL"; then
+    if ! run_quiet curl -fL --retry 3 --retry-delay 2 -o "$yarg_zip" "$YARG_URL"; then
         log_error "Fallo al descargar YARG"
         return 1
     fi
@@ -67,14 +85,14 @@ install_yarg() {
         return 1
     fi
 
-    if ! arch-chroot /mnt unzip -o "$chroot_yarg_zip" -d /opt/YARG; then
+    if ! run_quiet arch-chroot /mnt unzip -o "$chroot_yarg_zip" -d /opt/YARG; then
         log_error "Fallo al descomprimir YARG"
         return 1
     fi
 
-    arch-chroot /mnt find /opt/YARG -maxdepth 1 -type f -name 'YARG*' -exec chmod +x {} +
-    arch-chroot /mnt mkdir -p "$YARG_SONGS_DIR"
-    arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/YARG
+    run_quiet arch-chroot /mnt find /opt/YARG -maxdepth 1 -type f -name 'YARG*' -exec chmod +x {} +
+    run_quiet arch-chroot /mnt mkdir -p "$YARG_SONGS_DIR"
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/YARG
     rm -f "$yarg_zip"
 }
 
@@ -107,8 +125,8 @@ configure_yarg_samba_share() {
     log "Configurando Samba para compartir canciones de YARG"
 
     mkdir -p /mnt/etc/samba /mnt/var/log/samba "/mnt${songs_dir}"
-    arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$songs_dir"
-    arch-chroot /mnt chmod 775 "$songs_dir"
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$songs_dir"
+    run_quiet arch-chroot /mnt chmod 775 "$songs_dir"
 
     if [[ ! -f "$smb_conf" ]] || ! grep -q '^\[global\]' "$smb_conf"; then
         cat > "$smb_conf" << EOF
@@ -136,7 +154,7 @@ EOF
 EOF
     fi
 
-    if ! arch-chroot /mnt systemctl enable smb.service nmb.service; then
+    if ! run_quiet arch-chroot /mnt systemctl enable smb.service nmb.service; then
         log_error "Fallo al habilitar servicios Samba"
         return 1
     fi
@@ -166,7 +184,7 @@ min_freq=''
 max_freq=''
 EOF
 
-    if ! arch-chroot /mnt systemctl enable cpupower.service; then
+    if ! run_quiet arch-chroot /mnt systemctl enable cpupower.service; then
         log_error "Fallo al habilitar cpupower.service"
         return 1
     fi
@@ -181,6 +199,11 @@ install_yarg_update_script() {
 set -euo pipefail
 
 YARG_URL="$YARG_URL"
+YARG_RELEASE_CHANNEL="$YARG_RELEASE_CHANNEL"
+YARG_STABLE_API_URL="$YARG_STABLE_API_URL"
+YARG_STABLE_ASSET_REGEX="$YARG_STABLE_ASSET_REGEX"
+YARG_NIGHTLY_API_URL="$YARG_NIGHTLY_API_URL"
+YARG_NIGHTLY_ASSET_REGEX="$YARG_NIGHTLY_ASSET_REGEX"
 INSTALL_DIR="/opt/YARG"
 SONGS_DIR="$YARG_SONGS_DIR"
 ZIP_FILE="/tmp/YARG_Linux.zip"
@@ -191,9 +214,57 @@ if [[ \${EUID} -ne 0 ]]; then
     exit 1
 fi
 
-curl -L -o "\$ZIP_FILE" "\$YARG_URL"
+resolve_latest_release_url() {
+    local api_url="\$1"
+    local asset_regex="\$2"
+    local channel_label="\$3"
+    local release_json release_url
+
+    release_json="\$(curl -fsSL "\$api_url")"
+
+    release_url="\$(printf '%s\n' "\$release_json" \
+        | grep -E '"browser_download_url":' \
+        | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+        | grep -Ei "\$asset_regex" \
+        | head -n 1 || true)"
+
+    if [[ -z "\$release_url" ]]; then
+        release_url="\$(printf '%s\n' "\$release_json" \
+            | grep -E '"browser_download_url":' \
+            | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+            | grep -Ei 'linux.*\.zip' \
+            | head -n 1 || true)"
+    fi
+
+    if [[ -z "\$release_url" ]]; then
+        echo "No se encontro asset Linux ZIP en el ultimo release \$channel_label." >&2
+        return 1
+    fi
+
+    printf '%s\n' "\$release_url"
+}
+
+case "\$YARG_RELEASE_CHANNEL" in
+    stable-latest|latest)
+        echo "Resolviendo latest stable desde \$YARG_STABLE_API_URL"
+        YARG_URL="\$(resolve_latest_release_url "\$YARG_STABLE_API_URL" "\$YARG_STABLE_ASSET_REGEX" "stable")"
+        ;;
+    nightly)
+        echo "Resolviendo latest nightly desde \$YARG_NIGHTLY_API_URL"
+        YARG_URL="\$(resolve_latest_release_url "\$YARG_NIGHTLY_API_URL" "\$YARG_NIGHTLY_ASSET_REGEX" "nightly")"
+        ;;
+    stable)
+        ;;
+    *)
+        echo "Canal desconocido '\$YARG_RELEASE_CHANNEL'; usando YARG_URL guardado." >&2
+        ;;
+esac
+
+echo "Descargando YARG desde: \$YARG_URL"
+curl -fsSL --retry 3 --retry-delay 2 -o "\$ZIP_FILE" "\$YARG_URL"
+unzip -tq "\$ZIP_FILE" >/dev/null
 mkdir -p "\$SONGS_DIR"
-unzip -o "\$ZIP_FILE" -d "\$INSTALL_DIR"
+unzip -o "\$ZIP_FILE" -d "\$INSTALL_DIR" >/dev/null
 find "\$INSTALL_DIR" -maxdepth 1 -type f -name "YARG*" -exec chmod +x {} +
 chown -R "\$OWNER:\$OWNER" "\$INSTALL_DIR"
 chown -R "\$OWNER:\$OWNER" "\$SONGS_DIR"

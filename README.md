@@ -9,7 +9,7 @@ Repositorio oficial: [Xalcker/MiniArch](https://github.com/Xalcker/MiniArch).
 
 MiniArch mantiene dos caminos:
 
-- `install-arch-cage.sh`: camino recomendado para YARG. Instala Arch Linux,
+- `install-cage-yarg.sh`: camino recomendado para YARG. Instala Arch Linux,
   Cage, Wayland/XWayland, YARG, audio, Samba y la carpeta de canciones en un
   solo flujo.
 - `install-arch-kiosk.sh` + `setup-yarg.sh`: camino original OpenBox/X11. Sirve
@@ -19,7 +19,7 @@ MiniArch mantiene dos caminos:
 En corto:
 
 ```text
-Recomendado: install-arch-cage.sh
+Recomendado: install-cage-yarg.sh
 Fallback:    install-arch-kiosk.sh y luego setup-yarg.sh
 ```
 
@@ -29,13 +29,13 @@ compatibilidad con builds de YARG que lo necesiten.
 
 ## Estado Actual
 
-`install-arch-cage.sh` es un orquestador modular. Reutiliza los modulos
+`install-cage-yarg.sh` es un orquestador modular. Reutiliza los modulos
 compartidos de `lib/` y mueve lo especifico a:
 
 - `lib/cage.sh`: sistema base Cage, usuario, servicio systemd y wrapper
   `/usr/local/bin/run-yarg.sh`.
-- `lib/yarg.sh`: descarga de YARG stable/nightly, settings iniciales, Samba,
-  rendimiento y updater.
+- `lib/yarg.sh`: descarga de YARG stable, stable-latest o nightly, settings
+  iniciales, Samba, rendimiento y updater.
 
 `install-arch-kiosk.sh` sigue usando el flujo original OpenBox/X11 y copia
 `setup-yarg.sh` para instalar YARG despues del primer arranque.
@@ -60,7 +60,7 @@ compartidos de `lib/` y mueve lo especifico a:
 
 ### Cage/YARG
 
-`install-arch-cage.sh` instala y configura:
+`install-cage-yarg.sh` instala y configura:
 
 - Cage como compositor de kiosko.
 - Wayland y XWayland.
@@ -150,8 +150,8 @@ YARG_PERSISTENT_DATA_DIR=/home/${KIOSK_USER}/.config/yarg-kiosk
 Ejecuta el camino recomendado:
 
 ```bash
-chmod +x install-arch-cage.sh
-./install-arch-cage.sh
+chmod +x install-cage-yarg.sh
+./install-cage-yarg.sh
 ```
 
 Fallback OpenBox/X11:
@@ -166,13 +166,13 @@ Advertencia: ambos instaladores destruyen el disco configurado en
 
 ## Flujo De Cage/YARG
 
-`install-arch-cage.sh` ejecuta, en orden:
+`install-cage-yarg.sh` ejecuta, en orden:
 
 1. Exige y carga `.env`.
 2. Pregunta por NVIDIA si `INSTALL_NVIDIA` esta vacio.
 3. Pregunta por canal de YARG si `YARG_RELEASE_CHANNEL=ask`.
 4. Valida entorno live, passwords, assets opcionales, red y disco.
-5. Resuelve el nightly mas reciente si se eligio `nightly`.
+5. Resuelve el release mas reciente si se eligio `stable-latest` o `nightly`.
 6. Particiona, formatea y monta el disco.
 7. Instala Arch base, Cage, Wayland/XWayland, Samba, dbus y stack grafico.
 8. Genera `fstab`.
@@ -194,6 +194,7 @@ Advertencia: ambos instaladores destruyen el disco configurado en
 `YARG_RELEASE_CHANNEL` acepta:
 
 - `stable`: usa exactamente `YARG_URL`.
+- `stable-latest`: consulta el ultimo release estable de `YARC-Official/YARG`.
 - `nightly`: consulta el ultimo release de
   `YARC-Official/YARG-BleedingEdge`.
 - `ask`: pregunta durante la instalacion.
@@ -201,12 +202,12 @@ Advertencia: ambos instaladores destruyen el disco configurado en
 El prompt actual es:
 
 ```text
-Canal de YARG: stable desde .env o nightly mas reciente? [stable/nightly] (stable):
+Canal de YARG: stable fijo, stable-latest o nightly? [stable/stable-latest/nightly] (stable):
 ```
 
-El updater actual guarda el URL resuelto durante la instalacion. Si instalaste
-nightly, `sudo update-yarg` reinstala ese build exacto por ahora. Esta en
-`TODO.md` hacer que vuelva a consultar el latest nightly.
+`sudo update-yarg` respeta el canal instalado. En `stable` usa `YARG_URL`; en
+`stable-latest` consulta el latest estable; en `nightly` consulta el latest de
+`YARG-BleedingEdge` antes de descargar.
 
 ## Uso Despues De Instalar Cage/YARG
 
@@ -306,14 +307,19 @@ Variables comunes:
 - `PLYMOUTH_THEME_NAME`: nombre del tema Plymouth.
 - `PLYMOUTH_IMAGE_PATH`: imagen PNG opcional para Plymouth.
 - `CURSOR_PATH`: cursor opcional para el camino OpenBox.
+- `LOG_FILE`: archivo donde se guarda la salida detallada de la instalacion.
+- `VERBOSE_INSTALL`: si es `true`, muestra en consola la salida completa de
+  `pacman`, `pacstrap`, `unzip`, `grub-mkconfig`, etc. Por defecto es `false`.
 
 Variables de Cage/YARG:
 
 - `ROOT_PASSWORD`: password de root. Cage lo exige con valor real.
 - `KIOSK_HOSTNAME`: hostname. Por defecto `minikiosk`.
 - `INSTALL_NVIDIA`: `true`, `false` o vacio para preguntar.
-- `YARG_RELEASE_CHANNEL`: `stable`, `nightly` o `ask`.
+- `YARG_RELEASE_CHANNEL`: `stable`, `stable-latest`, `nightly` o `ask`.
 - `YARG_URL`: ZIP estable de YARG.
+- `YARG_STABLE_API_URL`: endpoint del ultimo release estable.
+- `YARG_STABLE_ASSET_REGEX`: patron usado para elegir el ZIP Linux estable.
 - `YARG_NIGHTLY_API_URL`: endpoint del ultimo nightly.
 - `YARG_NIGHTLY_ASSET_REGEX`: patron para elegir el ZIP Linux del nightly.
 - `YARG_SONGS_DIR`: carpeta local de canciones.
@@ -327,7 +333,7 @@ defecto; el camino OpenBox no lo requiere.
 ```text
 MiniArch/
 |-- install-arch-kiosk.sh      # Orquestador OpenBox/X11 original
-|-- install-arch-cage.sh       # Orquestador Cage/YARG integrado
+|-- install-cage-yarg.sh       # Orquestador Cage/YARG integrado
 |-- setup-yarg.sh              # Post-install YARG standalone
 |-- lib/
 |   |-- validation.sh          # Validacion de entorno, seguridad, red y disco
@@ -381,7 +387,7 @@ Valida sintaxis:
 
 ```bash
 bash -n install-arch-kiosk.sh
-bash -n install-arch-cage.sh
+bash -n install-cage-yarg.sh
 for file in lib/*.sh; do bash -n "$file"; done
 ```
 
@@ -423,12 +429,33 @@ DISK_DEVICE=/dev/vda
 Plymouth es opcional en el camino Cage. Si el paquete, tema o asset falla, el
 instalador debe continuar sin pantalla personalizada.
 
+Si ImageMagick no esta disponible, el instalador intenta copiar el PNG sin
+redimensionarlo en vez de fallar por el escalado.
+
 ### Cage no arranca YARG
 
 ```bash
 systemctl status cage-kiosk.service
 journalctl -u cage-kiosk.service -b
 ls -la /opt/YARG
+```
+
+### Necesito ver la salida completa del instalador
+
+Por defecto, MiniArch oculta la salida ruidosa de `pacman`, `pacstrap`,
+`mkfs`, `grub-mkconfig`, `mkinitcpio`, `curl` y `unzip`, pero la conserva en
+`LOG_FILE`.
+
+Para modo detallado:
+
+```bash
+VERBOSE_INSTALL=true ./install-cage-yarg.sh
+```
+
+O define en `.env`:
+
+```bash
+VERBOSE_INSTALL=true
 ```
 
 Si el binario no existe, el wrapper abre `foot`. Puedes reinstalar con:

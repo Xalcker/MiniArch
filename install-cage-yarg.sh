@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# install-arch-cage.sh
+# install-cage-yarg.sh
 # -----------------------------------------------------------------------------
 # Orquestador para instalar Arch Linux + Cage (Wayland/XWayland) + YARG.
 # Reutiliza los modulos compartidos del instalador kiosk original y conserva
@@ -19,6 +19,7 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="${LOG_FILE:-/var/log/arch-cage-install.log}"
+VERBOSE_INSTALL="${VERBOSE_INSTALL:-false}"
 
 log() {
     local message="$*"
@@ -45,6 +46,15 @@ step() {
 
 warn() {
     echo -e "${YELLOW}  ! $1${NC}"
+}
+
+run_quiet() {
+    if [[ "${VERBOSE_INSTALL:-false}" == "true" ]]; then
+        "$@"
+        return $?
+    fi
+
+    "$@" >> "$LOG_FILE" 2>&1
 }
 
 if [[ ! -f "$SCRIPT_DIR/.env" ]]; then
@@ -77,6 +87,8 @@ PLYMOUTH_ASSET_AVAILABLE="${PLYMOUTH_ASSET_AVAILABLE:-false}"
 YARG_SONGS_DIR="${YARG_SONGS_DIR:-/opt/YARG/Songs}"
 YARG_PERSISTENT_DATA_DIR="${YARG_PERSISTENT_DATA_DIR:-/home/$KIOSK_USER/.config/yarg-kiosk}"
 YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL:-ask}"
+YARG_STABLE_API_URL="${YARG_STABLE_API_URL:-https://api.github.com/repos/YARC-Official/YARG/releases/latest}"
+YARG_STABLE_ASSET_REGEX="${YARG_STABLE_ASSET_REGEX:-linux.*(x86_64|x64|64).*\\.zip}"
 YARG_NIGHTLY_API_URL="${YARG_NIGHTLY_API_URL:-https://api.github.com/repos/YARC-Official/YARG-BleedingEdge/releases/latest}"
 YARG_NIGHTLY_ASSET_REGEX="${YARG_NIGHTLY_ASSET_REGEX:-linux.*(x86_64|x64|64).*\\.zip}"
 YARG_URL="${YARG_URL:-https://github.com/YARC-Official/YARG/releases/download/v0.14.0/YARG_v0.14.0-Linux-x86_64.zip}"
@@ -115,16 +127,19 @@ ask_initial_questions() {
 
     YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL,,}"
     if [[ "$YARG_RELEASE_CHANNEL" == "ask" ]]; then
-        read -rp "$(echo -e "${BLUE}Canal de YARG: stable desde .env o nightly mas reciente? [stable/nightly] (stable): ${NC}")" answer
+        read -rp "$(echo -e "${BLUE}Canal de YARG: stable fijo, stable-latest o nightly? [stable/stable-latest/nightly] (stable): ${NC}")" answer
         case "${answer,,}" in
             ""|s|stable)
                 YARG_RELEASE_CHANNEL="stable"
+                ;;
+            latest|stable-latest|sl)
+                YARG_RELEASE_CHANNEL="stable-latest"
                 ;;
             n|nightly)
                 YARG_RELEASE_CHANNEL="nightly"
                 ;;
             *)
-                log_error "Opcion invalida: $answer. Responda stable o nightly."
+                log_error "Opcion invalida: $answer. Responda stable, stable-latest o nightly."
                 return 1
                 ;;
         esac
@@ -134,11 +149,15 @@ ask_initial_questions() {
         stable)
             log "Se usara YARG stable desde YARG_URL: $YARG_URL"
             ;;
+        stable-latest|latest)
+            YARG_RELEASE_CHANNEL="stable-latest"
+            log "Se resolvera el stable mas reciente desde YARC-Official/YARG"
+            ;;
         nightly)
             log "Se resolvera el nightly mas reciente desde YARG-BleedingEdge"
             ;;
         *)
-            log_error "YARG_RELEASE_CHANNEL invalido: $YARG_RELEASE_CHANNEL. Use stable, nightly o ask."
+            log_error "YARG_RELEASE_CHANNEL invalido: $YARG_RELEASE_CHANNEL. Use stable, stable-latest, nightly o ask."
             return 1
             ;;
     esac

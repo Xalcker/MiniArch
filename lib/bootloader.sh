@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 ################################################################################
 # Módulo de Bootloader
 #
@@ -31,7 +35,7 @@ install_grub() {
     log "Instalando paquetes GRUB y efibootmgr"
     
     # Instalar grub y efibootmgr
-    if ! arch-chroot /mnt pacman -S --noconfirm grub efibootmgr; then
+    if ! run_quiet arch-chroot /mnt pacman -S --noconfirm grub efibootmgr; then
         log_error "Fallo al instalar grub y efibootmgr"
         return 1
     fi
@@ -45,7 +49,7 @@ install_grub() {
     log "Instalando GRUB en la partición ESP con soporte UEFI"
     
     # Instalar GRUB con soporte UEFI
-    if ! arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB; then
+    if ! run_quiet arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB; then
         log_error "Fallo al instalar GRUB en la partición ESP"
         return 1
     fi
@@ -109,7 +113,7 @@ configure_grub_silent() {
     log "Generando archivo de configuración de GRUB"
     
     # Generar el archivo de configuración de GRUB
-    if ! arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
+    if ! run_quiet arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
         log_error "Fallo al generar el archivo de configuración de GRUB"
         return 1
     fi

@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Cage/Wayland helpers for install-arch-cage.sh.
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
+# Cage/Wayland helpers for install-cage-yarg.sh.
 
 install_cage_base_system() {
     local packages=(
@@ -26,7 +30,7 @@ install_cage_base_system() {
     fi
 
     log "Instalando sistema base y stack Cage/Wayland (${#packages[@]} paquetes)"
-    if ! pacstrap -K /mnt "${packages[@]}"; then
+    if ! run_quiet pacstrap -K /mnt "${packages[@]}"; then
         log_error "Fallo pacstrap para sistema Cage/YARG"
         return 1
     fi
@@ -39,7 +43,7 @@ configure_system_basics() {
     echo "en_US.UTF-8 UTF-8" > /mnt/etc/locale.gen
     echo "LANG=en_US.UTF-8" > /mnt/etc/locale.conf
 
-    if ! arch-chroot /mnt locale-gen; then
+    if ! run_quiet arch-chroot /mnt locale-gen; then
         log_error "Fallo al generar locale"
         return 1
     fi
@@ -70,7 +74,7 @@ configure_nvidia_kernel_params() {
         echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3 nvidia_drm.modeset=1"' >> "$grub_config"
     fi
 
-    if ! arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
+    if ! run_quiet arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
         log_error "Fallo al regenerar GRUB con parametros NVIDIA"
         return 1
     fi
@@ -135,7 +139,7 @@ configure_multilib_yarg_deps() {
 
     sed -i '/\[multilib\]/,/Include/s/^#//' /mnt/etc/pacman.conf
 
-    if ! arch-chroot /mnt pacman -Syu --noconfirm \
+    if ! run_quiet arch-chroot /mnt pacman -Syu --noconfirm \
         lib32-pipewire lib32-alsa-plugins lib32-libpulse \
         hidapi systemd-libs pulseaudio-alsa pulsemixer; then
         log_error "Fallo al instalar dependencias multilib/YARG"

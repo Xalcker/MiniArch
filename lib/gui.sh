@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 # GUI Module - OpenBox and X Configuration
 # Handles installation of X server, OpenBox window manager, user creation,
 # and automatic login/X startup configuration
@@ -10,7 +14,7 @@ install_openbox() {
     log "Installing X server, OpenBox, xterm, and system dialog components..."
     
     # Install required packages including XDG desktop portal for system dialogs and xterm
-    if ! arch-chroot /mnt pacman -S --noconfirm xorg-server xorg-xinit xorg-xset openbox xterm xdg-desktop-portal xdg-desktop-portal-gtk gtk3 unclutter; then
+    if ! run_quiet arch-chroot /mnt pacman -S --noconfirm xorg-server xorg-xinit xorg-xset openbox xterm xdg-desktop-portal xdg-desktop-portal-gtk gtk3 unclutter; then
         log_error "Failed to install X server, OpenBox, xterm, unclutter, and dialog components"
         return 1
     fi

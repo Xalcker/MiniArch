@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 # Módulo de Finalización
 # Funciones para configurar red y limpiar el sistema después de la instalación
 
@@ -10,7 +14,7 @@ configure_network() {
     log "Configurando red y zona horaria..."
 
     # Instalar NetworkManager
-    if ! arch-chroot /mnt pacman -S --noconfirm networkmanager; then
+    if ! run_quiet arch-chroot /mnt pacman -S --noconfirm networkmanager; then
         log_error "Fallo al instalar NetworkManager"
         return 1
     fi
@@ -25,7 +29,7 @@ configure_network() {
         log "Instalando y configurando SSH..."
 
         # Instalar OpenSSH
-        if ! arch-chroot /mnt pacman -S --noconfirm openssh; then
+        if ! run_quiet arch-chroot /mnt pacman -S --noconfirm openssh; then
             log_error "Fallo al instalar OpenSSH"
             return 1
         fi

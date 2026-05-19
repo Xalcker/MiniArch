@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 ################################################################################
 # Módulo de Instalación Base
 #
@@ -37,7 +41,7 @@ install_base_system() {
     log "Instalando sistema base con pacstrap (base, linux, linux-firmware)"
     
     # Ejecutar pacstrap para instalar el sistema base y utilidades esenciales
-    if ! pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba nano git wpa_supplicant; then
+    if ! run_quiet pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba nano git wpa_supplicant; then
         log_error "Fallo al instalar el sistema base y utilidades (sudo, wget, curl, unzip, samba, nano, git, wpa_supplicant) con pacstrap"
         return 1
     fi
@@ -76,7 +80,7 @@ generate_fstab() {
     log "Generando archivo /etc/fstab con UUIDs"
     
     # Generar fstab usando genfstab con opción -U (UUIDs)
-    if ! genfstab -U /mnt >> /mnt/etc/fstab; then
+    if ! genfstab -U /mnt >> /mnt/etc/fstab 2>> "$LOG_FILE"; then
         log_error "Fallo al generar /etc/fstab"
         return 1
     fi

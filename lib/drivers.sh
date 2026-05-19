@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -F run_quiet >/dev/null; then
+    run_quiet() { "$@"; }
+fi
+
 ################################################################################
 # Módulo de Drivers
 #
@@ -30,7 +34,7 @@ install_graphics_drivers() {
     log "Instalando controladores gráficos (AMD, Intel, NVIDIA, Mesa)"
     
     # Instalar todos los controladores gráficos
-    if ! arch-chroot /mnt pacman -S --noconfirm xf86-video-amdgpu xf86-video-intel nvidia-open mesa; then
+    if ! run_quiet arch-chroot /mnt pacman -S --noconfirm xf86-video-amdgpu xf86-video-intel nvidia-open mesa; then
         log_error "Fallo al instalar controladores gráficos"
         return 1
     fi
@@ -63,7 +67,7 @@ install_audio_system() {
     # - wireplumber: Gestor de sesión indispensable para PipeWire
     # - ffmpeg/gst-*: Códecs multimedia para decodificación de canciones (YARG)
     # - bluez*: Soporte para guitarras y periféricos Bluetooth
-    if ! arch-chroot /mnt pacman -S --noconfirm \
+    if ! run_quiet arch-chroot /mnt pacman -S --noconfirm \
         pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber \
         libpulse alsa-plugins alsa-utils \
         ffmpeg gst-libav gst-plugins-good libvorbis opus \

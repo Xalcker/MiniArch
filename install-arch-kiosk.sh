@@ -32,6 +32,7 @@ NC='\033[0m' # No Color
 
 # Archivo de log temporal (se sobrescribirá con el valor de .env si existe)
 LOG_FILE="${LOG_FILE:-/var/log/arch-kiosk-install.log}"
+VERBOSE_INSTALL="${VERBOSE_INSTALL:-false}"
 
 # Función para logging general
 log() {
@@ -49,6 +50,15 @@ log_action() {
 log_error() {
     local message="$*"
     echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] ${RED}ERROR:${NC} $message" | tee -a "$LOG_FILE" >&2
+}
+
+run_quiet() {
+    if [[ "${VERBOSE_INSTALL:-false}" == "true" ]]; then
+        "$@"
+        return $?
+    fi
+
+    "$@" >> "$LOG_FILE" 2>&1
 }
 
 ################################################################################
