@@ -51,6 +51,11 @@ semantico cuando se publiquen releases formales.
 - El camino Cage/YARG ya no instala `pulseaudio-alsa` encima de
   `pipewire-alsa`; despues de multilib reafirma `/etc/asound.conf` hacia
   PipeWire para evitar el error de `pipewire-alsa` al iniciar YARG.
+- El wrapper espera a que ALSA `default` pueda abrir audio via PipeWire antes
+  de lanzar YARG.
+- `cage-kiosk.service` ahora escribe `XDG_RUNTIME_DIR` con el UID real del
+  usuario kiosk en vez de usar `%U`, que podia expandirse como root (`0`) en
+  los `ExecStartPre` y romper PipeWire/ALSA.
 
 ## [1.0.0] - Version Inicial
 

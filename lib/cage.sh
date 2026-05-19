@@ -266,6 +266,27 @@ wait_for_pulse_sink() {
     return 1
 }
 
+wait_for_alsa_default() {
+    local attempts="${1:-50}"
+
+    if ! command -v aplay >/dev/null 2>&1; then
+        return 1
+    fi
+
+    for _ in $(seq 1 "$attempts"); do
+        if command -v timeout >/dev/null 2>&1; then
+            if timeout 2 aplay -q -D default -t raw -f S16_LE -c 2 -r 48000 -d 1 /dev/zero >/dev/null 2>&1; then
+                return 0
+            fi
+        elif aplay -q -D default -t raw -f S16_LE -c 2 -r 48000 -d 1 /dev/zero >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.2
+    done
+
+    return 1
+}
+
 if command -v pipewire >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1; then
     echo "run-yarg: iniciando pipewire" >&2
     pipewire 2>&1 | sed 's/^/[pipewire] /' &
@@ -290,6 +311,10 @@ echo "run-yarg: esperando sink Pulse/PipeWire" >&2
 wait_for_pulse_sink 50 || \
     echo "Aviso: no se encontro un sink Pulse/PipeWire antes de iniciar YARG." >&2
 
+echo "run-yarg: esperando ALSA default via PipeWire" >&2
+wait_for_alsa_default 50 || \
+    echo "Aviso: ALSA default no abrio antes de iniciar YARG." >&2
+
 YARG_BIN=$(find /opt/YARG -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)
 
 if [[ -n "$YARG_BIN" ]]; then
@@ -307,6 +332,12 @@ WRAPPER
 
 install_cage_service() {
     log "Creando servicio systemd cage-kiosk.service"
+
+    local kiosk_uid
+    if ! kiosk_uid=$(arch-chroot /mnt id -u "$KIOSK_USER"); then
+        log_error "No se pudo resolver UID de $KIOSK_USER para cage-kiosk.service"
+        return 1
+    fi
 
     cat > /mnt/etc/systemd/system/cage-kiosk.service << EOF
 [Unit]
@@ -326,14 +357,14 @@ TTYReset=yes
 TTYVHangup=yes
 TTYVTDisallocate=yes
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
-Environment=XDG_RUNTIME_DIR=/run/user/%U
-ExecStartPre=+/usr/bin/mkdir -p /run/user/%U
+Environment=XDG_RUNTIME_DIR=/run/user/$kiosk_uid
+ExecStartPre=+/usr/bin/mkdir -p /run/user/$kiosk_uid
 ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x pipewire-pulse
 ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x wireplumber
 ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x pipewire
-ExecStartPre=-/usr/bin/rm -f /run/user/%U/pipewire-0 /run/user/%U/pipewire-0.lock /run/user/%U/pulse/native
-ExecStartPre=+/usr/bin/chown $KIOSK_USER:$KIOSK_USER /run/user/%U
-ExecStartPre=+/usr/bin/chmod 700 /run/user/%U
+ExecStartPre=-/usr/bin/rm -f /run/user/$kiosk_uid/pipewire-0 /run/user/$kiosk_uid/pipewire-0.lock /run/user/$kiosk_uid/pulse/native
+ExecStartPre=+/usr/bin/chown $KIOSK_USER:$KIOSK_USER /run/user/$kiosk_uid
+ExecStartPre=+/usr/bin/chmod 700 /run/user/$kiosk_uid
 ExecStart=/usr/bin/dbus-run-session -- /usr/local/bin/run-yarg.sh
 ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x pipewire-pulse
 ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x wireplumber
