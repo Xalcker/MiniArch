@@ -56,6 +56,9 @@ semantico cuando se publiquen releases formales.
 - `cage-kiosk.service` ahora escribe `XDG_RUNTIME_DIR` con el UID real del
   usuario kiosk en vez de usar `%U`, que podia expandirse como root (`0`) en
   los `ExecStartPre` y romper PipeWire/ALSA.
+- Plymouth ya no fuerza modulos graficos en `MODULES`, restaura
+  `mkinitcpio.conf` si falla `mkinitcpio -P` y evita regenerar initramfs dos
+  veces al activar el tema.
 
 ## [1.0.0] - Version Inicial
 

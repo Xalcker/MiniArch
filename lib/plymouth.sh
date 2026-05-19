@@ -233,14 +233,13 @@ configure_plymouth() {
     # Limpiar archivo temporal
     rm -f "$temp_image"
     
-    log "Actualizando /etc/mkinitcpio.conf para habilitar KMS y Plymouth"
+    log "Actualizando /etc/mkinitcpio.conf para habilitar Plymouth"
     
     # Backup del archivo original
     cp /mnt/etc/mkinitcpio.conf /mnt/etc/mkinitcpio.conf.backup
     
-    # Habilitar KMS (Kernel Mode Setting) agregando drivers de video a MODULES
-    # Esto es crucial para que Plymouth se muestre temprano en Proxmox y otros entornos
-    sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 i915 amdgpu nouveau virtio_gpu qxl bochs_drm)/' /mnt/etc/mkinitcpio.conf
+    # No se fuerzan modulos graficos en MODULES; mkinitcpio autodetect/kms
+    # maneja esto mejor en kernels actuales y evita fallos por modulos ausentes.
     
     # Agregar plymouth hook después de udev de forma más robusta
     if grep -q "plymouth" /mnt/etc/mkinitcpio.conf; then
@@ -255,13 +254,14 @@ configure_plymouth() {
     # Regenerar initramfs
     if ! run_quiet arch-chroot /mnt mkinitcpio -P; then
         log_error "Fallo al regenerar initramfs"
+        cp /mnt/etc/mkinitcpio.conf.backup /mnt/etc/mkinitcpio.conf
         return 1
     fi
     
     log "Activando tema de Plymouth: $theme_name"
     
     # Activar el tema personalizado
-    if ! run_quiet arch-chroot /mnt plymouth-set-default-theme -R "$theme_name"; then
+    if ! run_quiet arch-chroot /mnt plymouth-set-default-theme "$theme_name"; then
         log_error "Fallo al activar tema de Plymouth"
         return 1
     fi
