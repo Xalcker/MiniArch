@@ -195,14 +195,18 @@ wait_for_path() {
 }
 
 wait_for_pulse_sink() {
-    local attempts="${1:-200}"
+    local attempts="${1:-50}"
 
     if ! command -v pactl >/dev/null 2>&1; then
         return 1
     fi
 
     for _ in $(seq 1 "$attempts"); do
-        if pactl list short sinks 2>/dev/null | grep -q .; then
+        if command -v timeout >/dev/null 2>&1; then
+            if timeout 1 pactl list short sinks 2>/dev/null | grep -q .; then
+                return 0
+            fi
+        elif pactl list short sinks 2>/dev/null | grep -q .; then
             return 0
         fi
         sleep 0.1
@@ -228,15 +232,17 @@ if command -v pipewire-pulse >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewir
     pipewire-pulse 2>&1 | sed 's/^/[pipewire-pulse] /' &
 fi
 
-wait_for_pulse_sink 200 || \
+wait_for_pulse_sink 50 || \
     echo "Aviso: no se encontro un sink Pulse/PipeWire antes de iniciar YARG." >&2
 
 YARG_BIN=$(find /opt/YARG -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)
 
 if [[ -n "$YARG_BIN" ]]; then
+    echo "Iniciando YARG: $YARG_BIN" >&2
     exec /usr/bin/cage -- "$YARG_BIN" -persistent-data-path "__YARG_PERSISTENT_DATA_DIR__"
 fi
 
+echo "No se encontro YARG en /opt/YARG; abriendo foot." >&2
 exec /usr/bin/cage /usr/bin/foot
 WRAPPER
 

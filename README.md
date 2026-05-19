@@ -228,7 +228,8 @@ El wrapper:
 - Crea un DBus de sesion con `dbus-run-session` si no existe.
 - Exporta variables Wayland/Cage.
 - Arranca PipeWire, WirePlumber y PipeWire Pulse en orden.
-- Espera a que exista un sink Pulse/PipeWire antes de lanzar YARG.
+- Espera unos segundos a que exista un sink Pulse/PipeWire; si no aparece,
+  lanza YARG de todos modos y deja el aviso en journal.
 - Busca un binario ejecutable `YARG*` en `/opt/YARG`.
 - Lanza YARG con `-persistent-data-path`.
 - Abre `foot` como fallback si no encuentra YARG.
