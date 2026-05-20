@@ -86,6 +86,8 @@ CURSOR_PATH="${CURSOR_PATH:-./assets/cursor/}"
 PLYMOUTH_ASSET_AVAILABLE="${PLYMOUTH_ASSET_AVAILABLE:-false}"
 YARG_SONGS_DIR="${YARG_SONGS_DIR:-/opt/YARG/Songs}"
 YARG_PERSISTENT_DATA_DIR="${YARG_PERSISTENT_DATA_DIR:-/home/$KIOSK_USER/.config/yarg-kiosk}"
+YARG_RESOLUTION="${YARG_RESOLUTION:-ask}"
+YARG_FORCE_SOFTWARE_RENDER="${YARG_FORCE_SOFTWARE_RENDER:-false}"
 YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL:-ask}"
 YARG_STABLE_API_URL="${YARG_STABLE_API_URL:-https://api.github.com/repos/YARC-Official/YARG/releases/latest}"
 YARG_STABLE_ASSET_REGEX="${YARG_STABLE_ASSET_REGEX:-linux.*(x86_64|x64|64).*\\.zip}"
@@ -106,6 +108,37 @@ source "$SCRIPT_DIR/lib/finalization.sh" || { log_error "No se pudo importar fin
 
 INSTALL_MOUNTS_CREATED=0
 INSTALL_SUCCESS=0
+
+resolve_yarg_resolution() {
+    local resolution="${1,,}"
+
+    case "$resolution" in
+        4k|2160p|3840x2160)
+            YARG_RESOLUTION="4k"
+            YARG_SCREEN_WIDTH=3840
+            YARG_SCREEN_HEIGHT=2160
+            ;;
+        2k|1440p|2560x1440)
+            YARG_RESOLUTION="2k"
+            YARG_SCREEN_WIDTH=2560
+            YARG_SCREEN_HEIGHT=1440
+            ;;
+        1080|1080p|1920x1080)
+            YARG_RESOLUTION="1080p"
+            YARG_SCREEN_WIDTH=1920
+            YARG_SCREEN_HEIGHT=1080
+            ;;
+        720|720p|1280x720)
+            YARG_RESOLUTION="720p"
+            YARG_SCREEN_WIDTH=1280
+            YARG_SCREEN_HEIGHT=720
+            ;;
+        *)
+            log_error "YARG_RESOLUTION invalida: $1. Use 4k, 2k, 1080p, 720p o ask."
+            return 1
+            ;;
+    esac
+}
 
 ask_initial_questions() {
     section "Configuracion inicial"
@@ -161,6 +194,18 @@ ask_initial_questions() {
             return 1
             ;;
     esac
+
+    YARG_RESOLUTION="${YARG_RESOLUTION,,}"
+    if [[ "$YARG_RESOLUTION" == "ask" ]]; then
+        read -rp "$(echo -e "${BLUE}Resolucion de YARG: 4k, 2k, 1080p o 720p? [4k/2k/1080p/720p] (1080p): ${NC}")" answer
+        YARG_RESOLUTION="${answer:-1080p}"
+    fi
+
+    if ! resolve_yarg_resolution "$YARG_RESOLUTION"; then
+        return 1
+    fi
+
+    log "Resolucion de YARG seleccionada: $YARG_RESOLUTION (${YARG_SCREEN_WIDTH}x${YARG_SCREEN_HEIGHT})"
 }
 
 cleanup_on_exit() {

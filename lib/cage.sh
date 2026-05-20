@@ -176,13 +176,17 @@ set -euo pipefail
 
 echo "run-yarg: iniciado como $(id -un) pid=$$" >&2
 
-if grep -q "hypervisor" /proc/cpuinfo 2>/dev/null; then
-    echo "run-yarg: entorno virtual detectado; usando render por software" >&2
-    export WLR_RENDERER_ALLOW_SOFTWARE=1
-    export WLR_NO_HARDWARE_CURSORS=1
-    export LIBGL_ALWAYS_SOFTWARE=1
-    export GALLIUM_DRIVER=llvmpipe
-fi
+YARG_FORCE_SOFTWARE_RENDER="__YARG_FORCE_SOFTWARE_RENDER__"
+
+case "${YARG_FORCE_SOFTWARE_RENDER,,}" in
+    true|yes|si|1)
+        echo "run-yarg: usando render por software por configuracion" >&2
+        export WLR_RENDERER_ALLOW_SOFTWARE=1
+        export WLR_NO_HARDWARE_CURSORS=1
+        export LIBGL_ALWAYS_SOFTWARE=1
+        export GALLIUM_DRIVER=llvmpipe
+        ;;
+esac
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 echo "run-yarg: XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >&2
@@ -232,6 +236,8 @@ export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=cage
 export WLR_XWAYLAND=1
 export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+YARG_SCREEN_WIDTH="__YARG_SCREEN_WIDTH__"
+YARG_SCREEN_HEIGHT="__YARG_SCREEN_HEIGHT__"
 
 wait_for_path() {
     local path="$1"
@@ -319,7 +325,18 @@ YARG_BIN=$(find /opt/YARG -maxdepth 1 -type f -name "YARG*" -executable -print -
 
 if [[ -n "$YARG_BIN" ]]; then
     echo "Iniciando YARG: $YARG_BIN" >&2
-    exec /usr/bin/cage -- "$YARG_BIN" -persistent-data-path "__YARG_PERSISTENT_DATA_DIR__"
+    YARG_ARGS=(-persistent-data-path "__YARG_PERSISTENT_DATA_DIR__")
+
+    if [[ -n "$YARG_SCREEN_WIDTH" && -n "$YARG_SCREEN_HEIGHT" ]]; then
+        echo "run-yarg: resolucion YARG ${YARG_SCREEN_WIDTH}x${YARG_SCREEN_HEIGHT}" >&2
+        YARG_ARGS+=(
+            -screen-width "$YARG_SCREEN_WIDTH"
+            -screen-height "$YARG_SCREEN_HEIGHT"
+            -screen-fullscreen 1
+        )
+    fi
+
+    exec /usr/bin/cage -- "$YARG_BIN" "${YARG_ARGS[@]}"
 fi
 
 echo "No se encontro YARG en /opt/YARG; abriendo foot." >&2
@@ -328,6 +345,9 @@ WRAPPER
 
     chmod +x /mnt/usr/local/bin/run-yarg.sh
     sed -i "s#__YARG_PERSISTENT_DATA_DIR__#$YARG_PERSISTENT_DATA_DIR#g" /mnt/usr/local/bin/run-yarg.sh
+    sed -i "s#__YARG_SCREEN_WIDTH__#${YARG_SCREEN_WIDTH:-}#g" /mnt/usr/local/bin/run-yarg.sh
+    sed -i "s#__YARG_SCREEN_HEIGHT__#${YARG_SCREEN_HEIGHT:-}#g" /mnt/usr/local/bin/run-yarg.sh
+    sed -i "s#__YARG_FORCE_SOFTWARE_RENDER__#${YARG_FORCE_SOFTWARE_RENDER:-false}#g" /mnt/usr/local/bin/run-yarg.sh
 }
 
 install_cage_service() {

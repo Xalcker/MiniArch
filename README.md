@@ -145,6 +145,8 @@ ENABLE_PLYMOUTH=true
 YARG_RELEASE_CHANNEL=ask
 YARG_SONGS_DIR=/opt/YARG/Songs
 YARG_PERSISTENT_DATA_DIR=/home/${KIOSK_USER}/.config/yarg-kiosk
+YARG_RESOLUTION=ask
+YARG_FORCE_SOFTWARE_RENDER=false
 ```
 
 Ejecuta el camino recomendado:
@@ -171,23 +173,24 @@ Advertencia: ambos instaladores destruyen el disco configurado en
 1. Exige y carga `.env`.
 2. Pregunta por NVIDIA si `INSTALL_NVIDIA` esta vacio.
 3. Pregunta por canal de YARG si `YARG_RELEASE_CHANNEL=ask`.
-4. Valida entorno live, passwords, assets opcionales, red y disco.
-5. Resuelve el release mas reciente si se eligio `stable-latest` o `nightly`.
-6. Particiona, formatea y monta el disco.
-7. Instala Arch base, Cage, Wayland/XWayland, Samba, dbus y stack grafico.
-8. Genera `fstab`.
-9. Configura hostname, locale, root, GRUB, Plymouth y NVIDIA si aplica.
-10. Instala audio, codecs y Bluetooth desde `lib/drivers.sh`.
-11. Crea usuario kiosko y sudoers.
-12. Habilita multilib y dependencias 32-bit de YARG.
-13. Configura HID.
-14. Descarga e instala YARG.
-15. Crea `settings.json` con la carpeta fija de canciones.
-16. Configura Samba.
-17. Aplica optimizaciones de rendimiento.
-18. Crea `update-yarg`, `run-yarg.sh` y `cage-kiosk.service`.
-19. Configura red, target grafico y limpieza visual.
-20. Desmonta particiones y desactiva swap.
+4. Pregunta por resolucion de YARG si `YARG_RESOLUTION=ask`.
+5. Valida entorno live, passwords, assets opcionales, red y disco.
+6. Resuelve el release mas reciente si se eligio `stable-latest` o `nightly`.
+7. Particiona, formatea y monta el disco.
+8. Instala Arch base, Cage, Wayland/XWayland, Samba, dbus y stack grafico.
+9. Genera `fstab`.
+10. Configura hostname, locale, root, GRUB, Plymouth y NVIDIA si aplica.
+11. Instala audio, codecs y Bluetooth desde `lib/drivers.sh`.
+12. Crea usuario kiosko y sudoers.
+13. Habilita multilib y dependencias 32-bit de YARG.
+14. Configura HID.
+15. Descarga e instala YARG.
+16. Crea `settings.json` con la carpeta fija de canciones.
+17. Configura Samba.
+18. Aplica optimizaciones de rendimiento.
+19. Crea `update-yarg`, `run-yarg.sh` y `cage-kiosk.service`.
+20. Configura red, target grafico y limpieza visual.
+21. Desmonta particiones y desactiva swap.
 
 ## YARG Stable Y Nightly
 
@@ -324,6 +327,9 @@ Variables de Cage/YARG:
 - `YARG_NIGHTLY_ASSET_REGEX`: patron para elegir el ZIP Linux del nightly.
 - `YARG_SONGS_DIR`: carpeta local de canciones.
 - `YARG_PERSISTENT_DATA_DIR`: perfil persistente de YARG.
+- `YARG_RESOLUTION`: `4k`, `2k`, `1080p`, `720p` o `ask`.
+- `YARG_FORCE_SOFTWARE_RENDER`: `true` fuerza llvmpipe/software render;
+  `false` permite usar la GPU disponible, recomendado para GPU passthrough.
 
 Nota: `REQUIRE_ROOT_PASSWORD` existe como control interno. Cage lo activa por
 defecto; el camino OpenBox no lo requiere.
