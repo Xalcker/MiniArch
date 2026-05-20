@@ -108,7 +108,10 @@ configure_yarg_default_settings() {
 {
   "SongFolders": [
     "$YARG_SONGS_DIR"
-  ]
+  ],
+  "ShowAntiPiracyDialog": false,
+  "ShowEngineInconsistencyDialog": false,
+  "ShowExperimentalWarningDialog": false
 }
 EOF
 

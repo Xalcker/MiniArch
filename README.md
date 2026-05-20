@@ -253,7 +253,10 @@ Con contenido equivalente a:
 {
   "SongFolders": [
     "/opt/YARG/Songs"
-  ]
+  ],
+  "ShowAntiPiracyDialog": false,
+  "ShowEngineInconsistencyDialog": false,
+  "ShowExperimentalWarningDialog": false
 }
 ```
 

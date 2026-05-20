@@ -234,7 +234,11 @@ echo "run-yarg: DBus=${DBUS_SESSION_BUS_ADDRESS:-sin-dbus}" >&2
 
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=cage
-export WLR_XWAYLAND=1
+if [[ -x /usr/bin/Xwayland ]]; then
+    export WLR_XWAYLAND=/usr/bin/Xwayland
+else
+    unset WLR_XWAYLAND
+fi
 export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
 YARG_SCREEN_WIDTH="__YARG_SCREEN_WIDTH__"
 YARG_SCREEN_HEIGHT="__YARG_SCREEN_HEIGHT__"
