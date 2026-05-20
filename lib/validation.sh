@@ -270,7 +270,7 @@ preflight_optional_assets() {
         fi
 
         if ! command -v convert &> /dev/null && ! command -v magick &> /dev/null; then
-            echo "ADVERTENCIA: ImageMagick no está disponible en el entorno live; el instalador lo instalará en el sistema destino cuando configure Plymouth." >&2
+            echo "ADVERTENCIA: ImageMagick no está disponible en el entorno live; Plymouth copiará el PNG sin escalar." >&2
         fi
     fi
 

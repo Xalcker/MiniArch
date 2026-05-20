@@ -210,17 +210,8 @@ configure_plymouth() {
             log "Advertencia: No se pudo escalar la imagen con convert; se copiara sin escalar."
             cp "$temp_image" "/mnt${target_image}"
         fi
-    elif run_quiet arch-chroot /mnt pacman -S --noconfirm imagemagick; then
-        if arch-chroot /mnt command -v magick >/dev/null 2>&1; then
-            run_quiet arch-chroot /mnt magick /tmp/plymouth-temp.png -resize 1280x720! "$target_image" || cp "$temp_image" "/mnt${target_image}"
-        elif arch-chroot /mnt command -v convert >/dev/null 2>&1; then
-            run_quiet arch-chroot /mnt convert /tmp/plymouth-temp.png -resize 1280x720! "$target_image" || cp "$temp_image" "/mnt${target_image}"
-        else
-            log "Advertencia: ImageMagick se instalo, pero no se encontro magick/convert; se copiara sin escalar."
-            cp "$temp_image" "/mnt${target_image}"
-        fi
     else
-        log "Advertencia: No se pudo instalar ImageMagick; se copiara la imagen Plymouth sin escalar."
+        log "Advertencia: ImageMagick no esta instalado en el sistema destino; se copiara la imagen Plymouth sin escalar."
         cp "$temp_image" "/mnt${target_image}"
     fi
 

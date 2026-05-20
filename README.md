@@ -96,6 +96,8 @@ compartidos de `lib/` y mueve lo especifico a:
 - Disco de al menos 16 GB.
 - 2 GB de RAM o mas.
 - Conexion a internet durante la instalacion.
+- ImageMagick en el entorno live si vas a usar imagen personalizada de
+  Plymouth.
 
 En VM, habilita EFI/UEFI. En VirtualBox:
 
@@ -117,7 +119,7 @@ ping -c 3 archlinux.org
 Clona el repositorio:
 
 ```bash
-pacman -Sy git
+pacman -Sy git imagemagick
 git clone https://github.com/Xalcker/MiniArch.git
 cd MiniArch
 ```
