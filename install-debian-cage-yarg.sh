@@ -260,17 +260,38 @@ enable_debian_components() {
     if [[ -f /etc/apt/sources.list.d/debian.sources ]]; then
         log "Modificando archivo de fuentes moderno (Deb822)..."
         cp /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list.d/debian.sources.bak
-        # Agregar contrib, non-free, non-free-firmware si no estan presentes
-        sed -i 's/^Components: main$/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources
-        sed -i 's/^Components: main non-free-firmware$/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources
+        perl -pi -e '
+        if (/^Components:\s+(.+)$/) {
+            my $comps = $1;
+            if ($comps =~ /\bmain\b/) {
+                my %seen;
+                my @new_comps;
+                foreach my $c (split(/\s+/, $comps), "contrib", "non-free", "non-free-firmware") {
+                    push @new_comps, $c unless $seen{$c}++;
+                }
+                $_ = "Components: " . join(" ", @new_comps) . "\n";
+            }
+        }
+        ' /etc/apt/sources.list.d/debian.sources
     fi
 
     # 2. Formato tradicional en /etc/apt/sources.list
     if [[ -f /etc/apt/sources.list ]]; then
         log "Modificando archivo de fuentes tradicional..."
         cp /etc/apt/sources.list /etc/apt/sources.list.bak
-        # Reemplazar 'main' al final de lineas de repos por los componentes adicionales de forma segura
-        sed -i -E 's/(\bmain\b)(?!\b.*contrib\b)(?!\b.*non-free\b)/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
+        perl -pi -e '
+        if (/^deb(-src)?\s+(\S+)\s+(\S+)\s+(.+)$/) {
+            my ($type, $url, $suite, $comps) = ($1, $2, $3, $4);
+            if ($comps =~ /\bmain\b/) {
+                my %seen;
+                my @new_comps;
+                foreach my $c (split(/\s+/, $comps), "contrib", "non-free", "non-free-firmware") {
+                    push @new_comps, $c unless $seen{$c}++;
+                }
+                $_ = "deb$type $url $suite " . join(" ", @new_comps) . "\n";
+            }
+        }
+        ' /etc/apt/sources.list
     fi
 
     log "Actualizando lista de paquetes..."
