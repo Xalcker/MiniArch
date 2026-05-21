@@ -303,7 +303,7 @@ install_debian_packages() {
     log "Instalando paquetes base y dependencias del sistema kiosk..."
     local pkgs=(
         sudo nano curl wget unzip git dbus dbus-user-session file
-        samba alsa-utils pulseaudio-utils
+        samba alsa-utils pulseaudio-utils imagemagick
         pipewire wireplumber pipewire-pulse pipewire-alsa
         libasound2-plugins libpulse0 ffmpeg gstreamer1.0-libav gstreamer1.0-plugins-good
         usbutils bluez cage xwayland foot fonts-dejavu-core
@@ -1036,14 +1036,8 @@ EOF
 
     local target_image="${target_theme_dir}/background.png"
     if [[ "$PLYMOUTH_ASSET_AVAILABLE" == "true" && -f "$PLYMOUTH_IMAGE_PATH" ]]; then
-        log "Preparando imagen de Plymouth..."
-        if command -v convert &>/dev/null; then
-            run_quiet convert "$PLYMOUTH_IMAGE_PATH" -resize 1280x720! "$target_image"
-        elif command -v magick &>/dev/null; then
-            run_quiet magick "$PLYMOUTH_IMAGE_PATH" -resize 1280x720! "$target_image"
-        else
-            cp "$PLYMOUTH_IMAGE_PATH" "$target_image"
-        fi
+        log "Copiando imagen de Plymouth directamente sin redimensionar..."
+        cp "$PLYMOUTH_IMAGE_PATH" "$target_image"
     else
         log "No hay imagen Plymouth disponible. Generando un background negro plano..."
         if command -v convert &>/dev/null; then
