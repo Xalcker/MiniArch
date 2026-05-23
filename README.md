@@ -124,6 +124,8 @@ curl -fsSL https://raw.githubusercontent.com/Xalcker/MiniArch/main/bootstrap-arc
 El bootstrap instala dependencias del live ISO, clona este repo en
 `/root/MiniArch`, deja ejecutables los instaladores y pregunta si quieres correr
 Cage/YARG, Cage/foot o solo preparar el repo para clonar/expandir discos.
+Muestra solo progreso resumido; la salida detallada queda en
+`/tmp/miniarch-bootstrap.log`.
 
 Tambien puedes fijar el camino sin prompt:
 
@@ -136,6 +138,12 @@ Para probar una rama:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Xalcker/MiniArch/main/bootstrap-arch-live.sh | MINIARCH_BRANCH=mi-rama bash
+```
+
+Para diagnostico con salida completa:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Xalcker/MiniArch/main/bootstrap-arch-live.sh | MINIARCH_VERBOSE=true bash
 ```
 
 ### Instalacion Manual
