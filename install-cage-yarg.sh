@@ -459,14 +459,19 @@ main() {
         exit 1
     fi
 
-    if ! install_nvidia_drivers_if_requested; then
-        log_error "Fallo en instalacion de drivers NVIDIA"
-        exit 1
+    NVIDIA_DRIVERS_INSTALLED=false
+    if install_nvidia_drivers_if_requested; then
+        [[ "$INSTALL_NVIDIA" == "true" ]] && NVIDIA_DRIVERS_INSTALLED=true
+    else
+        warn "No se pudieron instalar drivers NVIDIA ahora; se continuara con Mesa/Intel/AMD."
+        warn "Puede instalar NVIDIA despues desde el menu de mantenimiento o con pacman."
     fi
 
-    if ! configure_nvidia_kernel_params; then
-        log_error "Fallo en configuracion de parametros NVIDIA"
-        exit 1
+    if [[ "${NVIDIA_DRIVERS_INSTALLED:-false}" == "true" ]]; then
+        if ! configure_nvidia_kernel_params; then
+            log_error "Fallo en configuracion de parametros NVIDIA"
+            exit 1
+        fi
     fi
 
     section "Stack YARG"

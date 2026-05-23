@@ -10,6 +10,14 @@ fi
 configure_network() {
     log "Configurando red y zona horaria..."
 
+    if declare -F ensure_pacman_download_user >/dev/null; then
+        ensure_pacman_download_user || return 1
+    fi
+
+    if declare -F repair_chroot_ca_certificates >/dev/null; then
+        repair_chroot_ca_certificates || return 1
+    fi
+
     if ! run_quiet arch-chroot /mnt pacman -S --noconfirm networkmanager; then
         log_error "Fallo al instalar NetworkManager"
         return 1

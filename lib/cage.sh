@@ -53,6 +53,26 @@ ensure_pacman_download_user() {
     fi
 }
 
+repair_chroot_ca_certificates() {
+    local source_bundle="/etc/ssl/certs/ca-certificates.crt"
+    local target_bundle="/mnt/etc/ssl/certs/ca-certificates.crt"
+
+    mkdir -p /mnt/etc/ssl/certs
+
+    if [[ -s "$source_bundle" ]]; then
+        cp "$source_bundle" "$target_bundle"
+    fi
+
+    if arch-chroot /mnt command -v update-ca-trust >/dev/null 2>&1; then
+        run_quiet arch-chroot /mnt update-ca-trust || true
+    fi
+
+    if [[ ! -s "$target_bundle" ]]; then
+        log_error "No existe un bundle de certificados valido en $target_bundle"
+        return 1
+    fi
+}
+
 configure_system_basics() {
     log "Configurando hostname, locale, zona horaria y root"
 
@@ -104,6 +124,7 @@ install_nvidia_drivers_if_requested() {
 
     log "Instalando drivers NVIDIA despues del sistema base"
     ensure_pacman_download_user || return 1
+    repair_chroot_ca_certificates || return 1
 
     if ! run_quiet arch-chroot /mnt pacman -S --needed --noconfirm nvidia-open nvidia-utils; then
         log_error "Fallo al instalar drivers NVIDIA"
@@ -173,6 +194,8 @@ configure_multilib_yarg_deps() {
     log "Habilitando multilib e instalando dependencias 32-bit de YARG"
 
     sed -i '/\[multilib\]/,/Include/s/^#//' /mnt/etc/pacman.conf
+    ensure_pacman_download_user || return 1
+    repair_chroot_ca_certificates || return 1
 
     if ! run_quiet arch-chroot /mnt pacman -Syu --noconfirm \
         lib32-pipewire lib32-alsa-plugins lib32-libpulse \
