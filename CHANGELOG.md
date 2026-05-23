@@ -23,6 +23,11 @@ semantico cuando se publiquen releases formales.
   ordenado desde `/usr/local/bin/run-yarg.sh`.
 - `update-yarg` respeta `YARG_RELEASE_CHANNEL`; en `stable-latest` consulta el
   latest estable y en `nightly` consulta el latest de `YARG-BleedingEdge`.
+- Instalador minimal `install-cage-kiosk.sh` para Cage + foot sin YARG.
+- Scripts `scripts/clone-miniarch.sh` y `scripts/expand-home.sh` para clonado,
+  cambio de UUIDs y expansion de `/home`.
+- Bootstrap `bootstrap-arch-live.sh` para instalar dependencias, clonar el repo
+  y lanzar el instalador desde una linea con `curl | bash`.
 
 ### Cambiado
 
@@ -34,8 +39,14 @@ semantico cuando se publiquen releases formales.
 - `lib/drivers.sh` instala PipeWire ALSA/Pulse/JACK, WirePlumber, codecs y
   genera `/etc/asound.conf` para que ALSA use PipeWire por defecto.
 - Plymouth se trata como opcional en el camino Cage.
-- `validate_security_config` permite exigir password de root en Cage sin romper
-  el camino OpenBox original.
+- `validate_security_config` permite exigir password de root en los caminos
+  Cage.
+- El antiguo camino OpenBox fue reemplazado por Cage/foot.
+
+### Removido
+
+- `install-arch-kiosk.sh`, `setup-yarg.sh` y `lib/gui.sh`.
+- Instaladores Debian/Ubuntu experimentales.
 
 ### Corregido
 

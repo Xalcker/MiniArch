@@ -10,6 +10,7 @@
 # - validate_environment(): Verifica que se está ejecutando en Arch Linux
 # - check_network(): Verifica conectividad de red
 # - check_disk(): Valida que el disco existe y tiene suficiente espacio
+# - select_disk_device(): Permite elegir el disco destino de forma interactiva
 ################################################################################
 
 ################################################################################
@@ -57,6 +58,106 @@ check_network() {
     fi
 
     echo "Conectividad de red verificada correctamente."
+    return 0
+}
+
+################################################################################
+# select_disk_device()
+#
+# Muestra los discos detectados y permite seleccionar el disco destino por numero
+# o ruta. Esto reduce el riesgo de instalar por accidente en /dev/sda cuando el
+# destino real es otro disco, por ejemplo una USB.
+#
+# Arguments:
+#   $1 - Disco sugerido desde la configuracion (ej: /dev/sda o ask)
+#
+# Outputs:
+#   Imprime el disco seleccionado en stdout.
+#
+# Returns:
+#   0 - Si el usuario selecciona y confirma un disco valido
+#   1 - Si no hay discos, la seleccion es invalida o el usuario cancela
+################################################################################
+select_disk_device() {
+    local configured_device="${1:-ask}"
+    local -a disks=()
+    local disk selected answer confirmation
+
+    if ! command -v lsblk &> /dev/null; then
+        echo "ERROR: No se encontro lsblk; no se pueden listar discos." >&2
+        return 1
+    fi
+
+    mapfile -t disks < <(lsblk -d -n -p -e 7,11 -o NAME,TYPE 2>/dev/null | awk '$2 == "disk" { print $1 }')
+
+    if [[ ${#disks[@]} -eq 0 ]]; then
+        echo "ERROR: No se detectaron discos instalables." >&2
+        return 1
+    fi
+
+    echo "" >&2
+    echo "Discos detectados:" >&2
+    local index=1
+    for disk in "${disks[@]}"; do
+        local size tran rm model label
+        size=$(lsblk -d -n -o SIZE "$disk" 2>/dev/null | awk '{$1=$1; print}')
+        tran=$(lsblk -d -n -o TRAN "$disk" 2>/dev/null | awk '{$1=$1; print}')
+        rm=$(lsblk -d -n -o RM "$disk" 2>/dev/null | awk '{$1=$1; print}')
+        model=$(lsblk -d -n -o MODEL "$disk" 2>/dev/null | awk '{$1=$1; print}')
+        label=""
+
+        if [[ "$tran" == "usb" || "$rm" == "1" ]]; then
+            label=" [USB/removible]"
+        fi
+
+        printf "  %d) %-14s %-8s %-10s %s%s\n" "$index" "$disk" "${size:-?}" "${tran:-local}" "${model:-sin-modelo}" "$label" >&2
+        index=$((index + 1))
+    done
+    echo "" >&2
+
+    if [[ "$configured_device" != "ask" && -n "$configured_device" ]]; then
+        echo "Disco configurado actualmente: $configured_device" >&2
+        read -rp "Presione Enter para usarlo, elija un numero, escriba otra ruta (/dev/...) o 'cancelar': " answer
+        answer="${answer:-$configured_device}"
+    else
+        read -rp "Elija el disco destino por numero o ruta (/dev/...); 'cancelar' para salir: " answer
+    fi
+
+    case "${answer,,}" in
+        cancelar|cancel|q|quit|salir)
+            echo "Operacion cancelada por el usuario." >&2
+            return 1
+            ;;
+    esac
+
+    if [[ "$answer" =~ ^[0-9]+$ ]]; then
+        if (( answer < 1 || answer > ${#disks[@]} )); then
+            echo "ERROR: Seleccion fuera de rango: $answer" >&2
+            return 1
+        fi
+        selected="${disks[$((answer - 1))]}"
+    else
+        selected="$answer"
+    fi
+
+    if [[ ! -b "$selected" ]]; then
+        echo "ERROR: El dispositivo '$selected' no existe o no es un dispositivo de bloque." >&2
+        return 1
+    fi
+
+    echo "" >&2
+    echo "Resumen del disco seleccionado:" >&2
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL "$selected" >&2
+    echo "" >&2
+    echo "ADVERTENCIA: La instalacion borrara particiones y datos en $selected." >&2
+    read -rp "Para confirmar escriba INSTALAR: " confirmation
+
+    if [[ "$confirmation" != "INSTALAR" ]]; then
+        echo "Operacion cancelada. No se modificara el disco." >&2
+        return 1
+    fi
+
+    echo "$selected"
     return 0
 }
 

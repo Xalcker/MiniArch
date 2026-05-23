@@ -57,22 +57,23 @@ run_quiet() {
     "$@" >> "$LOG_FILE" 2>&1
 }
 
-if [[ ! -f "$SCRIPT_DIR/.env" ]]; then
-    log_error "No existe $SCRIPT_DIR/.env. Cree el archivo .env antes de ejecutar el instalador Cage."
-    exit 1
+ENV_FILE_LOADED=false
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+    log "Cargando configuracion desde .env..."
+    set -a
+    # shellcheck disable=SC1090
+    source <(grep -v '^#' "$SCRIPT_DIR/.env" | grep -v '^$')
+    set +a
+    ENV_FILE_LOADED=true
+    log "Configuracion cargada desde .env"
+else
+    warn "No existe $SCRIPT_DIR/.env; se usara modo asistido interactivo."
 fi
 
-log "Cargando configuracion desde .env..."
-set -a
-# shellcheck disable=SC1090
-source <(grep -v '^#' "$SCRIPT_DIR/.env" | grep -v '^$')
-set +a
-log "Configuracion cargada desde .env"
-
-DISK_DEVICE="${DISK_DEVICE:-/dev/sda}"
+DISK_DEVICE="${DISK_DEVICE:-ask}"
 KIOSK_USER="${KIOSK_USER:-kiosk}"
 KIOSK_PASSWORD="${KIOSK_PASSWORD:-}"
-ROOT_PASSWORD="${ROOT_PASSWORD:-root}"
+ROOT_PASSWORD="${ROOT_PASSWORD:-}"
 REQUIRE_ROOT_PASSWORD="${REQUIRE_ROOT_PASSWORD:-true}"
 KIOSK_HOSTNAME="${KIOSK_HOSTNAME:-minikiosk}"
 TIMEZONE="${TIMEZONE:-America/Phoenix}"
@@ -88,6 +89,7 @@ YARG_SONGS_DIR="${YARG_SONGS_DIR:-/opt/YARG/Songs}"
 YARG_PERSISTENT_DATA_DIR="${YARG_PERSISTENT_DATA_DIR:-/home/$KIOSK_USER/.config/yarg-kiosk}"
 YARG_RESOLUTION="${YARG_RESOLUTION:-ask}"
 YARG_FORCE_SOFTWARE_RENDER="${YARG_FORCE_SOFTWARE_RENDER:-false}"
+YARG_EXIT_MENU="${YARG_EXIT_MENU:-always}"
 YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL:-ask}"
 YARG_STABLE_API_URL="${YARG_STABLE_API_URL:-https://api.github.com/repos/YARC-Official/YARG/releases/latest}"
 YARG_STABLE_ASSET_REGEX="${YARG_STABLE_ASSET_REGEX:-linux.*(x86_64|x64|64).*\\.zip}"
@@ -140,8 +142,140 @@ resolve_yarg_resolution() {
     esac
 }
 
+prompt_value() {
+    local var_name="$1"
+    local label="$2"
+    local default_value="$3"
+    local current_value="${!var_name-}"
+    local answer
+
+    if [[ -n "$current_value" && "$ENV_FILE_LOADED" == "true" ]]; then
+        return 0
+    fi
+
+    read -rp "$(echo -e "${BLUE}${label} (${current_value:-$default_value}): ${NC}")" answer
+    answer="${answer:-${current_value:-$default_value}}"
+    printf -v "$var_name" "%s" "$answer"
+}
+
+prompt_bool() {
+    local var_name="$1"
+    local label="$2"
+    local default_value="$3"
+    local current_value="${!var_name-}"
+    local prompt_default answer normalized
+
+    if [[ -n "$current_value" && "$ENV_FILE_LOADED" == "true" ]]; then
+        return 0
+    fi
+
+    prompt_default="$default_value"
+    [[ "$prompt_default" == "true" ]] && prompt_default="s"
+    [[ "$prompt_default" == "false" ]] && prompt_default="N"
+
+    read -rp "$(echo -e "${BLUE}${label} (s/N, default ${prompt_default}): ${NC}")" answer
+    answer="${answer:-${current_value:-$default_value}}"
+    normalized="${answer,,}"
+
+    case "$normalized" in
+        s|si|sí|y|yes|true|1)
+            printf -v "$var_name" "%s" "true"
+            ;;
+        n|no|false|0)
+            printf -v "$var_name" "%s" "false"
+            ;;
+        *)
+            log_error "Respuesta invalida para $label: $answer"
+            return 1
+            ;;
+    esac
+}
+
+prompt_password() {
+    local var_name="$1"
+    local label="$2"
+    local current_value="${!var_name-}"
+    local password confirmation
+
+    if [[ -n "$current_value" && "$ENV_FILE_LOADED" == "true" ]]; then
+        return 0
+    fi
+
+    while true; do
+        read -rsp "$(echo -e "${BLUE}${label}: ${NC}")" password
+        echo ""
+        read -rsp "$(echo -e "${BLUE}Confirme ${label}: ${NC}")" confirmation
+        echo ""
+
+        if [[ -z "$password" ]]; then
+            log_error "$label no puede quedar vacia"
+            continue
+        fi
+
+        if [[ "$password" != "$confirmation" ]]; then
+            log_error "Las contrasenas no coinciden"
+            continue
+        fi
+
+        printf -v "$var_name" "%s" "$password"
+        return 0
+    done
+}
+
+ask_guided_configuration() {
+    section "Modo asistido"
+
+    if [[ "$ENV_FILE_LOADED" == "true" ]]; then
+        echo -e "${YELLOW}Se cargaron valores desde .env; solo se preguntara lo que falte o este en ask.${NC}"
+    else
+        echo -e "${YELLOW}No se encontro .env. Responda estas preguntas para continuar sin archivo de configuracion.${NC}"
+    fi
+    echo ""
+
+    prompt_value KIOSK_USER "Usuario kiosko" "kiosk" || return 1
+    prompt_password KIOSK_PASSWORD "Password del usuario $KIOSK_USER" || return 1
+
+    if [[ "$REQUIRE_ROOT_PASSWORD" == "true" ]]; then
+        prompt_password ROOT_PASSWORD "Password de root" || return 1
+    fi
+
+    prompt_value KIOSK_HOSTNAME "Hostname del kiosko" "minikiosk" || return 1
+    prompt_value TIMEZONE "Zona horaria" "America/Phoenix" || return 1
+    prompt_bool ENABLE_SSH "Habilitar SSH para mantenimiento remoto" "false" || return 1
+    prompt_bool ENABLE_PLYMOUTH "Habilitar Plymouth" "true" || return 1
+    prompt_bool YARG_FORCE_SOFTWARE_RENDER "Forzar render por software para YARG" "false" || return 1
+
+    if [[ -z "${YARG_EXIT_MENU:-}" || "$ENV_FILE_LOADED" != "true" ]]; then
+        local answer="${YARG_EXIT_MENU:-always}"
+        read -rp "$(echo -e "${BLUE}Que hacer al salir de YARG? [always/restart/never] (${answer}): ${NC}")" answer
+        YARG_EXIT_MENU="${answer:-${YARG_EXIT_MENU:-always}}"
+    fi
+
+    case "${YARG_EXIT_MENU,,}" in
+        always|restart|relaunch|volver|yarg|never|off|false|no)
+            ;;
+        *)
+            log_error "YARG_EXIT_MENU invalido: $YARG_EXIT_MENU. Use always, restart o never."
+            return 1
+            ;;
+    esac
+
+    if [[ "$ENV_FILE_LOADED" != "true" || -z "${YARG_PERSISTENT_DATA_DIR:-}" ]]; then
+        YARG_PERSISTENT_DATA_DIR="/home/$KIOSK_USER/.config/yarg-kiosk"
+    fi
+}
+
 ask_initial_questions() {
     section "Configuracion inicial"
+    if ! ask_guided_configuration; then
+        return 1
+    fi
+
+    if ! DISK_DEVICE="$(select_disk_device "$DISK_DEVICE")"; then
+        log_error "No se selecciono un disco destino valido"
+        return 1
+    fi
+
     echo -e "${YELLOW}Disco destino:${NC} $DISK_DEVICE"
     echo -e "${YELLOW}Usuario kiosko:${NC} $KIOSK_USER"
     echo ""

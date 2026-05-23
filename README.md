@@ -7,20 +7,19 @@ Repositorio oficial: [Xalcker/MiniArch](https://github.com/Xalcker/MiniArch).
 
 ## Caminos De Instalacion
 
-MiniArch mantiene dos caminos:
+MiniArch mantiene dos caminos basados en Cage:
 
 - `install-cage-yarg.sh`: camino recomendado para YARG. Instala Arch Linux,
   Cage, Wayland/XWayland, YARG, audio, Samba y la carpeta de canciones en un
   solo flujo.
-- `install-arch-kiosk.sh` + `setup-yarg.sh`: camino original OpenBox/X11. Sirve
-  como fallback si algun hardware o version de YARG se comporta mejor fuera de
-  Cage.
+- `install-cage-kiosk.sh`: camino minimalista. Instala Arch Linux, Cage y
+  `foot` solamente, util como base de kiosko o terminal de mantenimiento.
 
 En corto:
 
 ```text
 Recomendado: install-cage-yarg.sh
-Fallback:    install-arch-kiosk.sh y luego setup-yarg.sh
+Minimal:     install-cage-kiosk.sh
 ```
 
 Cage es ideal para un equipo dedicado: ejecuta una sola aplicacion fullscreen y
@@ -37,8 +36,8 @@ compartidos de `lib/` y mueve lo especifico a:
 - `lib/yarg.sh`: descarga de YARG stable, stable-latest o nightly, settings
   iniciales, Samba, rendimiento y updater.
 
-`install-arch-kiosk.sh` sigue usando el flujo original OpenBox/X11 y copia
-`setup-yarg.sh` para instalar YARG despues del primer arranque.
+`install-cage-kiosk.sh` conserva el particionado, GRUB, Plymouth opcional,
+red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 
 ## Caracteristicas
 
@@ -78,15 +77,13 @@ compartidos de `lib/` y mueve lo especifico a:
 - Updater `/usr/local/bin/update-yarg`.
 - Servicio `cage-kiosk.service`.
 
-### OpenBox/X11
+### Cage/foot
 
-`install-arch-kiosk.sh` instala:
+`install-cage-kiosk.sh` instala:
 
-- OpenBox/X11.
-- Autologin del usuario kiosko.
-- Autostart que prioriza YARG y usa xterm como fallback.
-- Cursor personalizado opcional.
-- Copia de `setup-yarg.sh` al home del usuario.
+- Cage como compositor de kiosko.
+- `foot` como aplicacion unica.
+- Servicio `cage-kiosk.service`.
 - SSH opcional.
 
 ## Requisitos
@@ -116,6 +113,33 @@ Arranca desde el ISO de Arch Linux y verifica red:
 ping -c 3 archlinux.org
 ```
 
+### Instalacion Rapida
+
+Desde el shell root del live ISO puedes ejecutar:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Xalcker/MiniArch/main/bootstrap-arch-live.sh | bash
+```
+
+El bootstrap instala dependencias del live ISO, clona este repo en
+`/root/MiniArch`, deja ejecutables los instaladores y pregunta si quieres correr
+Cage/YARG, Cage/foot o solo preparar el repo para clonar/expandir discos.
+
+Tambien puedes fijar el camino sin prompt:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Xalcker/MiniArch/main/bootstrap-arch-live.sh | MINIARCH_INSTALLER=yarg bash
+curl -fsSL https://raw.githubusercontent.com/Xalcker/MiniArch/main/bootstrap-arch-live.sh | MINIARCH_INSTALLER=kiosk bash
+```
+
+Para probar una rama:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Xalcker/MiniArch/main/bootstrap-arch-live.sh | MINIARCH_BRANCH=mi-rama bash
+```
+
+### Instalacion Manual
+
 Clona el repositorio:
 
 ```bash
@@ -124,17 +148,21 @@ git clone https://github.com/Xalcker/MiniArch.git
 cd MiniArch
 ```
 
-Copia el ejemplo de configuracion:
+Copia el ejemplo de configuracion si quieres una instalacion repetible:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Para Cage/YARG, `.env` es obligatorio. Define al menos:
+Para Cage/YARG, `.env` es opcional. Si no existe, `install-cage-yarg.sh`
+pregunta lo necesario en modo asistido: usuario, passwords, hostname, timezone,
+red, disco, NVIDIA, canal/resolucion de YARG y menu de salida.
+
+Si usas `.env`, define al menos:
 
 ```bash
-DISK_DEVICE=/dev/sda
+DISK_DEVICE=ask
 KIOSK_USER=kiosk
 KIOSK_PASSWORD=una-contrasena-real
 ROOT_PASSWORD=otra-contrasena-real
@@ -149,6 +177,7 @@ YARG_SONGS_DIR=/opt/YARG/Songs
 YARG_PERSISTENT_DATA_DIR=/home/${KIOSK_USER}/.config/yarg-kiosk
 YARG_RESOLUTION=ask
 YARG_FORCE_SOFTWARE_RENDER=false
+YARG_EXIT_MENU=always
 ```
 
 Ejecuta el camino recomendado:
@@ -158,41 +187,47 @@ chmod +x install-cage-yarg.sh
 ./install-cage-yarg.sh
 ```
 
-Fallback OpenBox/X11:
+Cage/foot minimal:
 
 ```bash
-chmod +x install-arch-kiosk.sh
-./install-arch-kiosk.sh
+chmod +x install-cage-kiosk.sh
+./install-cage-kiosk.sh
 ```
 
-Advertencia: ambos instaladores destruyen el disco configurado en
-`DISK_DEVICE`. Si el disco contiene particiones, el script pedira confirmacion.
+Advertencia: ambos instaladores destruyen el disco seleccionado. Con
+`DISK_DEVICE=ask`, el instalador muestra un selector interactivo con los discos
+detectados, marca USB/removibles y pide confirmar escribiendo `INSTALAR`.
+Tambien puedes fijar `DISK_DEVICE` manualmente, por ejemplo `/dev/sda`,
+`/dev/nvme0n1` o `/dev/vda`; aun asi el instalador mostrara el selector para
+evitar errores antes de particionar.
 
 ## Flujo De Cage/YARG
 
 `install-cage-yarg.sh` ejecuta, en orden:
 
-1. Exige y carga `.env`.
-2. Pregunta por NVIDIA si `INSTALL_NVIDIA` esta vacio.
-3. Pregunta por canal de YARG si `YARG_RELEASE_CHANNEL=ask`.
-4. Pregunta por resolucion de YARG si `YARG_RESOLUTION=ask`.
-5. Valida entorno live, passwords, assets opcionales, red y disco.
-6. Resuelve el release mas reciente si se eligio `stable-latest` o `nightly`.
-7. Particiona, formatea y monta el disco.
-8. Instala Arch base, Cage, Wayland/XWayland, Samba, dbus y stack grafico.
-9. Genera `fstab`.
-10. Configura hostname, locale, root, GRUB, Plymouth y NVIDIA si aplica.
-11. Instala audio, codecs y Bluetooth desde `lib/drivers.sh`.
-12. Crea usuario kiosko y sudoers.
-13. Habilita multilib y dependencias 32-bit de YARG.
-14. Configura HID.
-15. Descarga e instala YARG.
-16. Crea `settings.json` con la carpeta fija de canciones.
-17. Configura Samba.
-18. Aplica optimizaciones de rendimiento.
-19. Crea `update-yarg`, `run-yarg.sh` y `cage-kiosk.service`.
-20. Configura red, target grafico y limpieza visual.
-21. Desmonta particiones y desactiva swap.
+1. Carga `.env` si existe; si no existe, entra en modo asistido.
+2. Pregunta valores faltantes o interactivos de la configuracion.
+3. Muestra el selector de disco y confirma el destino.
+4. Pregunta por NVIDIA si `INSTALL_NVIDIA` esta vacio.
+5. Pregunta por canal de YARG si `YARG_RELEASE_CHANNEL=ask`.
+6. Pregunta por resolucion de YARG si `YARG_RESOLUTION=ask`.
+7. Valida entorno live, passwords, assets opcionales, red y disco.
+8. Resuelve el release mas reciente si se eligio `stable-latest` o `nightly`.
+9. Particiona, formatea y monta el disco.
+10. Instala Arch base, Cage, Wayland/XWayland, Samba, dbus y stack grafico.
+11. Genera `fstab`.
+12. Configura hostname, locale, root, GRUB, Plymouth y NVIDIA si aplica.
+13. Instala audio, codecs y Bluetooth desde `lib/drivers.sh`.
+14. Crea usuario kiosko y sudoers.
+15. Habilita multilib y dependencias 32-bit de YARG.
+16. Configura HID.
+17. Descarga e instala YARG.
+18. Crea `settings.json` con la carpeta fija de canciones.
+19. Configura Samba.
+20. Aplica optimizaciones de rendimiento.
+21. Crea `update-yarg`, `run-yarg.sh` y `cage-kiosk.service`.
+22. Configura red, target grafico y limpieza visual.
+23. Desmonta particiones y desactiva swap.
 
 ## YARG Stable Y Nightly
 
@@ -239,7 +274,24 @@ El wrapper:
   lanza YARG de todos modos y deja el aviso en journal.
 - Busca un binario ejecutable `YARG*` en `/opt/YARG`.
 - Lanza YARG con `-persistent-data-path`.
-- Abre `foot` como fallback si no encuentra YARG.
+- Al salir de YARG, abre un menu de mantenimiento en `foot`.
+- Abre el menu de mantenimiento como fallback si no encuentra YARG.
+
+El menu de mantenimiento permite:
+
+- Configurar sonido con `pulsemixer`.
+- Configurar WiFi con `nmtui` o `nmcli`.
+- Ver direccion IP.
+- Salir a una shell temporal.
+- Volver a YARG.
+- Reiniciar `cage-kiosk.service`.
+- Apagar el kiosko.
+
+`YARG_EXIT_MENU` controla que pasa al cerrar YARG:
+
+- `always`: muestra el menu de mantenimiento.
+- `restart`: vuelve a lanzar YARG sin mostrar menu.
+- `never`: sale del wrapper.
 
 El perfil fijo se crea en:
 
@@ -288,23 +340,23 @@ Actualizar YARG:
 sudo update-yarg
 ```
 
-## Uso Despues De Instalar OpenBox
+## Uso Despues De Instalar Cage/foot
 
-El camino OpenBox/X11 deja `setup-yarg.sh` en el home del usuario. En el sistema
-instalado:
+El camino minimal `install-cage-kiosk.sh` inicia el mismo servicio
+`cage-kiosk.service`, pero ejecuta:
 
-```bash
-./setup-yarg.sh
+```text
+/usr/bin/dbus-run-session -- /usr/local/bin/run-cage-foot.sh
 ```
 
-Ese script instala YARG en el home del usuario, crea `Songs`, configura Samba y
-aplica optimizaciones de rendimiento. No usa `lib/cage.sh` ni `lib/yarg.sh`.
+El wrapper abre `foot` como aplicacion unica dentro de Cage. Es util para un
+kiosko base, diagnostico o para instalar tu propia aplicacion despues.
 
 ## Configuracion
 
 Variables comunes:
 
-- `DISK_DEVICE`: disco destino. Por defecto `/dev/sda`.
+- `DISK_DEVICE`: disco destino. Por defecto `ask`, muestra selector interactivo.
 - `KIOSK_USER`: usuario kiosko.
 - `KIOSK_PASSWORD`: password del usuario kiosko.
 - `TIMEZONE`: zona horaria.
@@ -314,7 +366,7 @@ Variables comunes:
 - `ENABLE_PLYMOUTH`: habilita/deshabilita Plymouth.
 - `PLYMOUTH_THEME_NAME`: nombre del tema Plymouth.
 - `PLYMOUTH_IMAGE_PATH`: imagen PNG opcional para Plymouth.
-- `CURSOR_PATH`: cursor opcional para el camino OpenBox.
+- `CURSOR_PATH`: ruta opcional usada solo por validaciones/assets heredados.
 - `LOG_FILE`: archivo donde se guarda la salida detallada de la instalacion.
 - `VERBOSE_INSTALL`: si es `true`, muestra en consola la salida completa de
   `pacman`, `pacstrap`, `unzip`, `grub-mkconfig`, etc. Por defecto es `false`.
@@ -335,17 +387,21 @@ Variables de Cage/YARG:
 - `YARG_RESOLUTION`: `4k`, `2k`, `1080p`, `720p` o `ask`.
 - `YARG_FORCE_SOFTWARE_RENDER`: `true` fuerza llvmpipe/software render;
   `false` permite usar la GPU disponible, recomendado para GPU passthrough.
+- `YARG_EXIT_MENU`: `always` muestra menu al salir de YARG; `restart`
+  relanza YARG directo; `never` sale del wrapper.
 
-Nota: `REQUIRE_ROOT_PASSWORD` existe como control interno. Cage lo activa por
-defecto; el camino OpenBox no lo requiere.
+Nota: `REQUIRE_ROOT_PASSWORD` existe como control interno. Los caminos Cage lo
+activan por defecto.
 
 ## Estructura Del Proyecto
 
 ```text
 MiniArch/
-|-- install-arch-kiosk.sh      # Orquestador OpenBox/X11 original
+|-- install-cage-kiosk.sh      # Orquestador Cage/foot minimal
 |-- install-cage-yarg.sh       # Orquestador Cage/YARG integrado
-|-- setup-yarg.sh              # Post-install YARG standalone
+|-- scripts/
+|   |-- clone-miniarch.sh       # Clona disco, cambia UUIDs y puede expandir /home
+|   `-- expand-home.sh          # Expande /home despues de clonar
 |-- lib/
 |   |-- validation.sh          # Validacion de entorno, seguridad, red y disco
 |   |-- partitioning.sh        # GPT/UEFI, formateo, montaje y swap
@@ -355,7 +411,6 @@ MiniArch/
 |   |-- drivers.sh             # Drivers, PipeWire, codecs y Bluetooth
 |   |-- cage.sh                # Cage, usuario, servicio y wrapper
 |   |-- yarg.sh                # YARG, settings, Samba, rendimiento y updater
-|   |-- gui.sh                 # OpenBox/X11 y autostart
 |   |-- customization.sh       # Mensajes, cursor, assets y scripts extra
 |   `-- finalization.sh        # Red, SSH opcional, limpieza y desmontaje
 |-- assets/
@@ -375,8 +430,8 @@ MiniArch/
 |   `-- test_integration.bats
 ```
 
-La suite BATS cubre principalmente modulos compartidos y el flujo OpenBox. Los
-modulos `lib/cage.sh` y `lib/yarg.sh` todavia no tienen suite dedicada.
+La suite BATS cubre principalmente modulos compartidos. Los modulos
+`lib/cage.sh` y `lib/yarg.sh` todavia no tienen suite dedicada.
 
 ## Desarrollo Y Pruebas
 
@@ -396,8 +451,9 @@ bats tests/*.bats
 Valida sintaxis:
 
 ```bash
-bash -n install-arch-kiosk.sh
+bash -n install-cage-kiosk.sh
 bash -n install-cage-yarg.sh
+bash -n scripts/clone-miniarch.sh scripts/expand-home.sh
 for file in lib/*.sh; do bash -n "$file"; done
 ```
 
@@ -540,7 +596,7 @@ Este proyecto esta bajo licencia MIT. Consulta [LICENSE](LICENSE).
 - Arch Linux.
 - YARG.
 - Cage.
-- OpenBox.
+- foot.
 - Plymouth.
 - PipeWire.
 - Samba.

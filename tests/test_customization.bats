@@ -1,18 +1,18 @@
-#!/usr/bin/env bats
+﻿#!/usr/bin/env bats
 
 ################################################################################
-# Pruebas Unitarias para el Módulo de Personalización
+# Pruebas Unitarias para el MÃ³dulo de PersonalizaciÃ³n
 #
-# Este archivo contiene pruebas BATS para validar las funciones del módulo
+# Este archivo contiene pruebas BATS para validar las funciones del mÃ³dulo
 # lib/customization.sh. Las pruebas usan mocks para simular el comportamiento
 # del sistema sin modificar el entorno real.
 #
 # Requisitos probados: 10.1-10.4, 11.1-11.5, 15.4
 ################################################################################
 
-# Setup: cargar el módulo de personalización antes de cada prueba
+# Setup: cargar el mÃ³dulo de personalizaciÃ³n antes de cada prueba
 setup() {
-    # Cargar el módulo de personalización
+    # Cargar el mÃ³dulo de personalizaciÃ³n
     source lib/customization.sh
     
     # Mock de funciones de logging
@@ -31,7 +31,7 @@ setup() {
 # Pruebas para hide_system_messages()
 ################################################################################
 
-@test "hide_system_messages: configuración exitosa retorna 0" {
+@test "hide_system_messages: configuraciÃ³n exitosa retorna 0" {
     # Create temporary test directory
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/home/kiosk"
@@ -343,7 +343,7 @@ EOF
     rm -rf "$test_dir"
 }
 
-@test "hide_system_messages: vacía /etc/motd correctamente" {
+@test "hide_system_messages: vacÃ­a /etc/motd correctamente" {
     # Create temporary test directory
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/home/kiosk"
@@ -427,7 +427,7 @@ EOF
 # Pruebas para install_custom_cursor()
 ################################################################################
 
-@test "install_custom_cursor: instalación exitosa retorna 0" {
+@test "install_custom_cursor: instalaciÃ³n exitosa retorna 0" {
     # Create temporary test directory
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/cursor"
@@ -867,7 +867,7 @@ EOF
 # Pruebas para apply_plymouth_image()
 ################################################################################
 
-@test "apply_plymouth_image: aplicación exitosa retorna 0" {
+@test "apply_plymouth_image: aplicaciÃ³n exitosa retorna 0" {
     # Create temporary test directory
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/usr/share/plymouth/themes/test-theme"
@@ -1282,7 +1282,7 @@ EOF
 
 ################################################################################
 # Prueba de Propiedad para hide_system_messages()
-# Property 27: Configuración completa de ocultación de mensajes
+# Property 27: ConfiguraciÃ³n completa de ocultaciÃ³n de mensajes
 # Validates: Requirements 10.1, 10.2, 10.3, 10.4
 ################################################################################
 
@@ -1291,7 +1291,7 @@ EOF
     local success_count=0
     local total_tests=50
     
-    # Arrays de componentes para generar nombres de usuario válidos
+    # Arrays de componentes para generar nombres de usuario vÃ¡lidos
     local prefixes=("user" "admin" "test" "kiosk" "guest" "dev" "sys" "app")
     local suffixes=("1" "2" "123" "test" "prod" "dev" "x" "a" "")
     local separators=("" "_" "-")
@@ -1305,16 +1305,16 @@ EOF
     }
     export -f arch-chroot
     
-    # Probar con 50 nombres de usuario aleatorios válidos
+    # Probar con 50 nombres de usuario aleatorios vÃ¡lidos
     for i in $(seq 1 $total_tests); do
-        # Generar nombre de usuario aleatorio válido
+        # Generar nombre de usuario aleatorio vÃ¡lido
         local prefix_idx=$((RANDOM % ${#prefixes[@]}))
         local suffix_idx=$((RANDOM % ${#suffixes[@]}))
         local separator_idx=$((RANDOM % ${#separators[@]}))
         
         local username="${prefixes[$prefix_idx]}${separators[$separator_idx]}${suffixes[$suffix_idx]}"
         
-        # Si el nombre está vacío o solo tiene separador, usar un nombre por defecto
+        # Si el nombre estÃ¡ vacÃ­o o solo tiene separador, usar un nombre por defecto
         if [[ -z "$username" || "$username" == "-" || "$username" == "_" ]]; then
             username="user${i}"
         fi
@@ -1383,7 +1383,7 @@ EOF
         # Ejecutar hide_system_messages con el nombre generado
         run hide_system_messages "$username"
         
-        # Verificar que el comando se ejecutó correctamente
+        # Verificar que el comando se ejecutÃ³ correctamente
         if [[ "$status" -eq 0 ]]; then
             # Verificar que todos los archivos fueron creados/modificados correctamente
             if [[ -f "$test_dir/home/$username/.hushlogin" ]] && \
@@ -1397,7 +1397,7 @@ EOF
                 return 1
             fi
         else
-            echo "FALLO: hide_system_messages retornó código de error $status para usuario '$username'" >&2
+            echo "FALLO: hide_system_messages retornÃ³ cÃ³digo de error $status para usuario '$username'" >&2
             echo "Output: $output" >&2
             rm -rf "$test_dir"
             return 1
@@ -1412,12 +1412,12 @@ EOF
 }
 
 ################################################################################
-# Prueba de Propiedad para apply_plymouth_image() - Validación de PNG
-# Property 28: Validación de formato PNG
+# Prueba de Propiedad para apply_plymouth_image() - ValidaciÃ³n de PNG
+# Property 28: ValidaciÃ³n de formato PNG
 # Validates: Requirements 11.1
 ################################################################################
 
-@test "Property 28: apply_plymouth_image valida correctamente 50 archivos PNG válidos y 50 inválidos" {
+@test "Property 28: apply_plymouth_image valida correctamente 50 archivos PNG vÃ¡lidos y 50 invÃ¡lidos" {
     # Contador de pruebas exitosas
     local valid_png_success=0
     local invalid_png_success=0
@@ -1428,7 +1428,7 @@ EOF
     local test_dir=$(mktemp -d)
     mkdir -p "$test_dir/usr/share/plymouth/themes/test-theme"
     
-    # Arrays de tipos MIME inválidos para probar
+    # Arrays de tipos MIME invÃ¡lidos para probar
     local invalid_types=(
         "image/jpeg"
         "image/gif"
@@ -1493,7 +1493,7 @@ EOF
         return 0
     }
     
-    # Parte 1: Probar con 50 archivos PNG válidos
+    # Parte 1: Probar con 50 archivos PNG vÃ¡lidos
     for i in $(seq 1 $total_valid_tests); do
         # Crear un archivo PNG de prueba
         local png_file="$test_dir/valid_test_${i}.png"
@@ -1509,38 +1509,38 @@ EOF
         }
         export -f file
         
-        # Ejecutar apply_plymouth_image con el archivo PNG válido
+        # Ejecutar apply_plymouth_image con el archivo PNG vÃ¡lido
         run apply_plymouth_image "$png_file" "test-theme"
         
-        # Verificar que el comando se ejecutó correctamente (debe retornar 0)
+        # Verificar que el comando se ejecutÃ³ correctamente (debe retornar 0)
         if [[ "$status" -eq 0 ]]; then
-            # Verificar que el mensaje de validación exitosa está presente
+            # Verificar que el mensaje de validaciÃ³n exitosa estÃ¡ presente
             if [[ "$output" == *"PNG image validated successfully"* ]]; then
                 valid_png_success=$((valid_png_success + 1))
             else
-                echo "FALLO: Mensaje de validación no encontrado para PNG válido #$i" >&2
+                echo "FALLO: Mensaje de validaciÃ³n no encontrado para PNG vÃ¡lido #$i" >&2
                 rm -rf "$test_dir"
                 return 1
             fi
         else
-            echo "FALLO: apply_plymouth_image retornó código de error $status para PNG válido #$i" >&2
+            echo "FALLO: apply_plymouth_image retornÃ³ cÃ³digo de error $status para PNG vÃ¡lido #$i" >&2
             echo "Output: $output" >&2
             rm -rf "$test_dir"
             return 1
         fi
     done
     
-    # Parte 2: Probar con 50 archivos inválidos (no-PNG)
+    # Parte 2: Probar con 50 archivos invÃ¡lidos (no-PNG)
     for i in $(seq 1 $total_invalid_tests); do
-        # Crear un archivo de prueba inválido
+        # Crear un archivo de prueba invÃ¡lido
         local invalid_file="$test_dir/invalid_test_${i}.jpg"
         echo "Invalid test data $i" > "$invalid_file"
         
-        # Seleccionar un tipo MIME inválido aleatorio
+        # Seleccionar un tipo MIME invÃ¡lido aleatorio
         local type_idx=$((RANDOM % ${#invalid_types[@]}))
         local invalid_type="${invalid_types[$type_idx]}"
         
-        # Mock de file command para retornar un tipo MIME inválido
+        # Mock de file command para retornar un tipo MIME invÃ¡lido
         file() {
             if [[ "$*" == *"-b --mime-type"* ]]; then
                 echo "$invalid_type"
@@ -1550,22 +1550,22 @@ EOF
         }
         export -f file
         
-        # Ejecutar apply_plymouth_image con el archivo inválido
+        # Ejecutar apply_plymouth_image con el archivo invÃ¡lido
         run apply_plymouth_image "$invalid_file" "test-theme"
         
-        # Verificar que el comando falló correctamente (debe retornar 1)
+        # Verificar que el comando fallÃ³ correctamente (debe retornar 1)
         if [[ "$status" -eq 1 ]]; then
-            # Verificar que el mensaje de error está presente
+            # Verificar que el mensaje de error estÃ¡ presente
             if [[ "$output" == *"not a valid PNG image"* ]] && [[ "$output" == *"$invalid_type"* ]]; then
                 invalid_png_success=$((invalid_png_success + 1))
             else
-                echo "FALLO: Mensaje de error incorrecto para archivo inválido #$i (tipo: $invalid_type)" >&2
+                echo "FALLO: Mensaje de error incorrecto para archivo invÃ¡lido #$i (tipo: $invalid_type)" >&2
                 echo "Output: $output" >&2
                 rm -rf "$test_dir"
                 return 1
             fi
         else
-            echo "FALLO: apply_plymouth_image retornó código $status (esperado: 1) para archivo inválido #$i (tipo: $invalid_type)" >&2
+            echo "FALLO: apply_plymouth_image retornÃ³ cÃ³digo $status (esperado: 1) para archivo invÃ¡lido #$i (tipo: $invalid_type)" >&2
             echo "Output: $output" >&2
             rm -rf "$test_dir"
             return 1
@@ -1577,12 +1577,12 @@ EOF
     
     # Verificar que todas las pruebas pasaron
     if [[ $valid_png_success -eq $total_valid_tests ]] && [[ $invalid_png_success -eq $total_invalid_tests ]]; then
-        echo "Property 28 verificada: $valid_png_success/$total_valid_tests PNGs válidos aceptados, $invalid_png_success/$total_invalid_tests archivos inválidos rechazados"
+        echo "Property 28 verificada: $valid_png_success/$total_valid_tests PNGs vÃ¡lidos aceptados, $invalid_png_success/$total_invalid_tests archivos invÃ¡lidos rechazados"
         return 0
     else
         echo "FALLO: Property 28 no verificada completamente" >&2
-        echo "PNGs válidos: $valid_png_success/$total_valid_tests" >&2
-        echo "Archivos inválidos: $invalid_png_success/$total_invalid_tests" >&2
+        echo "PNGs vÃ¡lidos: $valid_png_success/$total_valid_tests" >&2
+        echo "Archivos invÃ¡lidos: $invalid_png_success/$total_invalid_tests" >&2
         return 1
     fi
 }
@@ -1591,43 +1591,8 @@ EOF
 # Pruebas para install_extra_scripts()
 ################################################################################
 
-@test "install_extra_scripts: instalación exitosa de múltiples scripts" {
-    local test_dir=$(mktemp -d)
-    mkdir -p "$test_dir/home/kiosk"
-    
-    # Crear scripts falsos
-    touch "./setup-yarg.sh"
-    
-    # Mock de arch-chroot
-    arch-chroot() {
-        return 0
-    }
-    export -f arch-chroot
-    
-    # Override function to use test directory
-    install_extra_scripts() {
-        local username="$1"
-        local user_home="$test_dir/home/$username"
-        local scripts=("setup-yarg.sh")
-        
-        for script in "${scripts[@]}"; do
-            if [[ -f "./$script" ]]; then
-                cp "./$script" "$user_home/"
-                chmod +x "$user_home/$script"
-                log "Installed $script"
-            else
-                log "Warning: $script not found"
-            fi
-        done
-        return 0
-    }
-    
+@test "install_extra_scripts: sin scripts configurados retorna 0" {
     run install_extra_scripts "kiosk"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Installed setup-yarg.sh"* ]]
-    [ -f "$test_dir/home/kiosk/setup-yarg.sh" ]
-    
-    # Limpiar
-    rm -f "./setup-yarg.sh"
-    rm -rf "$test_dir"
+    [[ "$output" == *"No extra scripts configured for user: kiosk"* ]]
 }

@@ -167,9 +167,124 @@ configure_hid_access() {
 }
 
 install_cage_wrapper() {
-    log "Creando wrapper /usr/local/bin/run-yarg.sh"
+    log "Creando menu de mantenimiento y wrapper /usr/local/bin/run-yarg.sh"
 
     mkdir -p /mnt/usr/local/bin
+    cat > /mnt/usr/local/bin/kiosk-menu.sh <<'MENU'
+#!/usr/bin/env bash
+set -euo pipefail
+
+export TERM="${TERM:-xterm-256color}"
+
+pause_menu() {
+    echo ""
+    read -r -p "Presione Enter para volver al menu..."
+}
+
+show_ip_addresses() {
+    clear
+    echo "Direcciones IP"
+    echo "=============="
+    echo ""
+
+    if command -v ip >/dev/null 2>&1; then
+        ip -br addr show scope global || true
+    fi
+
+    echo ""
+    if command -v nmcli >/dev/null 2>&1; then
+        nmcli -t -f DEVICE,STATE,CONNECTION device status 2>/dev/null || true
+    fi
+
+    echo ""
+    echo "Hostname: $(hostname)"
+    echo "IPs: $(hostname -I 2>/dev/null || true)"
+    pause_menu
+}
+
+open_shell() {
+    clear
+    echo "Shell de mantenimiento"
+    echo "Escriba 'exit' para volver al menu."
+    echo ""
+    "${SHELL:-/bin/bash}"
+}
+
+while true; do
+    clear
+    cat <<'EOF'
+Menu de mantenimiento YARG
+==========================
+
+1) Configurar sonido
+2) Configurar WiFi
+3) Ver direccion IP
+4) Salir a Shell
+5) Volver a YARG
+6) Reiniciar Kiosko
+7) Apagar Kiosko
+
+EOF
+
+    read -r -p "Seleccione una opcion: " option
+
+    case "$option" in
+        1)
+            if command -v pulsemixer >/dev/null 2>&1; then
+                pulsemixer || true
+            else
+                echo "pulsemixer no esta instalado."
+                pause_menu
+            fi
+            ;;
+        2)
+            if command -v nmtui >/dev/null 2>&1; then
+                nmtui || true
+            elif command -v nmcli >/dev/null 2>&1; then
+                nmcli device wifi list || true
+                echo ""
+                read -r -p "SSID: " ssid
+                read -r -s -p "Password (vacio para red abierta): " password
+                echo ""
+                if [[ -n "$password" ]]; then
+                    nmcli device wifi connect "$ssid" password "$password" || true
+                else
+                    nmcli device wifi connect "$ssid" || true
+                fi
+                pause_menu
+            else
+                echo "NetworkManager/nmcli no esta disponible."
+                pause_menu
+            fi
+            ;;
+        3)
+            show_ip_addresses
+            ;;
+        4)
+            open_shell
+            ;;
+        5)
+            exit 0
+            ;;
+        6)
+            echo "Reiniciando servicio cage-kiosk..."
+            sudo systemctl restart cage-kiosk.service
+            exit 0
+            ;;
+        7)
+            echo "Apagando kiosko..."
+            sudo systemctl poweroff
+            exit 0
+            ;;
+        *)
+            echo "Opcion invalida."
+            sleep 1
+            ;;
+    esac
+done
+MENU
+    chmod +x /mnt/usr/local/bin/kiosk-menu.sh
+
     cat > /mnt/usr/local/bin/run-yarg.sh <<'WRAPPER'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -242,6 +357,7 @@ fi
 export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
 YARG_SCREEN_WIDTH="__YARG_SCREEN_WIDTH__"
 YARG_SCREEN_HEIGHT="__YARG_SCREEN_HEIGHT__"
+YARG_EXIT_MENU="__YARG_EXIT_MENU__"
 
 wait_for_path() {
     local path="$1"
@@ -325,10 +441,7 @@ echo "run-yarg: esperando ALSA default via PipeWire" >&2
 wait_for_alsa_default 50 || \
     echo "Aviso: ALSA default no abrio antes de iniciar YARG." >&2
 
-YARG_BIN=$(find /opt/YARG -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)
-
-if [[ -n "$YARG_BIN" ]]; then
-    echo "Iniciando YARG: $YARG_BIN" >&2
+build_yarg_args() {
     YARG_ARGS=(-persistent-data-path "__YARG_PERSISTENT_DATA_DIR__")
 
     if [[ -n "$YARG_SCREEN_WIDTH" && -n "$YARG_SCREEN_HEIGHT" ]]; then
@@ -339,12 +452,36 @@ if [[ -n "$YARG_BIN" ]]; then
             -screen-fullscreen 1
         )
     fi
+}
 
-    exec /usr/bin/cage -- "$YARG_BIN" "${YARG_ARGS[@]}"
-fi
+while true; do
+    YARG_BIN=$(find /opt/YARG -maxdepth 1 -type f -name "YARG*" -executable -print -quit 2>/dev/null)
 
-echo "No se encontro YARG en /opt/YARG; abriendo foot." >&2
-exec /usr/bin/cage /usr/bin/foot
+    if [[ -n "$YARG_BIN" ]]; then
+        echo "Iniciando YARG: $YARG_BIN" >&2
+        build_yarg_args
+        /usr/bin/cage -- "$YARG_BIN" "${YARG_ARGS[@]}" || \
+            echo "Aviso: YARG/Cage termino con codigo $?" >&2
+    else
+        echo "No se encontro YARG en /opt/YARG; abriendo menu de mantenimiento." >&2
+    fi
+
+    case "${YARG_EXIT_MENU,,}" in
+        restart|relaunch|volver|yarg)
+            echo "run-yarg: relanzando YARG automaticamente" >&2
+            sleep 1
+            continue
+            ;;
+        never|off|false|no)
+            echo "run-yarg: menu deshabilitado; saliendo" >&2
+            exit 0
+            ;;
+    esac
+
+    echo "run-yarg: abriendo menu de mantenimiento" >&2
+    /usr/bin/cage -- /usr/bin/foot /usr/local/bin/kiosk-menu.sh || \
+        echo "Aviso: menu de mantenimiento termino con codigo $?" >&2
+done
 WRAPPER
 
     chmod +x /mnt/usr/local/bin/run-yarg.sh
@@ -352,6 +489,7 @@ WRAPPER
     sed -i "s#__YARG_SCREEN_WIDTH__#${YARG_SCREEN_WIDTH:-}#g" /mnt/usr/local/bin/run-yarg.sh
     sed -i "s#__YARG_SCREEN_HEIGHT__#${YARG_SCREEN_HEIGHT:-}#g" /mnt/usr/local/bin/run-yarg.sh
     sed -i "s#__YARG_FORCE_SOFTWARE_RENDER__#${YARG_FORCE_SOFTWARE_RENDER:-false}#g" /mnt/usr/local/bin/run-yarg.sh
+    sed -i "s#__YARG_EXIT_MENU__#${YARG_EXIT_MENU:-always}#g" /mnt/usr/local/bin/run-yarg.sh
 }
 
 install_cage_service() {

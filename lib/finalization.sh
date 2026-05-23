@@ -110,7 +110,7 @@ cleanup_mounts() {
 
 cleanup_and_finish() {
     local system_message="${1:-El sistema Arch Linux en modo kiosko ha sido instalado correctamente.}"
-    local boot_message="${2:-El sistema arrancara automaticamente en modo grafico con OpenBox.}"
+    local boot_message="${2:-El sistema arrancara automaticamente en modo grafico con Cage.}"
 
     if ! cleanup_mounts; then
         return 1

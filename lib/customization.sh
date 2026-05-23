@@ -1,11 +1,11 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 ################################################################################
-# Módulo de Personalización
+# MÃ³dulo de PersonalizaciÃ³n
 #
-# Este módulo contiene funciones para personalizar la apariencia y comportamiento
-# del sistema, incluyendo ocultación de mensajes del sistema, instalación de
-# cursor personalizado y aplicación de imagen de Plymouth.
+# Este mÃ³dulo contiene funciones para personalizar la apariencia y comportamiento
+# del sistema, incluyendo ocultaciÃ³n de mensajes del sistema, instalaciÃ³n de
+# cursor personalizado y aplicaciÃ³n de imagen de Plymouth.
 #
 # Funciones:
 # - hide_system_messages(): Oculta todos los mensajes del sistema
@@ -16,15 +16,15 @@
 ################################################################################
 # hide_system_messages()
 #
-# Oculta todos los mensajes del sistema durante el inicio de sesión y arranque,
+# Oculta todos los mensajes del sistema durante el inicio de sesiÃ³n y arranque,
 # incluyendo mensajes de login, MOTD, y mensajes de systemd.
 #
 # Arguments:
 #   $1 - username: Nombre del usuario para el cual ocultar mensajes
 #
 # Returns:
-#   0 - Si la configuración fue exitosa
-#   1 - Si hubo algún error
+#   0 - Si la configuraciÃ³n fue exitosa
+#   1 - Si hubo algÃºn error
 ################################################################################
 hide_system_messages() {
     local username="$1"
@@ -66,7 +66,7 @@ hide_system_messages() {
         echo "ShowStatus=no" >> /mnt/etc/systemd/system.conf
     fi
     
-    # Configurar logind para deshabilitar VTs automáticos
+    # Configurar logind para deshabilitar VTs automÃ¡ticos
     # Modificar /etc/systemd/logind.conf
     if [[ ! -f /mnt/etc/systemd/logind.conf ]]; then
         log_error "/etc/systemd/logind.conf not found"
@@ -95,8 +95,8 @@ hide_system_messages() {
 #   $2 - username: Nombre del usuario para el cual configurar el cursor
 #
 # Returns:
-#   0 - Si la instalación fue exitosa
-#   1 - Si hubo algún error
+#   0 - Si la instalaciÃ³n fue exitosa
+#   1 - Si hubo algÃºn error
 ################################################################################
 install_custom_cursor() {
     local cursor_path="$1"
@@ -184,9 +184,9 @@ EOF
 ################################################################################
 # apply_plymouth_image()
 #
-# Valida que un archivo es una imagen PNG válida y la copia al directorio
+# Valida que un archivo es una imagen PNG vÃ¡lida y la copia al directorio
 # del tema de Plymouth. Si la imagen tiene dimensiones diferentes a 1280x720,
-# la escala a esa resolución.
+# la escala a esa resoluciÃ³n.
 #
 # Arguments:
 #   $1 - image_path: Ruta a la imagen PNG
@@ -194,7 +194,7 @@ EOF
 #
 # Returns:
 #   0 - Si la imagen fue aplicada exitosamente
-#   1 - Si hubo algún error
+#   1 - Si hubo algÃºn error
 ################################################################################
 apply_plymouth_image() {
     local image_path="$1"
@@ -219,7 +219,7 @@ apply_plymouth_image() {
     
     log "Applying Plymouth image: $image_path"
     
-    # Validar que el archivo es un PNG válido usando el comando file
+    # Validar que el archivo es un PNG vÃ¡lido usando el comando file
     local file_type
     file_type=$(file -b --mime-type "$image_path")
     
@@ -278,7 +278,7 @@ apply_plymouth_image() {
             fi
         fi
     else
-        # No se pudo obtener información de dimensiones, copiar sin escalar
+        # No se pudo obtener informaciÃ³n de dimensiones, copiar sin escalar
         log "Could not determine image dimensions, copying without scaling"
         if ! cp "$image_path" "$target_image"; then
             log_error "Failed to copy image to theme directory"
@@ -293,48 +293,24 @@ apply_plymouth_image() {
 ################################################################################
 # install_extra_scripts()
 #
-# Copia scripts adicionales útiles (como el de instalación de YARG) al directorio
-# home del usuario kiosko y les da permisos de ejecución.
+# Copia scripts adicionales Ãºtiles (como el de instalaciÃ³n de YARG) al directorio
+# home del usuario kiosko y les da permisos de ejecuciÃ³n.
 #
 # Arguments:
 #   $1 - username: Nombre del usuario para el cual instalar scripts
 #
 # Returns:
-#   0 - Si la instalación fue exitosa
-#   1 - Si hubo algún error
+#   0 - Si la instalaciÃ³n fue exitosa
+#   1 - Si hubo algÃºn error
 ################################################################################
 install_extra_scripts() {
     local username="$1"
-    local user_home="/mnt/home/$username"
-    local script_name="setup-yarg.sh"
-    
+
     if [[ -z "$username" ]]; then
         log_error "Username not provided for extra scripts installation"
         return 1
     fi
-    
-    log "Installing extra scripts for user: $username"
-    
-    # Lista de scripts a copiar
-    local scripts=("setup-yarg.sh")
-    
-    for script in "${scripts[@]}"; do
-        if [[ -f "./$script" ]]; then
-            log "Copying $script to $user_home"
-            if cp "./$script" "$user_home/"; then
-                # Inyectar la contraseña del .env (o la por defecto) en el script copiado
-                local pass="${KIOSK_PASSWORD:-kiosk123}"
-                sed -i "s/__KIOSK_PASSWORD__/$pass/g" "$user_home/$script"
-                
-                chmod +x "$user_home/$script"
-                arch-chroot /mnt chown "$username:$username" "/home/$username/$script"
-            else
-                log_error "Failed to copy $script"
-            fi
-        else
-            log "Warning: $script not found, skipping"
-        fi
-    done
-    
+
+    log "No extra scripts configured for user: $username"
     return 0
 }

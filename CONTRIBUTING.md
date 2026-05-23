@@ -1,10 +1,10 @@
 # Guia De Contribucion
 
 Gracias por contribuir a MiniArch. El repositorio mantiene dos caminos de
-instalacion:
+instalacion basados en Cage:
 
 - Cage/YARG: `install-cage-yarg.sh`, `lib/cage.sh`, `lib/yarg.sh`.
-- OpenBox/X11: `install-arch-kiosk.sh`, `setup-yarg.sh`, `lib/gui.sh`.
+- Cage/foot: `install-cage-kiosk.sh`.
 
 Cuando cambies modulos compartidos en `lib/`, revisa ambos caminos.
 
@@ -42,7 +42,6 @@ Mantener responsabilidades claras:
 - `bootloader.sh`: GRUB.
 - `plymouth.sh`: Plymouth compartido.
 - `drivers.sh`: audio, codecs, Bluetooth y drivers compartidos.
-- `gui.sh`: OpenBox/X11.
 - `cage.sh`: Cage, usuario, servicio y wrapper.
 - `yarg.sh`: descarga/configuracion de YARG, Samba y updater.
 - `customization.sh`: limpieza visual, cursor y assets.
@@ -59,14 +58,14 @@ bats tests/*.bats
 Valida sintaxis de Bash:
 
 ```bash
-bash -n install-arch-kiosk.sh
+bash -n install-cage-kiosk.sh
 bash -n install-cage-yarg.sh
 for file in lib/*.sh; do bash -n "$file"; done
-bash -n setup-yarg.sh
+bash -n scripts/clone-miniarch.sh scripts/expand-home.sh
 ```
 
 Si tocas `lib/drivers.sh`, `lib/validation.sh` o `lib/plymouth.sh`, revisa que
-no rompa el camino OpenBox original.
+no rompa los caminos Cage.
 
 ## Pull Requests
 
@@ -74,7 +73,7 @@ Incluye:
 
 - Que cambio.
 - Por que.
-- Que camino afecta: Cage, OpenBox o ambos.
+- Que camino afecta: Cage/YARG, Cage/foot o ambos.
 - Pruebas ejecutadas.
 - Riesgos conocidos.
 

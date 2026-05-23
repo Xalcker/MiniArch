@@ -4,7 +4,7 @@
 # Pruebas de Integración para el Instalador de Arch Linux Modo Kiosko
 #
 # Este archivo contiene pruebas BATS para validar la integración completa
-# del script install-arch-kiosk.sh. Las pruebas usan mocks para simular
+# de los instaladores Cage. Las pruebas usan mocks para simular
 # todos los comandos del sistema y verifican que el flujo completo funciona
 # correctamente.
 #
@@ -388,7 +388,6 @@ mock_file_operations() {
     source lib/bootloader.sh
     source lib/plymouth.sh
     source lib/drivers.sh
-    source lib/gui.sh
     source lib/customization.sh
     source lib/finalization.sh
     
@@ -573,51 +572,6 @@ mock_file_operations() {
     grep -q "pacman -S --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-jack sof-firmware" "$COMMANDS_LOG"
 }
 
-@test "Integración: instalación y configuración de OpenBox funcionan correctamente" {
-    # Activar mocks necesarios
-    mock_validation_commands
-    mock_bootloader_commands
-    mock_gui_commands
-    mock_file_operations
-    
-    # Cargar módulo de GUI
-    source lib/gui.sh
-    
-    # Ejecutar instalación de OpenBox
-    run install_openbox
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"OpenBox y servidor X instalados exitosamente"* ]]
-    
-    # Ejecutar creación de usuario
-    run create_user "kiosk"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Usuario 'kiosk' creado exitosamente"* ]]
-    
-    # Ejecutar configuración de autologin
-    run configure_autologin "kiosk"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Autologin configurado para usuario 'kiosk'"* ]]
-    
-    # Verificar comandos ejecutados
-    grep -q "pacman -S --noconfirm xorg-server xorg-xinit openbox xterm" "$COMMANDS_LOG"
-    grep -q "useradd" "$COMMANDS_LOG"
-}
-
-@test "Integración: configuración de xterm con apagado automático funciona correctamente" {
-    # Activar mocks necesarios
-    mock_validation_commands
-    mock_gui_commands
-    mock_file_operations
-    
-    # Cargar módulo de GUI
-    source lib/gui.sh
-    
-    # Ejecutar configuración de xterm autostart
-    run configure_xterm_autostart "kiosk"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"xterm con apagado automático configurado para usuario 'kiosk'"* ]]
-}
-
 @test "Integración: ocultación de mensajes del sistema funciona correctamente" {
     # Activar mocks necesarios
     mock_validation_commands
@@ -772,7 +726,6 @@ mock_file_operations() {
     source lib/bootloader.sh
     source lib/plymouth.sh
     source lib/drivers.sh
-    source lib/gui.sh
     source lib/customization.sh
     source lib/finalization.sh
     

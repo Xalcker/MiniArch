@@ -29,8 +29,8 @@ MiniArch bloquea valores de ejemplo como `change-me`, `change-root`, `kiosk` o
 
 Ese modo solo debe usarse en laboratorios o VMs desechables.
 
-En Cage/YARG, `ROOT_PASSWORD` se exige por defecto. En el camino OpenBox/X11,
-root puede administrarse despues con:
+En los caminos Cage, `ROOT_PASSWORD` se exige por defecto. Tambien puedes
+administrarlo despues con:
 
 ```bash
 sudo passwd root
