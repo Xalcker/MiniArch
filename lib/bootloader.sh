@@ -31,9 +31,32 @@ fi
 #   0 - Si la instalaciÃ³n fue exitosa
 #   1 - Si hubo un error durante la instalaciÃ³n
 ################################################################################
+bootloader_ensure_pacman_download_user() {
+    if [[ ! -f /mnt/etc/pacman.conf ]]; then
+        return 0
+    fi
+
+    if ! grep -Eq '^[[:space:]]*DownloadUser[[:space:]]*=' /mnt/etc/pacman.conf; then
+        return 0
+    fi
+
+    if arch-chroot /mnt getent passwd alpm >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "Creando usuario de sistema alpm requerido por pacman DownloadUser"
+    arch-chroot /mnt groupadd -r alpm 2>/dev/null || true
+    if ! arch-chroot /mnt useradd -r -g alpm -d /var/lib/pacman -s /usr/bin/nologin alpm; then
+        log_error "No se pudo crear usuario alpm para pacman"
+        return 1
+    fi
+}
+
 install_grub() {
     local has_grub=0
     local has_efibootmgr=0
+
+    bootloader_ensure_pacman_download_user || return 1
 
     if arch-chroot /mnt command -v grub-install >/dev/null 2>&1; then
         has_grub=1

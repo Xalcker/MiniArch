@@ -459,6 +459,11 @@ main() {
         exit 1
     fi
 
+    if ! install_nvidia_drivers_if_requested; then
+        log_error "Fallo en instalacion de drivers NVIDIA"
+        exit 1
+    fi
+
     if ! configure_nvidia_kernel_params; then
         log_error "Fallo en configuracion de parametros NVIDIA"
         exit 1

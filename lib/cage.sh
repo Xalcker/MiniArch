@@ -20,10 +20,6 @@ install_cage_base_system() {
         hidapi systemd-libs
     )
 
-    if [[ "$INSTALL_NVIDIA" == "true" ]]; then
-        packages+=(nvidia-dkms nvidia-utils)
-    fi
-
     if ! mountpoint -q /mnt; then
         log_error "/mnt no esta montado. Ejecute mount_partitions primero."
         return 1
@@ -32,6 +28,27 @@ install_cage_base_system() {
     log "Instalando sistema base y stack Cage/Wayland (${#packages[@]} paquetes)"
     if ! run_quiet pacstrap -K /mnt "${packages[@]}"; then
         log_error "Fallo pacstrap para sistema Cage/YARG"
+        return 1
+    fi
+}
+
+ensure_pacman_download_user() {
+    if [[ ! -f /mnt/etc/pacman.conf ]]; then
+        return 0
+    fi
+
+    if ! grep -Eq '^[[:space:]]*DownloadUser[[:space:]]*=' /mnt/etc/pacman.conf; then
+        return 0
+    fi
+
+    if arch-chroot /mnt getent passwd alpm >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "Creando usuario de sistema alpm requerido por pacman DownloadUser"
+    arch-chroot /mnt groupadd -r alpm 2>/dev/null || true
+    if ! arch-chroot /mnt useradd -r -g alpm -d /var/lib/pacman -s /usr/bin/nologin alpm; then
+        log_error "No se pudo crear usuario alpm para pacman"
         return 1
     fi
 }
@@ -76,6 +93,24 @@ configure_nvidia_kernel_params() {
 
     if ! run_quiet arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
         log_error "Fallo al regenerar GRUB con parametros NVIDIA"
+        return 1
+    fi
+}
+
+install_nvidia_drivers_if_requested() {
+    if [[ "$INSTALL_NVIDIA" != "true" ]]; then
+        return 0
+    fi
+
+    log "Instalando drivers NVIDIA despues del sistema base"
+    ensure_pacman_download_user || return 1
+
+    if ! run_quiet arch-chroot /mnt pacman -S --needed --noconfirm nvidia-open nvidia-utils; then
+        log_error "Fallo al instalar drivers NVIDIA"
+        if [[ -n "${LOG_FILE:-}" && -f "$LOG_FILE" ]]; then
+            echo "Ultimas lineas de $LOG_FILE:" >&2
+            tail -n 60 "$LOG_FILE" >&2 || true
+        fi
         return 1
     fi
 }
