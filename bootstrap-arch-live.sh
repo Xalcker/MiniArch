@@ -55,6 +55,7 @@ Este bootstrap hara lo siguiente:
   1. Verificar que se ejecuta como root en el live ISO de Arch.
   2. Instalar dependencias temporales del live:
      git, curl, imagemagick, gptfdisk, e2fsprogs, dosfstools,
+     archlinux-keyring,
      arch-install-scripts.
   3. Clonar o actualizar MiniArch en:
      $REPO_DIR
@@ -94,7 +95,7 @@ require_tty() {
 install_live_dependencies() {
     log "Instalando dependencias del live ISO..."
     run_quiet pacman -Sy --needed --noconfirm \
-        git curl imagemagick gptfdisk e2fsprogs dosfstools arch-install-scripts
+        archlinux-keyring git curl imagemagick gptfdisk e2fsprogs dosfstools arch-install-scripts
 }
 
 clone_or_update_repo() {

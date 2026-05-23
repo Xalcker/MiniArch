@@ -5,10 +5,10 @@ if ! declare -F run_quiet >/dev/null; then
 fi
 
 ################################################################################
-# Módulo de Bootloader
+# MÃ³dulo de Bootloader
 #
-# Este módulo contiene funciones para instalar y configurar GRUB como gestor
-# de arranque con soporte UEFI y configuración silenciosa para ocultar todos
+# Este mÃ³dulo contiene funciones para instalar y configurar GRUB como gestor
+# de arranque con soporte UEFI y configuraciÃ³n silenciosa para ocultar todos
 # los mensajes durante el arranque.
 #
 # Funciones:
@@ -19,41 +19,71 @@ fi
 ################################################################################
 # install_grub()
 #
-# Instala GRUB y efibootmgr en el sistema, luego instala GRUB en la partición
+# Instala GRUB y efibootmgr en el sistema, luego instala GRUB en la particiÃ³n
 # ESP con soporte UEFI.
 #
 # Precondiciones:
 #   - Debe ejecutarse dentro de arch-chroot
-#   - La partición ESP debe estar montada en /boot
+#   - La particiÃ³n ESP debe estar montada en /boot
 #   - El sistema debe tener soporte UEFI
 #
 # Returns:
-#   0 - Si la instalación fue exitosa
-#   1 - Si hubo un error durante la instalación
+#   0 - Si la instalaciÃ³n fue exitosa
+#   1 - Si hubo un error durante la instalaciÃ³n
 ################################################################################
 install_grub() {
-    log "Instalando paquetes GRUB y efibootmgr"
-    
-    # Instalar grub y efibootmgr
-    if ! run_quiet arch-chroot /mnt pacman -S --noconfirm grub efibootmgr; then
-        log_error "Fallo al instalar grub y efibootmgr"
+    local has_grub=0
+    local has_efibootmgr=0
+
+    if arch-chroot /mnt command -v grub-install >/dev/null 2>&1; then
+        has_grub=1
+    fi
+
+    if arch-chroot /mnt command -v efibootmgr >/dev/null 2>&1; then
+        has_efibootmgr=1
+    fi
+
+    if [[ $has_grub -eq 1 && $has_efibootmgr -eq 1 ]]; then
+        log "GRUB y efibootmgr ya estan instalados en el sistema destino"
+    else
+        log "Instalando paquetes GRUB y efibootmgr"
+
+        if ! run_quiet arch-chroot /mnt pacman -S --needed --noconfirm grub efibootmgr; then
+            if arch-chroot /mnt command -v grub-install >/dev/null 2>&1 && \
+               arch-chroot /mnt command -v efibootmgr >/dev/null 2>&1; then
+                log "pacman reporto un fallo, pero GRUB y efibootmgr ya estan disponibles; continuando"
+            else
+                log_error "Fallo al instalar grub y efibootmgr"
+                if [[ -n "${LOG_FILE:-}" && -f "$LOG_FILE" ]]; then
+                    echo "Ultimas lineas de $LOG_FILE:" >&2
+                    tail -n 40 "$LOG_FILE" >&2 || true
+                fi
+                return 1
+            fi
+        fi
+    fi
+
+    if [[ ! -d /sys/firmware/efi ]]; then
+        log_error "No se detecto arranque UEFI en /sys/firmware/efi. Arranque el ISO en modo UEFI."
         return 1
     fi
-    
-    # Verificar que /mnt/boot está montado
+
     if ! mountpoint -q /mnt/boot; then
-        log_error "La partición ESP no está montada en /mnt/boot"
+        log_error "La particion ESP no esta montada en /mnt/boot"
         return 1
     fi
-    
-    log "Instalando GRUB en la partición ESP con soporte UEFI"
-    
-    # Instalar GRUB con soporte UEFI
+
+    log "Instalando GRUB en la particion ESP con soporte UEFI"
+
     if ! run_quiet arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB; then
-        log_error "Fallo al instalar GRUB en la partición ESP"
+        log_error "Fallo al instalar GRUB en la particion ESP"
+        if [[ -n "${LOG_FILE:-}" && -f "$LOG_FILE" ]]; then
+            echo "Ultimas lineas de $LOG_FILE:" >&2
+            tail -n 40 "$LOG_FILE" >&2 || true
+        fi
         return 1
     fi
-    
+
     log "GRUB instalado exitosamente"
     return 0
 }
@@ -62,25 +92,25 @@ install_grub() {
 # configure_grub_silent()
 #
 # Configura GRUB para arranque silencioso modificando /etc/default/grub con:
-# - GRUB_TIMEOUT=0: Arranque inmediato sin menú
-# - Parámetros del kernel: quiet, loglevel=3, rd.systemd.show_status=false,
+# - GRUB_TIMEOUT=0: Arranque inmediato sin menÃº
+# - ParÃ¡metros del kernel: quiet, loglevel=3, rd.systemd.show_status=false,
 #   rd.udev.log_level=3
-# - GRUB_DISABLE_SUBMENU=y: Deshabilita submenús
+# - GRUB_DISABLE_SUBMENU=y: Deshabilita submenÃºs
 #
-# Luego genera el archivo de configuración de GRUB.
+# Luego genera el archivo de configuraciÃ³n de GRUB.
 #
 # Precondiciones:
 #   - Debe ejecutarse dentro de arch-chroot
 #   - GRUB debe estar instalado
 #
 # Returns:
-#   0 - Si la configuración fue exitosa
-#   1 - Si hubo un error durante la configuración
+#   0 - Si la configuraciÃ³n fue exitosa
+#   1 - Si hubo un error durante la configuraciÃ³n
 ################################################################################
 configure_grub_silent() {
     local grub_config="/mnt/etc/default/grub"
     
-    # Verificar que existe el archivo de configuración de GRUB
+    # Verificar que existe el archivo de configuraciÃ³n de GRUB
     if [[ ! -f "$grub_config" ]]; then
         log_error "El archivo $grub_config no existe. GRUB debe estar instalado primero."
         return 1
@@ -94,11 +124,11 @@ configure_grub_silent() {
     # Modificar GRUB_TIMEOUT a 0
     sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=0/' "$grub_config"
     
-    # Modificar GRUB_CMDLINE_LINUX_DEFAULT para agregar parámetros silenciosos
-    # Primero, eliminar la línea existente
+    # Modificar GRUB_CMDLINE_LINUX_DEFAULT para agregar parÃ¡metros silenciosos
+    # Primero, eliminar la lÃ­nea existente
     sed -i '/^GRUB_CMDLINE_LINUX_DEFAULT=/d' "$grub_config"
     
-    # Agregar la nueva línea con todos los parámetros
+    # Agregar la nueva lÃ­nea con todos los parÃ¡metros
     # quiet: menos mensajes, loglevel=3: solo errores, rd.*: silencio en initramfs
     # vt.global_cursor_default=0: oculta el cursor de la terminal, fbcon=nodefer: evita retrasos en fb
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3 rd.systemd.show_status=false rd.udev.log_level=3 vt.global_cursor_default=0 fbcon=nodefer"' >> "$grub_config"
@@ -110,11 +140,11 @@ configure_grub_silent() {
         echo 'GRUB_DISABLE_SUBMENU=y' >> "$grub_config"
     fi
     
-    log "Generando archivo de configuración de GRUB"
+    log "Generando archivo de configuraciÃ³n de GRUB"
     
-    # Generar el archivo de configuración de GRUB
+    # Generar el archivo de configuraciÃ³n de GRUB
     if ! run_quiet arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg; then
-        log_error "Fallo al generar el archivo de configuración de GRUB"
+        log_error "Fallo al generar el archivo de configuraciÃ³n de GRUB"
         return 1
     fi
     
