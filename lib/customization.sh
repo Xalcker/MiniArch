@@ -146,13 +146,13 @@ install_custom_cursor() {
         fi
 
         cat > /mnt/tmp/miniarch-pick-cursor.cfg <<'EOF'
-64 23 8 /tmp/miniarch-pick-cursor.png
+64 23 8 miniarch-pick-cursor.png
 EOF
 
-        if ! arch-chroot /mnt xcursorgen \
-            /tmp/miniarch-pick-cursor.cfg \
-            "/usr/share/icons/MiniArchPick/cursors/default"; then
-            log_error "Failed to generate X11 cursor from PNG"
+        if ! arch-chroot /mnt bash -lc \
+            'cd /tmp && xcursorgen miniarch-pick-cursor.cfg /usr/share/icons/MiniArchPick/cursors/default' \
+            >> "${LOG_FILE:-/dev/null}" 2>&1; then
+            log_error "Failed to generate X11 cursor from PNG. Check ${LOG_FILE:-installer log} for xcursorgen details."
             return 1
         fi
 

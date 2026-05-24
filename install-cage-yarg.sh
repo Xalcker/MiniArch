@@ -487,8 +487,7 @@ main() {
 
     if [[ -e "$CURSOR_PATH" ]]; then
         if ! install_custom_cursor "$CURSOR_PATH" "$KIOSK_USER"; then
-            log_error "Fallo en instalacion del cursor personalizado"
-            exit 1
+            warn "Fallo en instalacion del cursor personalizado; se continuara con el cursor predeterminado."
         fi
     else
         warn "No se encontro CURSOR_PATH=$CURSOR_PATH; se omitira cursor personalizado."
