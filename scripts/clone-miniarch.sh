@@ -149,17 +149,17 @@ select_disk() {
     mapfile -t disks < <(list_disks)
     [[ ${#disks[@]} -gt 0 ]] || die "No se detectaron discos."
 
-    echo ""
-    echo "Discos detectados:"
+    echo "" >&2
+    echo "Discos detectados:" >&2
     index=1
     for disk in "${disks[@]}"; do
-        printf "  %d) " "$index"
-        describe_disk "$disk"
+        printf "  %d) " "$index" >&2
+        describe_disk "$disk" >&2
         index=$((index + 1))
     done
-    echo ""
+    echo "" >&2
 
-    read -rp "$(echo -e "${BLUE}${prompt}: ${NC}")" answer
+    read -rp "$(echo -e "${BLUE}${prompt}: ${NC}")" answer </dev/tty
     [[ -n "$answer" ]] || die "No se selecciono ningun disco."
 
     if [[ "$answer" =~ ^[0-9]+$ ]]; then
