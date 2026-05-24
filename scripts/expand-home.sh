@@ -48,6 +48,52 @@ require_command() {
     command -v "$1" >/dev/null 2>&1 || die "No se encontro '$1'. Instale el paquete necesario y reintente."
 }
 
+warn_missing_package_hint() {
+    cat >&2 <<'EOF'
+
+En Arch live normalmente puedes instalar las herramientas faltantes con:
+  pacman -Sy --needed gptfdisk e2fsprogs parted cloud-guest-utils
+
+EOF
+}
+
+require_expand_commands() {
+    local missing=false
+    local command_name
+
+    for command_name in lsblk awk sgdisk parted e2fsck resize2fs; do
+        if ! command -v "$command_name" >/dev/null 2>&1; then
+            warn "Falta '$command_name'."
+            missing=true
+        fi
+    done
+
+    if [[ "$missing" == "true" ]]; then
+        warn_missing_package_hint
+        die "Faltan herramientas para expandir /home."
+    fi
+}
+
+settle_devices() {
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm settle || true
+    fi
+}
+
+reread_partition_table() {
+    local disk="$1"
+
+    if command -v partprobe >/dev/null 2>&1; then
+        partprobe "$disk" || warn "partprobe no pudo releer la tabla."
+    elif command -v blockdev >/dev/null 2>&1; then
+        blockdev --rereadpt "$disk" || warn "blockdev no pudo releer la tabla."
+    else
+        warn "No se encontro partprobe ni blockdev; puede requerir reinicio antes de resize2fs."
+    fi
+
+    settle_devices
+}
+
 partition_path() {
     local disk="$1"
     local number="$2"
@@ -176,17 +222,14 @@ grow_home_partition() {
         parted -s "$disk" resizepart 4 100%
     fi
 
-    partprobe "$disk" || warn "partprobe no pudo releer la tabla; puede requerir reinicio antes de resize2fs."
-    if command -v udevadm >/dev/null 2>&1; then
-        udevadm settle || true
-    fi
+    reread_partition_table "$disk"
 }
 
 resize_home_filesystem() {
     local home_partition="$1"
 
     log "Revisando filesystem ext4 en $home_partition..."
-    e2fsck -f "$home_partition"
+    e2fsck -fy "$home_partition"
 
     log "Expandiendo filesystem ext4 en $home_partition..."
     resize2fs "$home_partition"
@@ -239,13 +282,7 @@ main() {
     done
 
     require_root
-    require_command lsblk
-    require_command awk
-    require_command sgdisk
-    require_command parted
-    require_command partprobe
-    require_command e2fsck
-    require_command resize2fs
+    require_expand_commands
 
     if [[ -z "$disk" ]]; then
         disk=$(select_disk "Disco clonado donde expandir /home (numero o ruta)")

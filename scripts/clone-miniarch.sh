@@ -30,6 +30,68 @@ require_command() {
     command -v "$1" >/dev/null 2>&1 || die "No se encontro '$1'. Instale el paquete necesario y reintente."
 }
 
+warn_missing_package_hint() {
+    cat >&2 <<'EOF'
+
+En Arch live normalmente puedes instalar las herramientas faltantes con:
+  pacman -Sy --needed gptfdisk e2fsprogs dosfstools arch-install-scripts parted util-linux
+
+EOF
+}
+
+require_clone_commands() {
+    require_command lsblk
+    require_command awk
+    require_command dd
+    require_command sync
+}
+
+require_uuid_commands() {
+    local missing=false
+    local command_name
+
+    for command_name in sgdisk e2fsck tune2fs swaplabel uuidgen genfstab mount umount; do
+        if ! command -v "$command_name" >/dev/null 2>&1; then
+            warn "Falta '$command_name'."
+            missing=true
+        fi
+    done
+
+    if [[ "$missing" == "true" ]]; then
+        warn_missing_package_hint
+        die "Faltan herramientas para cambiar UUIDs/GUIDs del clon."
+    fi
+
+    require_grub_commands
+}
+
+require_grub_commands() {
+    if ! command -v arch-chroot >/dev/null 2>&1; then
+        warn_missing_package_hint
+        die "No se encontro 'arch-chroot' para regenerar GRUB."
+    fi
+}
+
+settle_devices() {
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm settle || true
+    fi
+}
+
+reread_partition_table() {
+    local disk="$1"
+
+    if command -v partprobe >/dev/null 2>&1; then
+        partprobe "$disk" || true
+    elif command -v blockdev >/dev/null 2>&1; then
+        blockdev --rereadpt "$disk" || true
+    else
+        warn "No se encontro partprobe ni blockdev; puede requerir reinicio para ver particiones nuevas."
+    fi
+
+    settle_devices
+}
+
 ask_yes_no() {
     local prompt="$1"
     local default="${2:-no}"
@@ -155,8 +217,7 @@ clone_disk() {
     fi
 
     sync
-    partprobe "$target_disk" || true
-    udevadm settle || true
+    reread_partition_table "$target_disk"
     log "Clonacion completada."
 }
 
@@ -193,7 +254,6 @@ refresh_fstab() {
     local disk="$1"
     local mount_root
 
-    require_command genfstab
     mount_root=$(mktemp -d /mnt/miniarch-clone.XXXXXX)
 
     if ! mount_clone "$disk" "$mount_root"; then
@@ -214,7 +274,7 @@ refresh_grub() {
     local disk="$1"
     local mount_root
 
-    require_command arch-chroot
+    require_grub_commands
     mount_root=$(mktemp -d /mnt/miniarch-clone.XXXXXX)
 
     if ! mount_clone "$disk" "$mount_root"; then
@@ -256,7 +316,10 @@ reformat_esp_uuid() {
     esp_partition=$(partition_path "$disk" 1)
     [[ -b "$esp_partition" ]] || return 0
 
-    require_command mkfs.fat
+    if ! command -v mkfs.fat >/dev/null 2>&1; then
+        warn_missing_package_hint
+        die "No se encontro 'mkfs.fat' para cambiar el UUID FAT de la particion EFI."
+    fi
 
     tmp_mount=$(mktemp -d /mnt/miniarch-esp.XXXXXX)
     backup_dir=$(mktemp -d /tmp/miniarch-esp-backup.XXXXXX)
@@ -279,6 +342,8 @@ randomize_clone_ids() {
     local disk="$1"
     local root_partition swap_partition home_partition
 
+    require_uuid_commands
+
     root_partition=$(partition_path "$disk" 2)
     swap_partition=$(partition_path "$disk" 3)
     home_partition=$(partition_path "$disk" 4)
@@ -287,11 +352,10 @@ randomize_clone_ids() {
 
     log "Cambiando GUIDs GPT del disco y particiones..."
     sgdisk -G "$disk"
-    partprobe "$disk" || true
-    udevadm settle || true
+    reread_partition_table "$disk"
 
     log "Cambiando UUID de root ext4..."
-    e2fsck -f "$root_partition"
+    e2fsck -fy "$root_partition"
     tune2fs -U random "$root_partition"
 
     if [[ -b "$swap_partition" ]]; then
@@ -301,11 +365,13 @@ randomize_clone_ids() {
 
     if [[ -b "$home_partition" ]]; then
         log "Cambiando UUID de home ext4..."
-        e2fsck -f "$home_partition"
+        e2fsck -fy "$home_partition"
         tune2fs -U random "$home_partition"
     fi
 
-    if ask_yes_no "Cambiar tambien el UUID FAT de la particion EFI reformateandola y restaurando su contenido" "yes"; then
+    if ! command -v mkfs.fat >/dev/null 2>&1; then
+        warn "No se encontro mkfs.fat; se conservara el UUID FAT de la particion EFI."
+    elif ask_yes_no "Cambiar tambien el UUID FAT de la particion EFI reformateandola y restaurando su contenido" "yes"; then
         reformat_esp_uuid "$disk"
     else
         warn "La particion EFI conservara su UUID FAT actual."
@@ -321,14 +387,7 @@ main() {
     local source_size target_size
 
     require_root
-    require_command lsblk
-    require_command awk
-    require_command partprobe
-    require_command sgdisk
-    require_command e2fsck
-    require_command tune2fs
-    require_command swaplabel
-    require_command uuidgen
+    require_clone_commands
 
     if [[ -z "$source_disk" ]]; then
         source_disk=$(select_disk "Disco origen (numero o ruta)")
@@ -357,6 +416,7 @@ main() {
     fi
 
     if ask_yes_no "Expandir /home del disco clonado al espacio disponible" "yes"; then
+        [[ -f "$SCRIPT_DIR/expand-home.sh" ]] || die "No se encontro $SCRIPT_DIR/expand-home.sh"
         bash "$SCRIPT_DIR/expand-home.sh" --yes "$target_disk"
     fi
 

@@ -15,7 +15,18 @@ Esto aplica tanto para el camino Cage/YARG como para el camino Cage/foot.
 - `e2fsprogs` para `e2fsck`, `tune2fs` y `resize2fs`.
 - `dosfstools` para regenerar la particion EFI si cambias su UUID.
 - `arch-install-scripts` para `genfstab`.
+- `parted` para expandir `/home`.
 - `ddrescue` opcional; si no existe, el script usa `dd`.
+
+Si solo quieres copiar de A hacia B, el script puede clonar con herramientas
+basicas del live ISO. Las herramientas anteriores se necesitan cuando eliges
+cambiar UUIDs/GUIDs, regenerar GRUB o expandir `/home`.
+
+En Arch live puedes instalarlas con:
+
+```bash
+pacman -Sy --needed gptfdisk e2fsprogs dosfstools arch-install-scripts parted util-linux
+```
 
 ## Flujo Recomendado
 
