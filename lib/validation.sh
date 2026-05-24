@@ -150,9 +150,9 @@ select_disk_device() {
     lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL "$selected" >&2
     echo "" >&2
     echo "ADVERTENCIA: La instalacion borrara particiones y datos en $selected." >&2
-    read -rp "Para confirmar escriba INSTALAR: " confirmation
+    read -rp "Para confirmar escriba INSTALAR o instalar: " confirmation
 
-    if [[ "$confirmation" != "INSTALAR" ]]; then
+    if [[ "${confirmation,,}" != "instalar" ]]; then
         echo "Operacion cancelada. No se modificara el disco." >&2
         return 1
     fi

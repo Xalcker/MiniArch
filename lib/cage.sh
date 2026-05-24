@@ -12,6 +12,7 @@ install_cage_base_system() {
         sudo nano curl wget unzip git dbus file
         networkmanager grub efibootmgr samba cpupower
         mesa wayland xorg-xwayland cage foot
+        xorg-xcursorgen
         ttf-dejavu
         vulkan-icd-loader egl-wayland
         vulkan-intel intel-media-driver
@@ -407,6 +408,10 @@ echo "run-yarg: DBus=${DBUS_SESSION_BUS_ADDRESS:-sin-dbus}" >&2
 
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=cage
+if [[ -d /usr/share/icons/MiniArchPick ]]; then
+    export XCURSOR_THEME=MiniArchPick
+    export XCURSOR_SIZE=64
+fi
 if [[ -x /usr/bin/Xwayland ]]; then
     export WLR_XWAYLAND=/usr/bin/Xwayland
 else

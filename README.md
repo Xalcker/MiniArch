@@ -172,6 +172,7 @@ chmod +x install-cage-kiosk.sh
 Advertencia: ambos instaladores destruyen el disco seleccionado. Con
 `DISK_DEVICE=ask`, el instalador muestra un selector interactivo con los discos
 detectados, marca USB/removibles y pide confirmar escribiendo `INSTALAR`.
+Tambien acepta `instalar`.
 Tambien puedes fijar `DISK_DEVICE` manualmente, por ejemplo `/dev/sda`,
 `/dev/nvme0n1` o `/dev/vda`; aun asi el instalador mostrara el selector para
 evitar errores antes de particionar.

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Left leaning guitar pick cursor">
+  <defs>
+    <linearGradient id="pick-fill" x1="13" y1="8" x2="50" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff7ed"/>
+      <stop offset="0.45" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#c2410c"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="rotate(160 32 32)">
+    <path
+      d="M10.8 18.2
+         C11.8 9.5 20.7 4.6 32 4.6
+         C43.3 4.6 52.2 9.5 53.2 18.2
+         C54.5 29.5 42.7 47.2 35.2 58.2
+         C33.6 60.5 30.4 60.5 28.8 58.2
+         C21.3 47.2 9.5 29.5 10.8 18.2Z"
+      fill="#111827"
+      opacity="0.95"/>
+    <path
+      d="M12.7 18.9
+         C13.5 11.6 21.2 7.2 32 7.2
+         C42.8 7.2 50.5 11.6 51.3 18.9
+         C52.3 28.9 41.2 46 33.4 57.1
+         C32.7 58.1 31.3 58.1 30.6 57.1
+         C22.8 46 11.7 28.9 12.7 18.9Z"
+      fill="url(#pick-fill)"
+      stroke="#fff7ed"
+      stroke-width="2.4"
+      stroke-linejoin="round"/>
+    <path
+      d="M19.2 19.1
+         C20.1 14.7 25.4 12.1 32 12.1
+         C37 12.1 41.3 13.6 43.4 16.4"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="2.3"
+      stroke-linecap="round"
+      opacity="0.45"/>
+    <path
+      d="M42.5 29.7
+         C39.9 37.5 35.1 45.6 32 50.4"
+      fill="none"
+      stroke="#7c2d12"
+      stroke-width="2"
+      stroke-linecap="round"
+      opacity="0.32"/>
+  </g>
+
+  <circle cx="23.4" cy="8.4" r="2.2" fill="#111827"/>
+  <circle cx="23.4" cy="8.4" r="1.1" fill="#ffffff"/>
+</svg>

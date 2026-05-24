@@ -193,7 +193,7 @@ show_layout() {
 confirm_expand() {
     local disk="$1"
     local home_partition="$2"
-    local confirmation
+    local confirmation normalized
 
     [[ "$ASSUME_YES" == "true" ]] && return 0
 
@@ -202,8 +202,11 @@ confirm_expand() {
     show_layout "$disk"
     echo ""
     warn "Se expandira la particion 4 ($home_partition) hasta el final de $disk."
-    read -rp "Para confirmar escriba EXPANDIR: " confirmation
-    [[ "$confirmation" == "EXPANDIR" ]] || die "Operacion cancelada."
+    read -rp "Para confirmar escriba EXPANDIR o expandir: " confirmation </dev/tty
+    normalized="${confirmation,,}"
+    normalized="${normalized//$'\r'/}"
+    normalized="${normalized//[[:space:]]/}"
+    [[ "$normalized" == "expandir" ]] || die "Operacion cancelada."
 }
 
 grow_home_partition() {

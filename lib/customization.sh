@@ -102,6 +102,8 @@ install_custom_cursor() {
     local cursor_path="$1"
     local username="$2"
     local user_home="/mnt/home/$username"
+    local theme_name="MiniArchPick"
+    local png_source=""
     
     if [[ -z "$cursor_path" ]]; then
         log_error "Cursor path not provided"
@@ -120,6 +122,71 @@ install_custom_cursor() {
     fi
     
     log "Installing custom cursor from: $cursor_path"
+
+    if [[ -d "$cursor_path" && -f "$cursor_path/guitar-pick-left.png" ]]; then
+        png_source="$cursor_path/guitar-pick-left.png"
+    elif [[ -f "$cursor_path" && "${cursor_path,,}" == *.png ]]; then
+        png_source="$cursor_path"
+    fi
+
+    if [[ -n "$png_source" ]]; then
+        if ! arch-chroot /mnt bash -lc 'command -v xcursorgen >/dev/null 2>&1'; then
+            log_error "xcursorgen is not installed in target system"
+            return 1
+        fi
+
+        if ! mkdir -p "/mnt/usr/share/icons/$theme_name/cursors" /mnt/tmp "$user_home/.icons/default"; then
+            log_error "Failed to create cursor theme directories"
+            return 1
+        fi
+
+        if ! cp "$png_source" /mnt/tmp/miniarch-pick-cursor.png; then
+            log_error "Failed to copy cursor PNG"
+            return 1
+        fi
+
+        cat > /mnt/tmp/miniarch-pick-cursor.cfg <<'EOF'
+64 23 8 /tmp/miniarch-pick-cursor.png
+EOF
+
+        if ! arch-chroot /mnt xcursorgen \
+            /tmp/miniarch-pick-cursor.cfg \
+            "/usr/share/icons/MiniArchPick/cursors/default"; then
+            log_error "Failed to generate X11 cursor from PNG"
+            return 1
+        fi
+
+        cp "/mnt/usr/share/icons/$theme_name/cursors/default" "/mnt/usr/share/icons/$theme_name/cursors/left_ptr"
+        cp "/mnt/usr/share/icons/$theme_name/cursors/default" "/mnt/usr/share/icons/$theme_name/cursors/pointer"
+        cp "/mnt/usr/share/icons/$theme_name/cursors/default" "/mnt/usr/share/icons/$theme_name/cursors/hand"
+
+        cat > "/mnt/usr/share/icons/$theme_name/index.theme" <<EOF
+[Icon Theme]
+Name=$theme_name
+Comment=MiniArch guitar pick cursor
+Example=default
+EOF
+
+        cat > /mnt/usr/share/icons/default/index.theme <<EOF
+[Icon Theme]
+Name=Default
+Comment=Default Cursor Theme
+Inherits=$theme_name
+EOF
+
+        cat > "$user_home/.icons/default/index.theme" <<EOF
+[Icon Theme]
+Name=Default
+Comment=Default Cursor Theme
+Inherits=$theme_name
+EOF
+
+        rm -f /mnt/tmp/miniarch-pick-cursor.png /mnt/tmp/miniarch-pick-cursor.cfg
+        arch-chroot /mnt chown -R "$username:$username" "/home/$username/.icons"
+
+        log "Custom cursor theme generated from PNG"
+        return 0
+    fi
     
     # Crear directorio de iconos del sistema si no existe
     if ! mkdir -p /mnt/usr/share/icons/default; then

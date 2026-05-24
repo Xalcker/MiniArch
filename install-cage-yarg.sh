@@ -485,6 +485,15 @@ main() {
         exit 1
     fi
 
+    if [[ -e "$CURSOR_PATH" ]]; then
+        if ! install_custom_cursor "$CURSOR_PATH" "$KIOSK_USER"; then
+            log_error "Fallo en instalacion del cursor personalizado"
+            exit 1
+        fi
+    else
+        warn "No se encontro CURSOR_PATH=$CURSOR_PATH; se omitira cursor personalizado."
+    fi
+
     if ! configure_multilib_yarg_deps; then
         log_error "Fallo en configuracion de multilib/dependencias YARG"
         exit 1

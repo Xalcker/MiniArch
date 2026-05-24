@@ -40,7 +40,7 @@ El script:
 
 - Lista discos detectados.
 - Pregunta origen y destino.
-- Exige confirmar con `CLONAR`.
+- Exige confirmar con `CLONAR` o `clonar`.
 - Usa `ddrescue` si esta disponible o `dd` como fallback.
 - Al final pregunta si quieres cambiar UUIDs/GUIDs del clon.
 - Regenera `fstab` con los UUIDs actuales.
@@ -81,6 +81,19 @@ sudo bash scripts/expand-home.sh --yes /dev/sdb
 MiniArch crea `/home` como particion 4 al final del disco. El script repara GPT
 si el disco crecio despues de clonar, expande la particion 4 y ejecuta
 `resize2fs`.
+
+## Reparar `fstab` De Un Clon
+
+Si cambiaste UUIDs/GUIDs y el clon cae en emergency mode porque `/`, `/home` o
+swap no coinciden en `/etc/fstab`, arranca desde el ISO live y ejecuta:
+
+```bash
+sudo bash scripts/clone-miniarch.sh --repair-fstab /dev/sdb
+```
+
+El script monta el clon, escribe un `fstab` deterministico para la estructura de
+MiniArch y agrega `/`, `/boot`, swap y `/home` usando los UUID actuales de las
+particiones 1 a 4.
 
 ## Flujo Manual De Respaldo
 

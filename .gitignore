@@ -18,6 +18,8 @@
 assets/cursor/*
 !assets/cursor/PLACEHOLDER.txt
 !assets/cursor/README.md
+!assets/cursor/guitar-pick-left.svg
+!assets/cursor/guitar-pick-left.png
 
 # ============================================================================
 # CONFIGURACIÓN LOCAL Y SENSIBLE
