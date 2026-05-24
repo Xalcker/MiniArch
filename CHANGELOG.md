@@ -26,8 +26,6 @@ semantico cuando se publiquen releases formales.
 - Instalador minimal `install-cage-kiosk.sh` para Cage + foot sin YARG.
 - Scripts `scripts/clone-miniarch.sh` y `scripts/expand-home.sh` para clonado,
   cambio de UUIDs y expansion de `/home`.
-- Bootstrap `bootstrap-arch-live.sh` para instalar dependencias, clonar el repo
-  y lanzar el instalador desde una linea con `curl | bash`.
 
 ### Cambiado
 
@@ -47,6 +45,7 @@ semantico cuando se publiquen releases formales.
 
 - `install-arch-kiosk.sh`, `setup-yarg.sh` y `lib/gui.sh`.
 - Instaladores Debian/Ubuntu experimentales.
+- Bootstrap `bootstrap-arch-live.sh` y la documentacion de `curl | bash`.
 
 ### Corregido
 
