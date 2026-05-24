@@ -209,7 +209,7 @@ clone_disk() {
 
     log "Clonando $source_disk hacia $target_disk..."
     if command -v ddrescue >/dev/null 2>&1; then
-        ddrescue -f --no-split "$source_disk" "$target_disk" "$mapfile_path"
+        ddrescue -f -n "$source_disk" "$target_disk" "$mapfile_path"
         ddrescue -f -r3 "$source_disk" "$target_disk" "$mapfile_path"
     else
         warn "ddrescue no esta instalado; usando dd."
