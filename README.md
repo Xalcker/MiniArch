@@ -425,7 +425,12 @@ Variables comunes:
   laboratorio.
 - `ENABLE_PLYMOUTH`: habilita/deshabilita Plymouth.
 - `PLYMOUTH_THEME_NAME`: nombre del tema Plymouth.
-- `PLYMOUTH_IMAGE_PATH`: imagen PNG opcional para Plymouth.
+- `PLYMOUTH_IMAGE_PATH`: imagen PNG opcional para Plymouth. En Cage/YARG y
+  Cage/Clone Hero, si se deja el valor por defecto, el instalador elige primero
+  un asset por camino y resolucion.
+- `PLYMOUTH_TARGET_RESOLUTION`: resolucion final usada para preparar la imagen
+  de Plymouth. En Cage/YARG y Cage/Clone Hero se calcula desde la resolucion
+  elegida.
 - `CURSOR_PATH`: ruta opcional usada solo por validaciones/assets heredados.
 - `LOG_FILE`: archivo donde se guarda la salida detallada de la instalacion.
 - `VERBOSE_INSTALL`: si es `true`, muestra en consola la salida completa de
@@ -490,6 +495,10 @@ MiniArch/
 |   `-- finalization.sh        # Red, SSH opcional, limpieza y desmontaje
 |-- assets/
 |   |-- README.md
+|   |-- yarg_720p.png
+|   |-- yarg_1080p.png
+|   |-- clonehero_720p.png       # opcional/futuro
+|   |-- clonehero_1080p.png      # opcional/futuro
 |   |-- plymouth-image.png.example
 |   `-- cursor/
 |-- tests/

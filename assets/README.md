@@ -12,6 +12,23 @@ assets/
 └── README.md             # Este archivo
 ```
 
+## Seleccion Automatica Por Camino
+
+En `install-cage-yarg.sh` e `install-cage-clonehero.sh`, el valor por defecto
+de `PLYMOUTH_IMAGE_PATH` activa seleccion automatica. El instalador busca
+primero el asset especifico del camino y resolucion elegidos:
+
+- `yarg_720p.png`
+- `yarg_1080p.png`
+- `clonehero_720p.png`
+- `clonehero_1080p.png`
+
+Si no existe, cae a `plymouth-image_720p.png`, `plymouth-image_1080p.png` y
+finalmente a `plymouth-image.png`. Si defines `PLYMOUTH_IMAGE_PATH` con una ruta
+propia, esa imagen se respeta. ImageMagick del entorno live se usa como respaldo
+para ajustar la imagen a la resolucion seleccionada; si no esta disponible, se
+intenta dentro del sistema instalado.
+
 ## Imagen de Plymouth (plymouth-image.png)
 
 ### Requisitos

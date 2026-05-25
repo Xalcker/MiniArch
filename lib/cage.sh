@@ -161,7 +161,7 @@ configure_cage_plymouth() {
     fi
 
     log "Configurando Plymouth con imagen personalizada"
-    if ! configure_plymouth "$PLYMOUTH_THEME_NAME" "$PLYMOUTH_IMAGE_PATH"; then
+    if ! configure_plymouth "$PLYMOUTH_THEME_NAME" "$PLYMOUTH_IMAGE_PATH" "${PLYMOUTH_TARGET_RESOLUTION:-1280x720}"; then
         warn "No se pudo configurar Plymouth; se continua sin pantalla de arranque personalizada."
         return 0
     fi

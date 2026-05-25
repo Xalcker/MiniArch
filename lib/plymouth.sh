@@ -14,6 +14,7 @@ fi
 # Funciones:
 # - install_plymouth(): Instala paquetes de Plymouth
 # - create_custom_theme(): Crea un tema personalizado de Plymouth
+# - select_plymouth_image(): Elige asset Plymouth por juego/resolucion
 # - configure_plymouth(): Configura Plymouth en initramfs y GRUB
 ################################################################################
 
@@ -135,10 +136,73 @@ EOF
 }
 
 ################################################################################
+# select_plymouth_image()
+#
+# Elige la imagen de Plymouth mas especifica disponible para el camino elegido.
+# Si PLYMOUTH_IMAGE_PATH se definio explicitamente con una ruta distinta de
+# "auto" y del valor historico, se respeta esa ruta.
+#
+# Arguments:
+#   $1 - Prefijo del camino (ej: yarg, clonehero)
+#   $2 - Resolucion normalizada (ej: 1080p, 720p)
+#   $3 - Ancho destino
+#   $4 - Alto destino
+#
+# Side effects:
+#   Actualiza PLYMOUTH_IMAGE_PATH y PLYMOUTH_TARGET_RESOLUTION.
+################################################################################
+select_plymouth_image() {
+    local app_prefix="$1"
+    local resolution="$2"
+    local width="$3"
+    local height="$4"
+    local assets_dir="${SCRIPT_DIR:-.}/assets"
+    local current_path="${PLYMOUTH_IMAGE_PATH:-auto}"
+    local default_path="./assets/plymouth-image.png"
+    local selected_path=""
+    local candidate
+
+    PLYMOUTH_TARGET_RESOLUTION="${width}x${height}"
+
+    if [[ "$current_path" != "auto" && "$current_path" != "$default_path" ]]; then
+        log "Usando PLYMOUTH_IMAGE_PATH configurado: $current_path"
+        export PLYMOUTH_IMAGE_PATH PLYMOUTH_TARGET_RESOLUTION
+        return 0
+    fi
+
+    local -a candidates=(
+        "${assets_dir}/${app_prefix}_${resolution}.png"
+        "${assets_dir}/${app_prefix}-${resolution}.png"
+        "${assets_dir}/${app_prefix}_${width}x${height}.png"
+        "${assets_dir}/${app_prefix}-${width}x${height}.png"
+        "${assets_dir}/plymouth-image_${resolution}.png"
+        "${assets_dir}/plymouth-image-${resolution}.png"
+        "${assets_dir}/plymouth-image.png"
+    )
+
+    for candidate in "${candidates[@]}"; do
+        if [[ -f "$candidate" ]]; then
+            selected_path="$candidate"
+            break
+        fi
+    done
+
+    if [[ -n "$selected_path" ]]; then
+        PLYMOUTH_IMAGE_PATH="$selected_path"
+        log "Imagen Plymouth seleccionada: $PLYMOUTH_IMAGE_PATH (${PLYMOUTH_TARGET_RESOLUTION})"
+    else
+        PLYMOUTH_IMAGE_PATH="${assets_dir}/plymouth-image.png"
+        log "No se encontro asset Plymouth especifico; se intentara usar $PLYMOUTH_IMAGE_PATH"
+    fi
+
+    export PLYMOUTH_IMAGE_PATH PLYMOUTH_TARGET_RESOLUTION
+}
+
+################################################################################
 # configure_plymouth()
 #
 # Configura Plymouth para usar el tema personalizado:
-# - Copia y escala la imagen proporcionada a 1280x720
+# - Copia y escala la imagen proporcionada a la resolucion destino
 # - Actualiza /etc/mkinitcpio.conf para agregar el hook de Plymouth
 # - Regenera el initramfs
 # - Activa el tema personalizado
@@ -147,6 +211,7 @@ EOF
 # Arguments:
 #   $1 - Nombre del tema (ej: arch-kiosk)
 #   $2 - Ruta de la imagen PNG proporcionada por el usuario
+#   $3 - Resolucion destino opcional (ej: 1920x1080). Default: 1280x720
 #
 # Precondiciones:
 #   - Debe ejecutarse dentro de arch-chroot
@@ -161,6 +226,7 @@ EOF
 configure_plymouth() {
     local theme_name="$1"
     local image_path="$2"
+    local target_resolution="${3:-1280x720}"
     
     # Verificar argumentos
     if [[ -z "$theme_name" ]]; then
@@ -173,6 +239,11 @@ configure_plymouth() {
         return 1
     fi
     
+    if [[ ! "$target_resolution" =~ ^[0-9]+x[0-9]+$ ]]; then
+        log_error "Resolucion Plymouth invalida: $target_resolution"
+        return 1
+    fi
+
     local theme_dir="/mnt/usr/share/plymouth/themes/${theme_name}"
     
     # Verificar que el directorio del tema existe
@@ -198,15 +269,30 @@ configure_plymouth() {
         return 1
     fi
     
-    log "Preparando imagen de Plymouth"
+    log "Preparando imagen de Plymouth (${target_resolution})"
+    rm -f "/mnt${target_image}"
 
-    if arch-chroot /mnt command -v magick >/dev/null 2>&1; then
-        if ! run_quiet arch-chroot /mnt magick /tmp/plymouth-temp.png -resize 1280x720! "$target_image"; then
+    if command -v magick >/dev/null 2>&1; then
+        if ! magick "$image_path" -resize "${target_resolution}!" "/mnt${target_image}"; then
+            log "Advertencia: No se pudo escalar la imagen con magick del entorno live; se intentara dentro del sistema destino."
+            rm -f "/mnt${target_image}"
+        fi
+    elif command -v convert >/dev/null 2>&1; then
+        if ! convert "$image_path" -resize "${target_resolution}!" "/mnt${target_image}"; then
+            log "Advertencia: No se pudo escalar la imagen con convert del entorno live; se intentara dentro del sistema destino."
+            rm -f "/mnt${target_image}"
+        fi
+    fi
+
+    if [[ -s "/mnt${target_image}" ]]; then
+        :
+    elif arch-chroot /mnt command -v magick >/dev/null 2>&1; then
+        if ! run_quiet arch-chroot /mnt magick /tmp/plymouth-temp.png -resize "${target_resolution}!" "$target_image"; then
             log "Advertencia: No se pudo escalar la imagen con magick; se copiara sin escalar."
             cp "$temp_image" "/mnt${target_image}"
         fi
     elif arch-chroot /mnt command -v convert >/dev/null 2>&1; then
-        if ! run_quiet arch-chroot /mnt convert /tmp/plymouth-temp.png -resize 1280x720! "$target_image"; then
+        if ! run_quiet arch-chroot /mnt convert /tmp/plymouth-temp.png -resize "${target_resolution}!" "$target_image"; then
             log "Advertencia: No se pudo escalar la imagen con convert; se copiara sin escalar."
             cp "$temp_image" "/mnt${target_image}"
         fi
