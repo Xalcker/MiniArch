@@ -7,11 +7,14 @@ Repositorio oficial: [Xalcker/MiniArch](https://github.com/Xalcker/MiniArch).
 
 ## Caminos De Instalacion
 
-MiniArch mantiene dos caminos basados en Cage:
+MiniArch mantiene tres caminos basados en Cage:
 
 - `install-cage-yarg.sh`: camino recomendado para YARG. Instala Arch Linux,
   Cage, Wayland/XWayland, YARG, audio, Samba y la carpeta de canciones en un
   solo flujo.
+- `install-cage-clonehero.sh`: camino equivalente para Clone Hero. Instala
+  Arch Linux, Cage, Wayland/XWayland, Clone Hero, audio, Samba y la carpeta de
+  canciones en un solo flujo.
 - `install-cage-kiosk.sh`: camino minimalista. Instala Arch Linux, Cage y
   `foot` solamente, util como base de kiosko o terminal de mantenimiento.
 
@@ -19,6 +22,7 @@ En corto:
 
 ```text
 Recomendado: install-cage-yarg.sh
+Clone Hero:  install-cage-clonehero.sh
 Minimal:     install-cage-kiosk.sh
 ```
 
@@ -35,6 +39,8 @@ compartidos de `lib/` y mueve lo especifico a:
   `/usr/local/bin/run-yarg.sh`.
 - `lib/yarg.sh`: descarga de YARG stable, stable-latest o nightly, settings
   iniciales, Samba, rendimiento y updater.
+- `lib/clonehero.sh`: descarga de Clone Hero desde GitHub, carpeta compartida
+  de canciones, Samba, updater y wrapper `/usr/local/bin/run-clonehero.sh`.
 
 `install-cage-kiosk.sh` conserva el particionado, GRUB, Plymouth opcional,
 red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
@@ -75,6 +81,26 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 - Dependencias multilib de YARG.
 - Limites de tiempo real, `vm.swappiness=10` y `cpupower` en performance.
 - Updater `/usr/local/bin/update-yarg`.
+- Servicio `cage-kiosk.service`.
+
+### Cage/Clone Hero
+
+`install-cage-clonehero.sh` instala y configura:
+
+- Cage como compositor de kiosko.
+- Wayland y XWayland.
+- Mesa, Vulkan Intel/AMD y NVIDIA opcional.
+- DBus de sesion para el wrapper de Clone Hero.
+- PipeWire iniciado en orden: `pipewire`, `wireplumber`, `pipewire-pulse`.
+- Clone Hero en `/opt/CloneHero`.
+- Perfil persistente en `CLONEHERO_DATA_DIR`.
+- Carpeta de canciones fija en `CLONEHERO_SONGS_DIR`.
+- Enlace `/home/kiosk/Songs` apuntando a la carpeta de canciones.
+- Share Samba `CloneHero-Songs`.
+- Usuario Samba para el usuario kiosko.
+- Reglas HID para instrumentos `hidraw`.
+- Updater `/usr/local/bin/update-clonehero`.
+- Descargador `/home/kiosk/download-clonehero-songs.sh` usando `links.csv`.
 - Servicio `cage-kiosk.service`.
 
 ### Cage/foot
@@ -160,6 +186,13 @@ Ejecuta el camino recomendado:
 ```bash
 chmod +x install-cage-yarg.sh
 ./install-cage-yarg.sh
+```
+
+Clone Hero:
+
+```bash
+chmod +x install-cage-clonehero.sh
+./install-cage-clonehero.sh
 ```
 
 Cage/foot minimal:
@@ -316,6 +349,57 @@ Actualizar YARG:
 sudo update-yarg
 ```
 
+## Uso Despues De Instalar Cage/Clone Hero
+
+Despues de reiniciar, systemd inicia:
+
+```text
+cage-kiosk.service
+```
+
+El servicio ejecuta:
+
+```text
+/usr/bin/dbus-run-session -- /usr/local/bin/run-clonehero.sh
+```
+
+El wrapper busca Clone Hero en `/opt/CloneHero`, lo lanza fullscreen dentro de
+Cage y abre el menu de mantenimiento al salir, salvo que `CLONEHERO_EXIT_MENU`
+este en `restart` o `never`.
+
+Share Samba:
+
+```text
+\\<hostname>\CloneHero-Songs
+```
+
+Con hostname por defecto del camino Clone Hero:
+
+```text
+\\miniclonehero\CloneHero-Songs
+```
+
+Ruta local:
+
+```text
+/opt/CloneHero/Songs
+```
+
+Actualizar Clone Hero:
+
+```bash
+sudo update-clonehero
+```
+
+Descargar canciones desde CSV:
+
+```bash
+~/download-clonehero-songs.sh
+```
+
+El instalador crea o copia `~/links.csv`. Cada linea puede ser `nombre,url` o
+solo una URL. Los ZIP pueden extraerse directamente en la carpeta Songs.
+
 ## Uso Despues De Instalar Cage/foot
 
 El camino minimal `install-cage-kiosk.sh` inicia el mismo servicio
@@ -366,6 +450,19 @@ Variables de Cage/YARG:
 - `YARG_EXIT_MENU`: `always` muestra menu al salir de YARG; `restart`
   relanza YARG directo; `never` sale del wrapper.
 
+Variables de Cage/Clone Hero:
+
+- `CLONEHERO_RELEASE_CHANNEL`: `latest`, `url` o `ask`.
+- `CLONEHERO_URL`: descarga fija de Clone Hero cuando se usa `url`.
+- `CLONEHERO_API_URL`: endpoint del ultimo release.
+- `CLONEHERO_ASSET_REGEX`: patron usado para elegir el asset Linux.
+- `CLONEHERO_SONGS_DIR`: carpeta local de canciones.
+- `CLONEHERO_DATA_DIR`: perfil persistente de Clone Hero.
+- `CLONEHERO_RESOLUTION`: `4k`, `2k`, `1080p`, `720p` o `ask`.
+- `CLONEHERO_FORCE_SOFTWARE_RENDER`: `true` fuerza llvmpipe/software render.
+- `CLONEHERO_EXIT_MENU`: `always` muestra menu al salir de Clone Hero;
+  `restart` relanza Clone Hero directo; `never` sale del wrapper.
+
 Nota: `REQUIRE_ROOT_PASSWORD` existe como control interno. Los caminos Cage lo
 activan por defecto.
 
@@ -374,6 +471,7 @@ activan por defecto.
 ```text
 MiniArch/
 |-- install-cage-kiosk.sh      # Orquestador Cage/foot minimal
+|-- install-cage-clonehero.sh  # Orquestador Cage/Clone Hero integrado
 |-- install-cage-yarg.sh       # Orquestador Cage/YARG integrado
 |-- scripts/
 |   |-- clone-miniarch.sh       # Clona disco, cambia UUIDs y puede expandir /home
@@ -386,6 +484,7 @@ MiniArch/
 |   |-- plymouth.sh            # Plymouth compartido
 |   |-- drivers.sh             # Drivers, PipeWire, codecs y Bluetooth
 |   |-- cage.sh                # Cage, usuario, servicio y wrapper
+|   |-- clonehero.sh           # Clone Hero, Samba, updater y CSV
 |   |-- yarg.sh                # YARG, settings, Samba, rendimiento y updater
 |   |-- customization.sh       # Mensajes, cursor, assets y scripts extra
 |   `-- finalization.sh        # Red, SSH opcional, limpieza y desmontaje

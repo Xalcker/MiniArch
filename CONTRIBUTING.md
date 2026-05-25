@@ -1,9 +1,11 @@
 # Guia De Contribucion
 
-Gracias por contribuir a MiniArch. El repositorio mantiene dos caminos de
+Gracias por contribuir a MiniArch. El repositorio mantiene tres caminos de
 instalacion basados en Cage:
 
 - Cage/YARG: `install-cage-yarg.sh`, `lib/cage.sh`, `lib/yarg.sh`.
+- Cage/Clone Hero: `install-cage-clonehero.sh`, `lib/cage.sh`,
+  `lib/clonehero.sh`.
 - Cage/foot: `install-cage-kiosk.sh`.
 
 Cuando cambies modulos compartidos en `lib/`, revisa ambos caminos.
@@ -44,6 +46,7 @@ Mantener responsabilidades claras:
 - `drivers.sh`: audio, codecs, Bluetooth y drivers compartidos.
 - `cage.sh`: Cage, usuario, servicio y wrapper.
 - `yarg.sh`: descarga/configuracion de YARG, Samba y updater.
+- `clonehero.sh`: descarga/configuracion de Clone Hero, Samba, updater y CSV.
 - `customization.sh`: limpieza visual, cursor y assets.
 - `finalization.sh`: red, SSH opcional y desmontaje.
 
@@ -60,6 +63,7 @@ Valida sintaxis de Bash:
 ```bash
 bash -n install-cage-kiosk.sh
 bash -n install-cage-yarg.sh
+bash -n install-cage-clonehero.sh
 for file in lib/*.sh; do bash -n "$file"; done
 bash -n scripts/clone-miniarch.sh scripts/expand-home.sh
 ```

@@ -9,6 +9,11 @@ semantico cuando se publiquen releases formales.
 
 ### Agregado
 
+- Instalador `install-cage-clonehero.sh` para el camino Cage/Clone Hero.
+- Modulo `lib/clonehero.sh` con descarga desde releases de
+  `clonehero-game/releases`, updater `update-clonehero`, wrapper
+  `run-clonehero.sh`, share Samba `CloneHero-Songs` y descargador CSV
+  `download-clonehero-songs.sh`.
 - Instalador `install-cage-yarg.sh` para el camino recomendado Cage/YARG.
 - Modulo `lib/cage.sh` con instalacion base de Cage, usuario, wrapper y
   servicio `cage-kiosk.service`.
