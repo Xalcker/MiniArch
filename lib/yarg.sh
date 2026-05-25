@@ -566,7 +566,9 @@ echo "Descargas revisadas. Carpeta Songs: \$SONGS_DIR"
 EOF
 
     chmod +x "$script_path"
-    arch-chroot /mnt ln -sfnT "$YARG_SONGS_DIR" "/home/$KIOSK_USER/Songs"
+    if [[ "$YARG_SONGS_DIR" != "/home/$KIOSK_USER/Songs" ]]; then
+        arch-chroot /mnt ln -sfnT "$YARG_SONGS_DIR" "/home/$KIOSK_USER/Songs"
+    fi
     arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER"
     arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$YARG_SONGS_DIR"
 }

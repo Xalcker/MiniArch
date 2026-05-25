@@ -174,7 +174,7 @@ INSTALL_NVIDIA=false
 ALLOW_INSECURE_DEFAULT_PASSWORD=false
 ENABLE_PLYMOUTH=true
 YARG_RELEASE_CHANNEL=ask
-YARG_SONGS_DIR=/opt/YARG/Songs
+YARG_SONGS_DIR=/home/${KIOSK_USER}/Songs
 YARG_PERSISTENT_DATA_DIR=/home/${KIOSK_USER}/.config/yarg-kiosk
 YARG_RESOLUTION=ask
 YARG_FORCE_SOFTWARE_RENDER=false
@@ -313,7 +313,7 @@ Con contenido equivalente a:
 ```json
 {
   "SongFolders": [
-    "/opt/YARG/Songs"
+    "/home/kiosk/Songs"
   ],
   "ShowAntiPiracyDialog": false,
   "ShowEngineInconsistencyDialog": false,
@@ -340,7 +340,7 @@ Con hostname por defecto:
 Ruta local:
 
 ```text
-/opt/YARG/Songs
+/home/kiosk/Songs
 ```
 
 Actualizar YARG:
@@ -382,7 +382,7 @@ Con hostname por defecto del camino Clone Hero:
 Ruta local:
 
 ```text
-/opt/CloneHero/Songs
+/home/kiosk/Songs
 ```
 
 Actualizar Clone Hero:
@@ -631,7 +631,7 @@ y que no haya procesos PipeWire stale del usuario.
 sudo systemctl status smb nmb
 testparm
 grep -A10 "\[YARG-Songs\]" /etc/samba/smb.conf
-ls -la /opt/YARG/Songs
+ls -la /home/kiosk/Songs
 ```
 
 ### Instrumentos no funcionan

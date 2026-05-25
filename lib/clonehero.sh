@@ -113,7 +113,9 @@ configure_clonehero_default_settings() {
 
     mkdir -p "/mnt${CLONEHERO_DATA_DIR}" "/mnt${CLONEHERO_SONGS_DIR}"
     arch-chroot /mnt ln -sfnT "$CLONEHERO_SONGS_DIR" "$CLONEHERO_DATA_DIR/Songs"
-    arch-chroot /mnt ln -sfnT "$CLONEHERO_SONGS_DIR" "/home/$KIOSK_USER/Songs"
+    if [[ "$CLONEHERO_SONGS_DIR" != "/home/$KIOSK_USER/Songs" ]]; then
+        arch-chroot /mnt ln -sfnT "$CLONEHERO_SONGS_DIR" "/home/$KIOSK_USER/Songs"
+    fi
 
     if ! arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$CLONEHERO_DATA_DIR" "$CLONEHERO_SONGS_DIR" "/home/$KIOSK_USER"; then
         log_error "Fallo al asignar permisos de Clone Hero"
@@ -548,7 +550,9 @@ echo "Descargas revisadas. Carpeta Songs: \$SONGS_DIR"
 EOF
 
     chmod +x "$script_path"
-    arch-chroot /mnt ln -sfnT "$CLONEHERO_SONGS_DIR" "/home/$KIOSK_USER/Songs"
+    if [[ "$CLONEHERO_SONGS_DIR" != "/home/$KIOSK_USER/Songs" ]]; then
+        arch-chroot /mnt ln -sfnT "$CLONEHERO_SONGS_DIR" "/home/$KIOSK_USER/Songs"
+    fi
     arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER"
     arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$CLONEHERO_SONGS_DIR"
 }
