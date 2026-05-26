@@ -10,7 +10,7 @@ install_cage_base_system() {
     local packages=(
         base linux linux-firmware linux-headers
         sudo nano curl wget unzip git dbus file
-        networkmanager grub efibootmgr samba cpupower
+        networkmanager grub efibootmgr samba cpupower inetutils
         mesa wayland xorg-xwayland cage foot
         xorg-xcursorgen
         ttf-dejavu
@@ -228,16 +228,44 @@ configure_hid_access() {
 install_cage_wrapper() {
     log "Creando menu de mantenimiento y wrapper /usr/local/bin/run-yarg.sh"
 
+    local yarg_update_label="Actualizar YARG Stable"
+    case "${YARG_RELEASE_CHANNEL,,}" in
+        nightly)
+            yarg_update_label="Actualizar YARG Nightly"
+            ;;
+    esac
+
     mkdir -p /mnt/usr/local/bin
     cat > /mnt/usr/local/bin/kiosk-menu.sh <<'MENU'
 #!/usr/bin/env bash
 set -euo pipefail
 
 export TERM="${TERM:-xterm-256color}"
+UPDATE_LABEL="__KIOSK_UPDATE_LABEL__"
+UPDATE_COMMAND="/usr/local/bin/update-yarg"
 
 pause_menu() {
     echo ""
     read -r -p "Presione Enter para volver al menu..."
+}
+
+show_hostname() {
+    if command -v hostname >/dev/null 2>&1; then
+        hostname
+    elif [[ -r /etc/hostname ]]; then
+        cat /etc/hostname
+    else
+        echo "desconocido"
+    fi
+}
+
+show_hostname_ips() {
+    if command -v hostname >/dev/null 2>&1; then
+        hostname -I 2>/dev/null || true
+    elif command -v ip >/dev/null 2>&1; then
+        ip -o -4 addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | tr '\n' ' '
+        echo ""
+    fi
 }
 
 show_ip_addresses() {
@@ -256,8 +284,8 @@ show_ip_addresses() {
     fi
 
     echo ""
-    echo "Hostname: $(hostname)"
-    echo "IPs: $(hostname -I 2>/dev/null || true)"
+    echo "Hostname: $(show_hostname)"
+    echo "IPs: $(show_hostname_ips)"
     pause_menu
 }
 
@@ -267,6 +295,29 @@ open_shell() {
     echo "Escriba 'exit' para volver al menu."
     echo ""
     "${SHELL:-/bin/bash}"
+}
+
+update_kiosk_app() {
+    clear
+    echo "$UPDATE_LABEL"
+    echo "===================="
+    echo ""
+
+    if [[ ! -x "$UPDATE_COMMAND" ]]; then
+        echo "No se encontro $UPDATE_COMMAND."
+        pause_menu
+        return
+    fi
+
+    if sudo "$UPDATE_COMMAND"; then
+        echo ""
+        echo "Actualizacion completada."
+    else
+        echo ""
+        echo "La actualizacion fallo. Revisa journalctl -u cage-kiosk.service -b."
+    fi
+
+    pause_menu
 }
 
 while true; do
@@ -280,8 +331,9 @@ Menu de mantenimiento YARG
 3) Ver direccion IP
 4) Salir a Shell
 5) Volver a YARG
-6) Reiniciar Kiosko
-7) Apagar Kiosko
+6) __KIOSK_UPDATE_LABEL__
+7) Reiniciar Kiosko
+8) Apagar Kiosko
 
 EOF
 
@@ -326,11 +378,14 @@ EOF
             exit 0
             ;;
         6)
+            update_kiosk_app
+            ;;
+        7)
             echo "Reiniciando servicio cage-kiosk..."
             sudo systemctl restart cage-kiosk.service
             exit 0
             ;;
-        7)
+        8)
             echo "Apagando kiosko..."
             sudo systemctl poweroff
             exit 0
@@ -343,6 +398,7 @@ EOF
 done
 MENU
     chmod +x /mnt/usr/local/bin/kiosk-menu.sh
+    sed -i "s#__KIOSK_UPDATE_LABEL__#$yarg_update_label#g" /mnt/usr/local/bin/kiosk-menu.sh
 
     cat > /mnt/usr/local/bin/run-yarg.sh <<'WRAPPER'
 #!/usr/bin/env bash

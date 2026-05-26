@@ -9,6 +9,11 @@ semantico cuando se publiquen releases formales.
 
 ### Agregado
 
+- Paquete `inetutils` en el stack Cage para asegurar disponibilidad del comando
+  `hostname`.
+- Opcion de actualizacion en el menu de mantenimiento: `Actualizar YARG Stable`
+  o `Actualizar YARG Nightly` para YARG, y `Actualizar Clone Hero` para Clone
+  Hero.
 - Instalador `install-cage-clonehero.sh` para el camino Cage/Clone Hero.
 - Modulo `lib/clonehero.sh` con descarga desde releases de
   `clonehero-game/releases`, updater `update-clonehero`, wrapper
@@ -54,6 +59,11 @@ semantico cuando se publiquen releases formales.
 
 ### Corregido
 
+- YARG ahora usa `/home/$KIOSK_USER/Songs` como carpeta real de canciones y
+  crea `/opt/YARG/Songs` como enlace simbolico de compatibilidad, incluyendo
+  `update-yarg`.
+- El menu de mantenimiento de YARG y Clone Hero ya no muestra error si el
+  comando `hostname` no existe.
 - Prompt de canal ahora pide `stable`, `stable-latest` o `nightly`, evitando
   una pregunta confusa de si/no.
 - Se removio la dependencia a paquetes de tema Plymouth que podian no existir

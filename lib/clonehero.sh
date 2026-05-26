@@ -6,6 +6,15 @@ fi
 
 # Clone Hero download, configuration, Samba and updater helpers.
 
+normalize_clonehero_songs_dir() {
+    local canonical_songs_dir="/home/$KIOSK_USER/Songs"
+
+    if [[ "${CLONEHERO_SONGS_DIR:-}" == "/opt/CloneHero/Songs" ]]; then
+        log "CLONEHERO_SONGS_DIR=/opt/CloneHero/Songs detectado; usando $canonical_songs_dir"
+        CLONEHERO_SONGS_DIR="$canonical_songs_dir"
+    fi
+}
+
 resolve_clonehero_download_url() {
     local api_url asset_regex release_json release_url
 
@@ -46,6 +55,8 @@ resolve_clonehero_download_url() {
 }
 
 install_clonehero() {
+    normalize_clonehero_songs_dir
+
     log "Descargando e instalando Clone Hero en /opt/CloneHero"
 
     local package_file="/mnt/root/CloneHero.download"
@@ -109,6 +120,8 @@ install_clonehero() {
 }
 
 configure_clonehero_default_settings() {
+    normalize_clonehero_songs_dir
+
     log "Configurando carpeta fija de canciones de Clone Hero: $CLONEHERO_SONGS_DIR"
 
     mkdir -p "/mnt${CLONEHERO_DATA_DIR}" "/mnt${CLONEHERO_SONGS_DIR}"
@@ -124,6 +137,8 @@ configure_clonehero_default_settings() {
 }
 
 configure_clonehero_samba_share() {
+    normalize_clonehero_songs_dir
+
     local songs_dir="$CLONEHERO_SONGS_DIR"
     local smb_conf="/mnt/etc/samba/smb.conf"
 
@@ -196,6 +211,8 @@ EOF
 }
 
 install_clonehero_update_script() {
+    normalize_clonehero_songs_dir
+
     log "Instalando updater /usr/local/bin/update-clonehero"
 
     mkdir -p /mnt/usr/local/bin
@@ -250,6 +267,9 @@ fi
 echo "Descargando Clone Hero desde: \$CLONEHERO_URL"
 curl -fsSL --retry 3 --retry-delay 2 -o "\$PACKAGE_FILE" "\$CLONEHERO_URL"
 rm -rf "\$INSTALL_DIR/.new"
+if [[ "\$SONGS_DIR" == "\$INSTALL_DIR/Songs" ]]; then
+    SONGS_DIR="/home/\$OWNER/Songs"
+fi
 mkdir -p "\$INSTALL_DIR/.new" "\$SONGS_DIR"
 
 case "\${CLONEHERO_URL,,}" in
@@ -288,6 +308,8 @@ EOF
 }
 
 install_clonehero_song_download_script() {
+    normalize_clonehero_songs_dir
+
     local user_home="/mnt/home/$KIOSK_USER"
     local script_path="$user_home/download-clonehero-songs.sh"
     local links_target="$user_home/links.csv"
@@ -566,10 +588,31 @@ install_clonehero_cage_wrapper() {
 set -euo pipefail
 
 export TERM="${TERM:-xterm-256color}"
+UPDATE_LABEL="Actualizar Clone Hero"
+UPDATE_COMMAND="/usr/local/bin/update-clonehero"
 
 pause_menu() {
     echo ""
     read -r -p "Presione Enter para volver al menu..."
+}
+
+show_hostname() {
+    if command -v hostname >/dev/null 2>&1; then
+        hostname
+    elif [[ -r /etc/hostname ]]; then
+        cat /etc/hostname
+    else
+        echo "desconocido"
+    fi
+}
+
+show_hostname_ips() {
+    if command -v hostname >/dev/null 2>&1; then
+        hostname -I 2>/dev/null || true
+    elif command -v ip >/dev/null 2>&1; then
+        ip -o -4 addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | tr '\n' ' '
+        echo ""
+    fi
 }
 
 show_ip_addresses() {
@@ -581,8 +624,8 @@ show_ip_addresses() {
     echo ""
     command -v nmcli >/dev/null 2>&1 && nmcli -t -f DEVICE,STATE,CONNECTION device status 2>/dev/null || true
     echo ""
-    echo "Hostname: $(hostname)"
-    echo "IPs: $(hostname -I 2>/dev/null || true)"
+    echo "Hostname: $(show_hostname)"
+    echo "IPs: $(show_hostname_ips)"
     pause_menu
 }
 
@@ -592,6 +635,29 @@ open_shell() {
     echo "Escriba 'exit' para volver al menu."
     echo ""
     "${SHELL:-/bin/bash}"
+}
+
+update_kiosk_app() {
+    clear
+    echo "$UPDATE_LABEL"
+    echo "======================"
+    echo ""
+
+    if [[ ! -x "$UPDATE_COMMAND" ]]; then
+        echo "No se encontro $UPDATE_COMMAND."
+        pause_menu
+        return
+    fi
+
+    if sudo "$UPDATE_COMMAND"; then
+        echo ""
+        echo "Actualizacion completada."
+    else
+        echo ""
+        echo "La actualizacion fallo. Revisa journalctl -u cage-kiosk.service -b."
+    fi
+
+    pause_menu
 }
 
 while true; do
@@ -605,8 +671,9 @@ Menu de mantenimiento Clone Hero
 3) Ver direccion IP
 4) Salir a Shell
 5) Volver a Clone Hero
-6) Reiniciar Kiosko
-7) Apagar Kiosko
+6) Actualizar Clone Hero
+7) Reiniciar Kiosko
+8) Apagar Kiosko
 
 EOF
 
@@ -645,11 +712,14 @@ EOF
         4) open_shell ;;
         5) exit 0 ;;
         6)
+            update_kiosk_app
+            ;;
+        7)
             echo "Reiniciando servicio cage-kiosk..."
             sudo systemctl restart cage-kiosk.service
             exit 0
             ;;
-        7)
+        8)
             echo "Apagando kiosko..."
             sudo systemctl poweroff
             exit 0

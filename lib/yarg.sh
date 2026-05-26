@@ -6,6 +6,52 @@ fi
 
 # YARG download, configuration, Samba and updater helpers.
 
+normalize_yarg_songs_dir() {
+    local canonical_songs_dir="/home/$KIOSK_USER/Songs"
+
+    if [[ "${YARG_SONGS_DIR:-}" == "/opt/YARG/Songs" ]]; then
+        log "YARG_SONGS_DIR=/opt/YARG/Songs detectado; usando $canonical_songs_dir"
+        YARG_SONGS_DIR="$canonical_songs_dir"
+    fi
+}
+
+ensure_yarg_songs_symlink() {
+    normalize_yarg_songs_dir
+
+    local songs_dir="$YARG_SONGS_DIR"
+
+    log "Asegurando enlace /opt/YARG/Songs -> $songs_dir"
+
+    if ! run_quiet arch-chroot /mnt bash -c '
+set -e
+songs_dir="$1"
+opt_songs="/opt/YARG/Songs"
+
+mkdir -p "$songs_dir" /opt/YARG
+
+if [[ -L "$opt_songs" || ! -e "$opt_songs" ]]; then
+    ln -sfnT "$songs_dir" "$opt_songs"
+elif [[ -d "$opt_songs" ]]; then
+    shopt -s dotglob nullglob
+    items=("$opt_songs"/*)
+    if (( ${#items[@]} > 0 )); then
+        mv -n "${items[@]}" "$songs_dir"/
+    fi
+    rm -rf "$opt_songs"
+    ln -sfnT "$songs_dir" "$opt_songs"
+else
+    rm -f "$opt_songs"
+    ln -sfnT "$songs_dir" "$opt_songs"
+fi
+' _ "$songs_dir"; then
+        log_error "Fallo al crear enlace /opt/YARG/Songs"
+        return 1
+    fi
+
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$songs_dir"
+    run_quiet arch-chroot /mnt chown -h "$KIOSK_USER:$KIOSK_USER" /opt/YARG/Songs
+}
+
 resolve_yarg_download_url() {
     local api_url asset_regex channel_label
 
@@ -91,12 +137,16 @@ install_yarg() {
     fi
 
     run_quiet arch-chroot /mnt find /opt/YARG -maxdepth 1 -type f -name 'YARG*' -exec chmod +x {} +
-    run_quiet arch-chroot /mnt mkdir -p "$YARG_SONGS_DIR"
+    ensure_yarg_songs_symlink || return 1
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/YARG
+    run_quiet arch-chroot /mnt chown -h "$KIOSK_USER:$KIOSK_USER" /opt/YARG/Songs
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$YARG_SONGS_DIR"
     rm -f "$yarg_zip"
 }
 
 configure_yarg_default_settings() {
+    normalize_yarg_songs_dir
+
     local settings_dir="/mnt${YARG_PERSISTENT_DATA_DIR}"
     local settings_file="$settings_dir/settings.json"
 
@@ -122,6 +172,8 @@ EOF
 }
 
 configure_yarg_samba_share() {
+    normalize_yarg_songs_dir
+
     local songs_dir="$YARG_SONGS_DIR"
     local smb_conf="/mnt/etc/samba/smb.conf"
 
@@ -194,6 +246,8 @@ EOF
 }
 
 install_yarg_update_script() {
+    normalize_yarg_songs_dir
+
     log "Instalando updater /usr/local/bin/update-yarg"
 
     mkdir -p /mnt/usr/local/bin
@@ -247,6 +301,31 @@ resolve_latest_release_url() {
     printf '%s\n' "\$release_url"
 }
 
+ensure_songs_link() {
+    local opt_songs="\$INSTALL_DIR/Songs"
+
+    if [[ "\$SONGS_DIR" == "\$opt_songs" ]]; then
+        SONGS_DIR="/home/\$OWNER/Songs"
+    fi
+
+    mkdir -p "\$SONGS_DIR" "\$INSTALL_DIR"
+
+    if [[ -L "\$opt_songs" || ! -e "\$opt_songs" ]]; then
+        ln -sfnT "\$SONGS_DIR" "\$opt_songs"
+    elif [[ -d "\$opt_songs" ]]; then
+        shopt -s dotglob nullglob
+        local items=("\$opt_songs"/*)
+        if (( \${#items[@]} > 0 )); then
+            mv -n "\${items[@]}" "\$SONGS_DIR"/
+        fi
+        rm -rf "\$opt_songs"
+        ln -sfnT "\$SONGS_DIR" "\$opt_songs"
+    else
+        rm -f "\$opt_songs"
+        ln -sfnT "\$SONGS_DIR" "\$opt_songs"
+    fi
+}
+
 case "\$YARG_RELEASE_CHANNEL" in
     stable-latest|latest)
         echo "Resolviendo latest stable desde \$YARG_STABLE_API_URL"
@@ -266,10 +345,11 @@ esac
 echo "Descargando YARG desde: \$YARG_URL"
 curl -fsSL --retry 3 --retry-delay 2 -o "\$ZIP_FILE" "\$YARG_URL"
 unzip -tq "\$ZIP_FILE" >/dev/null
-mkdir -p "\$SONGS_DIR"
 unzip -o "\$ZIP_FILE" -d "\$INSTALL_DIR" >/dev/null
+ensure_songs_link
 find "\$INSTALL_DIR" -maxdepth 1 -type f -name "YARG*" -exec chmod +x {} +
 chown -R "\$OWNER:\$OWNER" "\$INSTALL_DIR"
+chown -h "\$OWNER:\$OWNER" "\$INSTALL_DIR/Songs"
 chown -R "\$OWNER:\$OWNER" "\$SONGS_DIR"
 rm -f "\$ZIP_FILE"
 
@@ -280,6 +360,8 @@ EOF
 }
 
 install_yarg_song_download_script() {
+    normalize_yarg_songs_dir
+
     local user_home="/mnt/home/$KIOSK_USER"
     local script_path="$user_home/download-yarg-songs.sh"
     local links_target="$user_home/links.csv"
@@ -566,7 +648,7 @@ echo "Descargas revisadas. Carpeta Songs: \$SONGS_DIR"
 EOF
 
     chmod +x "$script_path"
-    if [[ "$YARG_SONGS_DIR" != "/home/$KIOSK_USER/Songs" ]]; then
+    if [[ "$YARG_SONGS_DIR" != "/home/$KIOSK_USER/Songs" && "$YARG_SONGS_DIR" != "/opt/YARG/Songs" ]]; then
         arch-chroot /mnt ln -sfnT "$YARG_SONGS_DIR" "/home/$KIOSK_USER/Songs"
     fi
     arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER"

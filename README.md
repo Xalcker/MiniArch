@@ -75,6 +75,7 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 - YARG en `/opt/YARG`.
 - Perfil persistente en `YARG_PERSISTENT_DATA_DIR`.
 - Carpeta de canciones fija en `YARG_SONGS_DIR`.
+- Enlace `/opt/YARG/Songs` apuntando a `YARG_SONGS_DIR`.
 - Share Samba `YARG-Songs`.
 - Usuario Samba para el usuario kiosko.
 - Reglas HID para instrumentos `hidraw`.
@@ -293,6 +294,7 @@ El menu de mantenimiento permite:
 - Ver direccion IP.
 - Salir a una shell temporal.
 - Volver a YARG.
+- Actualizar YARG Stable o YARG Nightly, segun el canal instalado.
 - Reiniciar `cage-kiosk.service`.
 - Apagar el kiosko.
 
@@ -343,6 +345,12 @@ Ruta local:
 /home/kiosk/Songs
 ```
 
+Ruta de compatibilidad dentro de YARG:
+
+```text
+/opt/YARG/Songs -> /home/kiosk/Songs
+```
+
 Actualizar YARG:
 
 ```bash
@@ -390,6 +398,9 @@ Actualizar Clone Hero:
 ```bash
 sudo update-clonehero
 ```
+
+Tambien se puede actualizar desde el menu de mantenimiento con la opcion
+`Actualizar Clone Hero`.
 
 Descargar canciones desde CSV:
 
@@ -447,7 +458,9 @@ Variables de Cage/YARG:
 - `YARG_STABLE_ASSET_REGEX`: patron usado para elegir el ZIP Linux estable.
 - `YARG_NIGHTLY_API_URL`: endpoint del ultimo nightly.
 - `YARG_NIGHTLY_ASSET_REGEX`: patron para elegir el ZIP Linux del nightly.
-- `YARG_SONGS_DIR`: carpeta local de canciones.
+- `YARG_SONGS_DIR`: carpeta local de canciones. Por defecto
+  `/home/${KIOSK_USER}/Songs`; `/opt/YARG/Songs` se crea como enlace hacia
+  esta ruta para compatibilidad.
 - `YARG_PERSISTENT_DATA_DIR`: perfil persistente de YARG.
 - `YARG_RESOLUTION`: `4k`, `2k`, `1080p`, `720p` o `ask`.
 - `YARG_FORCE_SOFTWARE_RENDER`: `true` fuerza llvmpipe/software render;
@@ -461,7 +474,9 @@ Variables de Cage/Clone Hero:
 - `CLONEHERO_URL`: descarga fija de Clone Hero cuando se usa `url`.
 - `CLONEHERO_API_URL`: endpoint del ultimo release.
 - `CLONEHERO_ASSET_REGEX`: patron usado para elegir el asset Linux.
-- `CLONEHERO_SONGS_DIR`: carpeta local de canciones.
+- `CLONEHERO_SONGS_DIR`: carpeta local de canciones. Por defecto
+  `/home/${KIOSK_USER}/Songs`; el perfil de Clone Hero enlaza su carpeta
+  `Songs` hacia esta ruta.
 - `CLONEHERO_DATA_DIR`: perfil persistente de Clone Hero.
 - `CLONEHERO_RESOLUTION`: `4k`, `2k`, `1080p`, `720p` o `ask`.
 - `CLONEHERO_FORCE_SOFTWARE_RENDER`: `true` fuerza llvmpipe/software render.
