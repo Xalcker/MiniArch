@@ -19,6 +19,7 @@ install_cage_base_system() {
         vulkan-radeon xf86-video-amdgpu
         virglrenderer
         hidapi systemd-libs
+        mc
     )
 
     if ! mountpoint -q /mnt; then

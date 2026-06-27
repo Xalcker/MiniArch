@@ -107,6 +107,7 @@ install_cage_foot_base() {
         networkmanager grub efibootmgr
         mesa wayland cage foot ttf-dejavu
         vulkan-icd-loader vulkan-intel vulkan-radeon
+        mc
     )
 
     log "Instalando sistema base Cage/foot (${#packages[@]} paquetes)"

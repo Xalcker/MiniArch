@@ -41,8 +41,8 @@ install_base_system() {
     log "Instalando sistema base con pacstrap (base, linux, linux-firmware)"
     
     # Ejecutar pacstrap para instalar el sistema base y utilidades esenciales
-    if ! run_quiet pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba nano git wpa_supplicant; then
-        log_error "Fallo al instalar el sistema base y utilidades (sudo, wget, curl, unzip, samba, nano, git, wpa_supplicant) con pacstrap"
+    if ! run_quiet pacstrap /mnt base linux linux-firmware sudo wget curl unzip samba nano git wpa_supplicant mc; then
+        log_error "Fallo al instalar el sistema base y utilidades (sudo, wget, curl, unzip, samba, nano, git, wpa_supplicant, mc) con pacstrap"
         return 1
     fi
     
