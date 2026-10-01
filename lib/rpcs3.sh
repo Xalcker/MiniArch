@@ -87,6 +87,28 @@ ctl.!default {
 EOF
 }
 
+# rpcs3_unsquash_appimage APPIMAGE DESTINO
+# Extrae el squashfs de un AppImage tipo 2 sin ejecutarlo: el squashfs empieza
+# justo despues del runtime ELF (fin de la tabla de secciones).
+rpcs3_unsquash_appimage() {
+    local image="$1" dest="$2"
+    local shoff shentsize shnum offset
+
+    if ! command -v unsquashfs >/dev/null 2>&1; then
+        run_quiet pacman -Sy --noconfirm --needed squashfs-tools || return 1
+    fi
+
+    shoff=$(od -An -t u8 -j 40 -N 8 "$image" | tr -d ' ')
+    shentsize=$(od -An -t u2 -j 58 -N 2 "$image" | tr -d ' ')
+    shnum=$(od -An -t u2 -j 60 -N 2 "$image" | tr -d ' ')
+    [[ -n "$shoff" && -n "$shentsize" && -n "$shnum" ]] || return 1
+    offset=$((shoff + shentsize * shnum))
+
+    rm -rf "$dest"
+    run_quiet unsquashfs -f -q -o "$offset" -d "$dest" "$image" || return 1
+    [[ -x "$dest/AppRun" ]]
+}
+
 install_rpcs3() {
     log "Descargando e instalando RPCS3 en /opt/RPCS3"
 
@@ -106,13 +128,23 @@ install_rpcs3() {
     fi
 
     # --appimage-extract no necesita FUSE; crea ./squashfs-root.
-    run_quiet arch-chroot /mnt chmod +x "$chroot_appimage"
-    run_quiet arch-chroot /mnt rm -rf /opt/RPCS3 /opt/RPCS3.new
+    chmod +x "$appimage"
+    rm -rf /mnt/opt/RPCS3 /mnt/opt/RPCS3.new
+
+    # Primero dentro del chroot; si el runtime del AppImage falla ahi (p. ej.
+    # por falta de /dev, /proc o espacio), se reintenta desde el sistema live,
+    # que tiene un entorno completo, extrayendo directo sobre /mnt/opt.
     if ! run_quiet arch-chroot /mnt bash -c \
         'set -e; mkdir -p /opt/RPCS3.new; cd /opt/RPCS3.new; "$1" --appimage-extract >/dev/null; mv squashfs-root /opt/RPCS3; cd /; rmdir /opt/RPCS3.new' \
         _ "$chroot_appimage"; then
-        log_error "Fallo al extraer el AppImage de RPCS3"
-        return 1
+        # Los AppImage con runtime nuevo (uruntime) intentan FUSE incluso con
+        # --appimage-extract y fallan en el chroot. Se lee el squashfs directo.
+        warn "Fallo --appimage-extract; extrayendo el squashfs con unsquashfs"
+        rm -rf /mnt/opt/RPCS3 /mnt/opt/RPCS3.new
+        if ! rpcs3_unsquash_appimage "$appimage" /mnt/opt/RPCS3; then
+            log_error "Fallo al extraer el AppImage de RPCS3 (revise ${LOG_FILE:-el log de instalacion})"
+            return 1
+        fi
     fi
 
     if ! arch-chroot /mnt test -x /opt/RPCS3/AppRun; then
@@ -270,7 +302,18 @@ curl -fL --retry 3 --retry-delay 2 -o "$WORK_DIR/RPCS3.AppImage" "$LATEST_URL"
 chmod +x "$WORK_DIR/RPCS3.AppImage"
 
 # Se extrae primero y solo se reemplaza la instalacion si la extraccion salio bien.
-(cd "$WORK_DIR" && ./RPCS3.AppImage --appimage-extract >/dev/null)
+(cd "$WORK_DIR" && ./RPCS3.AppImage --appimage-extract >/dev/null) || true
+if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
+    # Runtime nuevo sin FUSE disponible: se lee el squashfs directo.
+    # El squashfs empieza al final de la tabla de secciones del ELF.
+    command -v unsquashfs >/dev/null 2>&1 || pacman -Sy --noconfirm --needed squashfs-tools
+    img="$WORK_DIR/RPCS3.AppImage"
+    shoff=$(od -An -t u8 -j 40 -N 8 "$img" | tr -d ' ')
+    shentsize=$(od -An -t u2 -j 58 -N 2 "$img" | tr -d ' ')
+    shnum=$(od -An -t u2 -j 60 -N 2 "$img" | tr -d ' ')
+    rm -rf "$WORK_DIR/squashfs-root"
+    unsquashfs -f -q -o "$((shoff + shentsize * shnum))" -d "$WORK_DIR/squashfs-root" "$img" || true
+fi
 if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
     echo "El AppImage descargado no contiene AppRun; no se modifica $INSTALL_DIR." >&2
     exit 1
