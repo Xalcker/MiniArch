@@ -50,7 +50,7 @@ setup() {
     rm -f /tmp/plymouth_commands.log
 }
 
-@test "install_plymouth: genera comando pacman correcto para instalar plymouth y plymouth-theme-spinner" {
+@test "install_plymouth: genera comando pacman correcto para instalar plymouth" {
     # Mock de arch-chroot que registra los comandos
     arch-chroot() {
         echo "arch-chroot $*" >> /tmp/plymouth_commands.log
@@ -64,8 +64,8 @@ setup() {
     run install_plymouth
     [ "$status" -eq 0 ]
     
-    # Verificar que se instalaron plymouth y plymouth-theme-spinner
-    grep -q "arch-chroot /mnt pacman -S --noconfirm plymouth plymouth-theme-spinner" /tmp/plymouth_commands.log
+    # Verificar que se instalo plymouth (el tema se crea con create_custom_theme)
+    grep -q "arch-chroot /mnt pacman -S --noconfirm plymouth" /tmp/plymouth_commands.log
     
     # Limpiar
     rm -f /tmp/plymouth_commands.log
@@ -321,21 +321,20 @@ EOF
     rm -rf "$temp_dir"
 }
 
-@test "configure_plymouth: modifica /etc/mkinitcpio.conf correctamente (MODULES y HOOKS)" {
-    # Crear archivo temporal de mkinitcpio.conf
-    local temp_mkinitcpio=$(mktemp)
+@test "configure_plymouth: agrega el hook plymouth despues de udev sin forzar modulos graficos" {
+    local temp_mkinitcpio sed_line
+    temp_mkinitcpio=$(mktemp)
     echo 'MODULES=()' > "$temp_mkinitcpio"
     echo 'HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)' >> "$temp_mkinitcpio"
-    
-    # 1. Verificar que se habilita KMS en MODULES
-    sed -i 's/^MODULES=(\(.*\))/MODULES=(\1 i915 amdgpu nouveau virtio_gpu qxl bochs_drm)/' "$temp_mkinitcpio"
-    grep -q "qxl" "$temp_mkinitcpio"
-    grep -q "bochs_drm" "$temp_mkinitcpio"
-    
-    # Verificar que plymouth fue agregado después de udev
+
+    # Se ejecuta la linea real de lib/plymouth.sh apuntando al archivo temporal.
+    sed_line=$(grep -F "plymouth/' /mnt/etc/mkinitcpio.conf" lib/plymouth.sh | head -1)
+    [ -n "$sed_line" ]
+    eval "${sed_line//\/mnt\/etc\/mkinitcpio.conf/$temp_mkinitcpio}"
+
     grep -q "udev plymouth" "$temp_mkinitcpio"
-    
-    # Limpiar
+    grep -q '^MODULES=()$' "$temp_mkinitcpio"
+
     rm -f "$temp_mkinitcpio"
 }
 
@@ -463,11 +462,10 @@ EOF
     
     # Verificar el comando: instalación de paquetes
     local cmd=$(cat /tmp/plymouth_commands.log)
-    [[ "$cmd" == "arch-chroot /mnt pacman -S --noconfirm plymouth plymouth-theme-spinner" ]]
+    [[ "$cmd" == "arch-chroot /mnt pacman -S --noconfirm plymouth" ]]
     
-    # Verificar que contiene ambos paquetes
-    [[ "$cmd" == *"plymouth"* ]]
-    [[ "$cmd" == *"plymouth-theme-spinner"* ]]
+    # El paquete de temas de Plymouth ya no se instala
+    [[ "$cmd" != *"plymouth-theme"* ]]
     
     # Limpiar
     rm -f /tmp/plymouth_commands.log

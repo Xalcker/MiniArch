@@ -14,6 +14,9 @@
 setup() {
     # Cargar el módulo de bootloader
     source lib/bootloader.sh
+
+    # La comprobacion de arranque UEFI no debe depender del equipo que corre las pruebas.
+    export EFI_FIRMWARE_DIR="$BATS_TEST_TMPDIR"
     
     # Mock de funciones de logging
     log() {
@@ -62,6 +65,8 @@ setup() {
 @test "install_grub: genera comando pacman correcto para instalar grub y efibootmgr" {
     # Mock de arch-chroot que registra los comandos
     arch-chroot() {
+        # GRUB y efibootmgr no estan instalados todavia en el sistema destino
+        if [[ "$*" == *"command -v"* ]]; then return 1; fi
         echo "arch-chroot $*" >> /tmp/grub_commands.log
         return 0
     }
@@ -83,7 +88,7 @@ setup() {
     [ "$status" -eq 0 ]
     
     # Verificar que se instalaron grub y efibootmgr
-    grep -q "arch-chroot /mnt pacman -S --noconfirm grub efibootmgr" /tmp/grub_commands.log
+    grep -q "arch-chroot /mnt pacman -S --needed --noconfirm grub efibootmgr" /tmp/grub_commands.log
     
     # Limpiar
     rm -f /tmp/grub_commands.log
@@ -119,6 +124,17 @@ setup() {
     rm -f /tmp/grub_commands.log
 }
 
+@test "install_grub: sin arranque UEFI retorna 1" {
+    arch-chroot() { return 0; }
+    export -f arch-chroot
+
+    export EFI_FIRMWARE_DIR="$BATS_TEST_TMPDIR/no-existe"
+
+    run install_grub
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"No se detecto arranque UEFI"* ]]
+}
+
 @test "install_grub: /mnt/boot no montado retorna 1" {
     # Mock de arch-chroot que funciona
     arch-chroot() {
@@ -138,12 +154,14 @@ setup() {
     run install_grub
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"La partición ESP no está montada en /mnt/boot"* ]]
+    [[ "$output" == *"La particion ESP no esta montada en /mnt/boot"* ]]
 }
 
 @test "install_grub: fallo al instalar paquetes retorna 1" {
     # Mock de arch-chroot que falla en pacman
     arch-chroot() {
+        # GRUB y efibootmgr no estan instalados todavia en el sistema destino
+        if [[ "$*" == *"command -v"* ]]; then return 1; fi
         if [[ "$*" == *"pacman"* ]]; then
             return 1
         fi
@@ -179,7 +197,7 @@ setup() {
     run install_grub
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"Fallo al instalar GRUB en la partición ESP"* ]]
+    [[ "$output" == *"Fallo al instalar GRUB en la particion ESP"* ]]
 }
 
 ################################################################################
@@ -457,6 +475,8 @@ setup() {
 @test "Property 12: install_grub genera comandos correctos para instalación UEFI" {
     # Mock de arch-chroot que registra los comandos
     arch-chroot() {
+        # GRUB y efibootmgr no estan instalados todavia en el sistema destino
+        if [[ "$*" == *"command -v"* ]]; then return 1; fi
         echo "arch-chroot $*" >> /tmp/grub_commands.log
         return 0
     }
@@ -484,7 +504,7 @@ setup() {
     
     # Verificar el primer comando: instalación de paquetes
     local cmd1=$(sed -n '1p' /tmp/grub_commands.log)
-    [[ "$cmd1" == "arch-chroot /mnt pacman -S --noconfirm grub efibootmgr" ]]
+    [[ "$cmd1" == "arch-chroot /mnt pacman -S --needed --noconfirm grub efibootmgr" ]]
     
     # Verificar el segundo comando: instalación de GRUB con UEFI
     local cmd2=$(sed -n '2p' /tmp/grub_commands.log)

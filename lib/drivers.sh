@@ -5,9 +5,9 @@ if ! declare -F run_quiet >/dev/null; then
 fi
 
 ################################################################################
-# MÃ³dulo de Drivers
+# Módulo de Drivers
 #
-# Este mÃ³dulo contiene funciones para instalar controladores grÃ¡ficos y el
+# Este módulo contiene funciones para instalar controladores gráficos y el
 # sistema de audio PipeWire en el sistema Arch Linux.
 #
 # Funciones:
@@ -18,28 +18,28 @@ fi
 ################################################################################
 # install_graphics_drivers()
 #
-# Instala controladores grÃ¡ficos para soportar diferentes configuraciones de
+# Instala controladores gráficos para soportar diferentes configuraciones de
 # hardware: AMD (xf86-video-amdgpu), Intel (xf86-video-intel), NVIDIA
-# (nvidia-open), y Mesa para soporte OpenGL genÃ©rico.
+# (nvidia-open), y Mesa para soporte OpenGL genérico.
 #
 # Precondiciones:
 #   - Debe ejecutarse dentro de arch-chroot
-#   - Debe existir conexiÃ³n de red activa
+#   - Debe existir conexión de red activa
 #
 # Returns:
-#   0 - Si la instalaciÃ³n fue exitosa
-#   1 - Si hubo un error durante la instalaciÃ³n
+#   0 - Si la instalación fue exitosa
+#   1 - Si hubo un error durante la instalación
 ################################################################################
 install_graphics_drivers() {
-    log "Instalando controladores grÃ¡ficos (AMD, Intel, NVIDIA, Mesa)"
+    log "Instalando controladores gráficos (AMD, Intel, NVIDIA, Mesa)"
     
-    # Instalar todos los controladores grÃ¡ficos
+    # Instalar todos los controladores gráficos
     if ! run_quiet arch-chroot /mnt pacman -S --noconfirm xf86-video-amdgpu xf86-video-intel nvidia-open mesa; then
-        log_error "Fallo al instalar controladores grÃ¡ficos"
+        log_error "Fallo al instalar controladores gráficos"
         return 1
     fi
     
-    log "Controladores grÃ¡ficos instalados exitosamente"
+    log "Controladores gráficos instalados exitosamente"
     return 0
 }
 
@@ -53,11 +53,11 @@ install_graphics_drivers() {
 #
 # Precondiciones:
 #   - Debe ejecutarse dentro de arch-chroot
-#   - Debe existir conexiÃ³n de red activa
+#   - Debe existir conexión de red activa
 #
 # Returns:
-#   0 - Si la instalaciÃ³n y configuraciÃ³n fueron exitosas
-#   1 - Si hubo un error durante la instalaciÃ³n o configuraciÃ³n
+#   0 - Si la instalación y configuración fueron exitosas
+#   1 - Si hubo un error durante la instalación o configuración
 ################################################################################
 install_audio_system() {
     log "Instalando sistema de audio PipeWire y firmware de audio"
@@ -70,17 +70,17 @@ install_audio_system() {
     if declare -F repair_chroot_ca_certificates >/dev/null; then
         repair_chroot_ca_certificates || return 1
     fi
-    # Instalar componentes de PipeWire, gestor de sesiÃ³n, cÃ³decs y utilidades de hardware
+    # Instalar componentes de PipeWire, gestor de sesión, códecs y utilidades de hardware
     # - pipewire-*: Audio moderno con compatibilidad ALSA/Pulse/JACK
-    # - wireplumber: Gestor de sesiÃ³n indispensable para PipeWire
-    # - ffmpeg/gst-*: CÃ³decs multimedia para decodificaciÃ³n de canciones (YARG)
-    # - bluez*: Soporte para guitarras y perifÃ©ricos Bluetooth
+    # - wireplumber: Gestor de sesión indispensable para PipeWire
+    # - ffmpeg/gst-*: Códecs multimedia para decodificación de canciones (YARG)
+    # - bluez*: Soporte para guitarras y periféricos Bluetooth
     if ! run_quiet arch-chroot /mnt pacman -S --noconfirm \
         pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber \
         libpulse alsa-plugins alsa-utils \
         ffmpeg gst-libav gst-plugins-good libvorbis opus \
         sof-firmware usbutils bluez bluez-utils; then
-        log_error "Fallo al instalar PipeWire, cÃ³decs y utilidades de hardware"
+        log_error "Fallo al instalar PipeWire, códecs y utilidades de hardware"
         return 1
     fi
 
@@ -102,7 +102,7 @@ EOF
     fi
     
     log "PipeWire y firmware de audio instalados exitosamente"
-    log "Nota: Los servicios de PipeWire se habilitarÃ¡n para el usuario del sistema despuÃ©s de su creaciÃ³n"
+    log "Nota: Los servicios de PipeWire se habilitarán para el usuario del sistema después de su creación"
     
     return 0
 }

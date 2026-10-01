@@ -32,6 +32,7 @@ setup() {
 ################################################################################
 
 @test "calculate_home_size: disco de 16GB retorna 5.5GB para home" {
+    command -v bc >/dev/null || skip "bc no esta instalado"
     run calculate_home_size 16
     [ "$status" -eq 0 ]
     # 16 - 0.5 - 8 - 2 = 5.5
@@ -39,6 +40,7 @@ setup() {
 }
 
 @test "calculate_home_size: disco de 20GB retorna 9.5GB para home" {
+    command -v bc >/dev/null || skip "bc no esta instalado"
     run calculate_home_size 20
     [ "$status" -eq 0 ]
     # 20 - 0.5 - 8 - 2 = 9.5
@@ -46,6 +48,7 @@ setup() {
 }
 
 @test "calculate_home_size: disco de 100GB retorna 89.5GB para home" {
+    command -v bc >/dev/null || skip "bc no esta instalado"
     run calculate_home_size 100
     [ "$status" -eq 0 ]
     # 100 - 0.5 - 8 - 2 = 89.5
@@ -53,6 +56,7 @@ setup() {
 }
 
 @test "calculate_home_size: disco de 1000GB retorna 989.5GB para home" {
+    command -v bc >/dev/null || skip "bc no esta instalado"
     run calculate_home_size 1000
     [ "$status" -eq 0 ]
     # 1000 - 0.5 - 8 - 2 = 989.5

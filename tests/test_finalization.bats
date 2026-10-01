@@ -135,7 +135,7 @@ setup() {
     [ "$status" -eq 0 ]
 
     # Verificar que se configuró la zona horaria
-    grep -q "arch-chroot /mnt timedatectl set-timezone America/Mexico_City" /tmp/chroot_commands.log
+    grep -q "arch-chroot /mnt ln -sf /usr/share/zoneinfo/America/Mexico_City /etc/localtime" /tmp/chroot_commands.log
 
     # Limpiar
     rm -f /tmp/chroot_commands.log
@@ -227,9 +227,9 @@ setup() {
 }
 
 @test "configure_network: fallo al configurar zona horaria retorna 1" {
-    # Mock de arch-chroot que falla en timedatectl
+    # Mock de arch-chroot que falla al enlazar /etc/localtime
     arch-chroot() {
-        if [[ "$*" == *"timedatectl"* ]]; then
+        if [[ "$*" == *"ln -sf"* ]]; then
             return 1
         fi
         return 0
@@ -298,7 +298,7 @@ setup() {
     [ "$status" -eq 0 ]
 
     # Verificar que se usó la zona horaria personalizada
-    grep -q "arch-chroot /mnt timedatectl set-timezone Europe/London" /tmp/chroot_commands.log
+    grep -q "arch-chroot /mnt ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime" /tmp/chroot_commands.log
 
     # Limpiar
     rm -f /tmp/chroot_commands.log
@@ -350,7 +350,7 @@ setup() {
     [ "$status" -eq 0 ]
 
     # Verificar que se desmontó /mnt/boot
-    grep -q "umount /mnt/boot" /tmp/umount_commands.log
+    command grep -q "umount /mnt/boot" /tmp/umount_commands.log
 
     # Limpiar
     rm -f /tmp/umount_commands.log
@@ -398,7 +398,7 @@ setup() {
     [ "$status" -eq 0 ]
 
     # Verificar que se desmontó /mnt/home
-    grep -q "umount /mnt/home" /tmp/umount_commands.log
+    command grep -q "umount /mnt/home" /tmp/umount_commands.log
 
     # Limpiar
     rm -f /tmp/umount_commands.log
@@ -446,7 +446,7 @@ setup() {
     [ "$status" -eq 0 ]
 
     # Verificar que se desmontó /mnt
-    grep -q "umount /mnt" /tmp/umount_commands.log
+    command grep -q "umount /mnt" /tmp/umount_commands.log
 
     # Limpiar
     rm -f /tmp/umount_commands.log
@@ -523,7 +523,7 @@ setup() {
     [ "$status" -eq 0 ]
 
     # Verificar que se muestra mensaje de éxito
-    [[ "$output" == *"INSTALACIÓN COMPLETADA EXITOSAMENTE"* ]]
+    [[ "$output" == *"INSTALACION COMPLETADA EXITOSAMENTE"* ]]
 }
 
 @test "cleanup_and_finish: muestra mensaje de reinicio" {
@@ -782,10 +782,10 @@ setup() {
 # Property 32: Configuración de zona horaria
 # **Validates: Requirements 12.5, 12.6**
 # Probar con 50 zonas horarias válidas aleatorias
-# Verificar que se genera comando timedatectl correcto para cada una
+# Verificar que se enlaza /etc/localtime correctamente para cada una
 ################################################################################
 
-@test "Property 32: configuración de zona horaria genera comando timedatectl correcto para 50 zonas horarias válidas" {
+@test "Property 32: configuración de zona horaria enlaza /etc/localtime correctamente para 50 zonas horarias válidas" {
     # Lista extensa de zonas horarias válidas para probar
     local timezones=(
         "America/Mexico_City"
@@ -875,11 +875,11 @@ setup() {
 
         # Ejecutar configure_network
         if configure_network; then
-            # Verificar que se generó el comando timedatectl correcto
-            if grep -q "arch-chroot /mnt timedatectl set-timezone ${test_timezone}" "/tmp/chroot_commands_${i}.log"; then
+            # Verificar que se enlazó /etc/localtime a la zona correcta
+            if grep -q "arch-chroot /mnt ln -sf /usr/share/zoneinfo/${test_timezone} /etc/localtime" "/tmp/chroot_commands_${i}.log"; then
                 success_count=$((success_count + 1))
             else
-                echo "FALLO: No se encontró comando timedatectl correcto para zona horaria ${test_timezone}" >&2
+                echo "FALLO: No se encontró el enlace de /etc/localtime correcto para zona horaria ${test_timezone}" >&2
                 cat "/tmp/chroot_commands_${i}.log" >&2
                 rm -f "/tmp/chroot_commands_${i}.log"
                 return 1
