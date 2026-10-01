@@ -56,3 +56,36 @@
     grep -Fq '6) Actualizar Clone Hero' lib/clonehero.sh
     grep -Fq 'update_kiosk_app' lib/clonehero.sh
 }
+
+@test "las rutas de canciones y perfil usan el usuario kiosko elegido, no el default" {
+    local script fn_body
+    for script in install-cage-yarg.sh install-cage-clonehero.sh; do
+        fn_body=$(sed -n '/^resolve_user_paths() {/,/^}/p' "$script")
+        [ -n "$fn_body" ]
+
+        run bash -c "
+            KIOSK_USER=player
+            SONGS=''; DATA=''
+            case '$script' in
+                install-cage-yarg.sh)
+                    YARG_SONGS_DIR=''; YARG_PERSISTENT_DATA_DIR=''
+                    $fn_body
+                    resolve_user_paths
+                    echo \"\$YARG_SONGS_DIR|\$YARG_PERSISTENT_DATA_DIR\"
+                    ;;
+                *)
+                    CLONEHERO_SONGS_DIR=''; CLONEHERO_DATA_DIR=''
+                    $fn_body
+                    resolve_user_paths
+                    echo \"\$CLONEHERO_SONGS_DIR|\$CLONEHERO_DATA_DIR\"
+                    ;;
+            esac
+        "
+        [ "$status" -eq 0 ]
+        [[ "$output" == /home/player/Songs\|/home/player/* ]]
+    done
+}
+
+@test "los instaladores no fijan rutas con el KIOSK_USER por defecto antes de preguntarlo" {
+    ! grep -Eq '^(YARG|CLONEHERO)_(SONGS_DIR|PERSISTENT_DATA_DIR|DATA_DIR)="\$\{[A-Z_]+:-/home/\$KIOSK_USER' install-cage-yarg.sh install-cage-clonehero.sh
+}

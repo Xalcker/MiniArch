@@ -59,6 +59,9 @@ semantico cuando se publiquen releases formales.
 
 ### Corregido
 
+- Las rutas de canciones y de datos persistentes de YARG y Clone Hero ahora se
+  resuelven despues de preguntar el usuario kiosko; antes quedaban fijas en
+  `/home/kiosk/...` si se elegia otro usuario.
 - YARG ahora usa `/home/$KIOSK_USER/Songs` como carpeta real de canciones y
   crea `/opt/YARG/Songs` como enlace simbolico de compatibilidad, incluyendo
   `update-yarg`.
