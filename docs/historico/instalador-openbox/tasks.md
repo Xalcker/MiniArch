@@ -1,3 +1,9 @@
+> **Documento historico: NO describe el codigo actual.** Especificacion del primer
+> instalador de MiniArch (Arch Linux + OpenBox/X11, `install-arch-kiosk.sh`,
+> `lib/gui.sh`), que fue reemplazado por los caminos basados en Cage
+> (`install-cage-*.sh`). Se conserva solo como referencia del diseno original.
+> Para la documentacion vigente consulta el [README](../../../README.md).
+
 # Plan de Implementación: Instalador Automatizado de Arch Linux Modo Kiosko
 
 ## Overview

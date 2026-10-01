@@ -1,34 +1,18 @@
-# Placeholder para la imagen de Plymouth
+# Imagen de Plymouth personalizada (opcional)
 
-Este archivo es un marcador de posición. Reemplázalo con tu imagen PNG real.
+Este archivo es solo una nota; NO es una imagen. El repositorio ya incluye
+imagenes listas por camino y resolucion (yarg_*, clonehero_* y plymouth-image_*).
 
-## Cómo crear tu imagen:
+Para usar la tuya:
 
-1. **Opción rápida**: Ejecuta el script de ayuda:
-   ```bash
-   cd assets
-   bash create-example-assets.sh
-   ```
+  1. Crea un PNG con la resolucion de tu pantalla (por ejemplo 1920x1080).
+  2. Copialo como assets/yarg_1080p.png (o clonehero_1080p.png,
+     rpcs3_1080p.png...) para que se detecte sola, o define en .env:
 
-2. **Opción manual con ImageMagick**:
-   ```bash
-   convert -size 1280x720 gradient:#0f2027-#203a43-#2c5364 \
-       -font Arial-Bold -pointsize 80 -fill white \
-       -gravity center -annotate +0-50 "Arch Linux" \
-       -pointsize 40 -annotate +0+50 "Modo Kiosko" \
-       plymouth-image.png
-   ```
+       PLYMOUTH_IMAGE_PATH=/ruta/a/mi-imagen.png
 
-3. **Opción con GIMP**:
-   - Abre GIMP
-   - Crea nueva imagen: 1280x720 píxeles
-   - Diseña tu imagen
-   - Exporta como: plymouth-image.png
+Para generar una imagen de ejemplo con ImageMagick:
 
-## Requisitos:
-- Formato: PNG válido
-- Resolución: 1280x720 píxeles (recomendado)
-- El script escalará automáticamente si es diferente
+   bash create-example-assets.sh [ANCHOxALTO]
 
-## Ubicación final:
-Renombra o reemplaza este archivo como: `plymouth-image.png`
+Mas detalles en assets/README.md.

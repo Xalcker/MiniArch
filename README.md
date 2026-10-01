@@ -676,15 +676,21 @@ MiniArch/
 |   `-- finalization.sh        # Red, SSH opcional, limpieza y desmontaje
 |-- assets/
 |   |-- README.md
-|   |-- yarg_720p.png
+|   |-- yarg_720p.png            # Plymouth del camino YARG
 |   |-- yarg_1080p.png
-|   |-- clonehero_720p.png       # opcional/futuro
-|   |-- clonehero_1080p.png      # opcional/futuro
-|   |-- rpcs3_720p.png           # opcional
-|   |-- rpcs3_1080p.png          # opcional
+|   |-- clonehero_720p.png       # Plymouth del camino Clone Hero
+|   |-- clonehero_1080p.png
+|   |-- plymouth-image_720p.png  # imagen generica de respaldo
+|   |-- plymouth-image_1080p.png
+|   |-- rpcs3_720p.png           # opcional (no incluida)
+|   |-- rpcs3_1080p.png          # opcional (no incluida)
+|   |-- create-example-assets.sh # genera una imagen de ejemplo con ImageMagick
 |   |-- plymouth-image.png.example
-|   `-- cursor/
+|   `-- cursor/                  # guitar-pick-left.png (ver cursor/README.md)
+|-- docs/
+|   `-- historico/instalador-openbox/   # Specs del instalador OpenBox (obsoletos, archivados)
 |-- tests/
+|   |-- test_assets.bats
 |   |-- test_common.bats
 |   |-- test_env_loader.bats
 |   |-- test_nvidia.bats
