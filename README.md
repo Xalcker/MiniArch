@@ -655,6 +655,15 @@ Variables de Cage/RPCS3:
   prioridad sobre la deteccion automatica.
 - `RPCS3_GAME_MATCH`: texto que debe contener el nombre del `.iso` o el titulo
   del juego en su `PARAM.SFO`. Por defecto `Rock Band 3`.
+- `RPCS3_AUDIO_OUTPUT`: salida de audio preferida: `hdmi` (HDMI/DP, por defecto),
+  `analog` o `auto`. Crea una regla de WirePlumber en
+  `~/.config/wireplumber/wireplumber.conf.d/` que sube la prioridad de esos sinks;
+  si el dispositivo preferido no existe se usa el otro. Para cambiarlo despues,
+  edita o borra `51-rpcs3-audio-output.conf` y reinicia `cage-kiosk.service`.
+- `RPCS3_AUDIO_VOLUME`: volumen de la salida de audio al arrancar, de `0` a `1`
+  (`1.0` = 100 %, por defecto). Se fija con `wpctl` en cada arranque del wrapper y
+  quita el silencio; vacio no lo toca. Util porque WirePlumber puede dejar un
+  sink HDMI en 40 %.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`

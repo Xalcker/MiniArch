@@ -302,6 +302,49 @@ EOF
     fi
 }
 
+# Elige por que salida suena RPCS3 (RPCS3_AUDIO_OUTPUT): hdmi/dp (por defecto),
+# analog o auto (deja la eleccion de WirePlumber). Se logra subiendo la
+# prioridad de los sinks HDMI/DP o analogicos con una regla de WirePlumber en
+# el home del usuario; si el dispositivo preferido no existe, WirePlumber cae
+# solo al otro. El wrapper arranca wireplumber como el usuario, asi que toma
+# ~/.config/wireplumber/wireplumber.conf.d/.
+configure_rpcs3_audio_output() {
+    local output="${RPCS3_AUDIO_OUTPUT:-hdmi}"
+    local conf_dir="/mnt/home/$KIOSK_USER/.config/wireplumber/wireplumber.conf.d"
+    local pattern
+
+    case "${output,,}" in
+        hdmi|dp)
+            pattern='~alsa_output.*hdmi.*'
+            ;;
+        analog)
+            pattern='~alsa_output.*analog.*'
+            ;;
+        auto)
+            log "Salida de audio automatica (RPCS3_AUDIO_OUTPUT=auto)"
+            return 0
+            ;;
+        *)
+            warn "RPCS3_AUDIO_OUTPUT invalido: $output; se deja la salida automatica."
+            return 0
+            ;;
+    esac
+
+    log "Priorizando la salida de audio: ${output,,}"
+    mkdir -p "$conf_dir"
+
+    cat > "$conf_dir/51-rpcs3-audio-output.conf" << EOF_CONF
+monitor.alsa.rules = [
+  {
+    matches = [ { node.name = "$pattern" } ]
+    actions = { update-props = { priority.session = 3000, priority.driver = 3000 } }
+  }
+]
+EOF_CONF
+
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
+}
+
 configure_rpcs3_performance() {
     log "Aplicando optimizaciones de rendimiento para RPCS3"
 
@@ -566,6 +609,7 @@ RPCS3_GAME_PATH="__RPCS3_GAME_PATH__"
 RPCS3_GAME_MATCH="__RPCS3_GAME_MATCH__"
 RPCS3_EXIT_MENU="__RPCS3_EXIT_MENU__"
 RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
+RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
 
 export HOME="${HOME:-__RPCS3_HOME__}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -682,6 +726,13 @@ start_audio() {
     echo "run-rpcs3: esperando sink Pulse/PipeWire" >&2
     wait_for_pulse_sink 50 || \
         echo "Aviso: no se encontro un sink Pulse/PipeWire antes de iniciar RPCS3." >&2
+
+    # WirePlumber recuerda un volumen bajo (40 %) en algunos equipos; se fija el
+    # volumen de la salida por defecto y se quita el silencio.
+    if [[ -n "$RPCS3_AUDIO_VOLUME" ]] && command -v wpctl >/dev/null 2>&1; then
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+        wpctl set-volume @DEFAULT_AUDIO_SINK@ "$RPCS3_AUDIO_VOLUME" >/dev/null 2>&1 || true
+    fi
 }
 
 find_rpcs3_bin() {
@@ -813,6 +864,7 @@ install_rpcs3_cage_wrapper() {
         "RPCS3_GAME_MATCH=$RPCS3_GAME_MATCH" \
         "RPCS3_EXIT_MENU=${RPCS3_EXIT_MENU:-always}" \
         "RPCS3_QT_PLATFORM=${RPCS3_QT_PLATFORM:-}" \
+        "RPCS3_AUDIO_VOLUME=${RPCS3_AUDIO_VOLUME:-}" \
         "RPCS3_HOME=/home/$KIOSK_USER" > /mnt/usr/local/bin/run-rpcs3.sh
     chmod +x /mnt/usr/local/bin/run-rpcs3.sh
 }

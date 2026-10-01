@@ -61,6 +61,10 @@ RPCS3_GAME_PATH="${RPCS3_GAME_PATH:-}"
 RPCS3_GAME_MATCH="${RPCS3_GAME_MATCH:-Rock Band 3}"
 RPCS3_QT_PLATFORM="${RPCS3_QT_PLATFORM:-}"
 RPCS3_EXIT_MENU="${RPCS3_EXIT_MENU:-always}"
+# hdmi (HDMI/DP, por defecto), analog o auto: salida de audio preferida.
+RPCS3_AUDIO_OUTPUT="${RPCS3_AUDIO_OUTPUT:-hdmi}"
+# Volumen de la salida al arrancar (1.0 = 100 %); vacio no lo toca.
+RPCS3_AUDIO_VOLUME="${RPCS3_AUDIO_VOLUME-1.0}"
 # RB3 mas la cache de shaders de RPCS3 no caben en el /home de un disco de 16 GB.
 RPCS3_MIN_DISK_GB="${RPCS3_MIN_DISK_GB:-32}"
 
@@ -119,6 +123,11 @@ ask_guided_configuration() {
             return 1
             ;;
     esac
+
+    if [[ -n "$RPCS3_AUDIO_VOLUME" && ! "$RPCS3_AUDIO_VOLUME" =~ ^(0(\.[0-9]+)?|1(\.0+)?)$ ]]; then
+        log_error "RPCS3_AUDIO_VOLUME invalido: $RPCS3_AUDIO_VOLUME. Use un numero entre 0 y 1 (por ejemplo 1.0) o vacio."
+        return 1
+    fi
 
     case "${RPCS3_QT_PLATFORM,,}" in
         ""|wayland|xcb)
@@ -332,6 +341,8 @@ main() {
         log_error "Fallo en optimizaciones de rendimiento para RPCS3"
         exit 1
     fi
+
+    configure_rpcs3_audio_output
 
     if ! install_rpcs3_update_script; then
         log_error "Fallo en instalacion del updater de RPCS3"
