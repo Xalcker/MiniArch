@@ -302,6 +302,49 @@ EOF
     fi
 }
 
+# Elige por que salida suena RPCS3 (RPCS3_AUDIO_OUTPUT): hdmi/dp (por defecto),
+# analog o auto (deja la eleccion de WirePlumber). Se logra subiendo la
+# prioridad de los sinks HDMI/DP o analogicos con una regla de WirePlumber en
+# el home del usuario; si el dispositivo preferido no existe, WirePlumber cae
+# solo al otro. El wrapper arranca wireplumber como el usuario, asi que toma
+# ~/.config/wireplumber/wireplumber.conf.d/.
+configure_rpcs3_audio_output() {
+    local output="${RPCS3_AUDIO_OUTPUT:-hdmi}"
+    local conf_dir="/mnt/home/$KIOSK_USER/.config/wireplumber/wireplumber.conf.d"
+    local pattern
+
+    case "${output,,}" in
+        hdmi|dp)
+            pattern='~alsa_output.*hdmi.*'
+            ;;
+        analog)
+            pattern='~alsa_output.*analog.*'
+            ;;
+        auto)
+            log "Salida de audio automatica (RPCS3_AUDIO_OUTPUT=auto)"
+            return 0
+            ;;
+        *)
+            warn "RPCS3_AUDIO_OUTPUT invalido: $output; se deja la salida automatica."
+            return 0
+            ;;
+    esac
+
+    log "Priorizando la salida de audio: ${output,,}"
+    mkdir -p "$conf_dir"
+
+    cat > "$conf_dir/51-rpcs3-audio-output.conf" << EOF_CONF
+monitor.alsa.rules = [
+  {
+    matches = [ { node.name = "$pattern" } ]
+    actions = { update-props = { priority.session = 3000, priority.driver = 3000 } }
+  }
+]
+EOF_CONF
+
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
+}
+
 configure_rpcs3_performance() {
     log "Aplicando optimizaciones de rendimiento para RPCS3"
 

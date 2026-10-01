@@ -61,6 +61,8 @@ RPCS3_GAME_PATH="${RPCS3_GAME_PATH:-}"
 RPCS3_GAME_MATCH="${RPCS3_GAME_MATCH:-Rock Band 3}"
 RPCS3_QT_PLATFORM="${RPCS3_QT_PLATFORM:-}"
 RPCS3_EXIT_MENU="${RPCS3_EXIT_MENU:-always}"
+# hdmi (HDMI/DP, por defecto), analog o auto: salida de audio preferida.
+RPCS3_AUDIO_OUTPUT="${RPCS3_AUDIO_OUTPUT:-hdmi}"
 # RB3 mas la cache de shaders de RPCS3 no caben en el /home de un disco de 16 GB.
 RPCS3_MIN_DISK_GB="${RPCS3_MIN_DISK_GB:-32}"
 
@@ -332,6 +334,8 @@ main() {
         log_error "Fallo en optimizaciones de rendimiento para RPCS3"
         exit 1
     fi
+
+    configure_rpcs3_audio_output
 
     if ! install_rpcs3_update_script; then
         log_error "Fallo en instalacion del updater de RPCS3"
