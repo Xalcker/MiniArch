@@ -98,9 +98,13 @@ rpcs3_unsquash_appimage() {
     rm -rf "$dest"
     mkdir -p "$dest"
 
-    if command -v dwarfsextract >/dev/null 2>&1 \
-        || run_quiet pacman -Sy --noconfirm --needed dwarfs; then
-        if run_quiet dwarfsextract -i "$image" -O auto -o "$dest" && [[ -x "$dest/AppRun" ]]; then
+    # dwarfs no esta en los repos de Arch: se usa el binario estatico oficial.
+    local dwarfs_bin="/tmp/dwarfs-universal"
+    if run_quiet curl -fL --retry 3 --retry-delay 2 -o "$dwarfs_bin" \
+        "${DWARFS_UNIVERSAL_URL:-https://github.com/mhx/dwarfs/releases/download/v0.15.8/dwarfs-universal-0.15.8-Linux-x86_64}"; then
+        chmod +x "$dwarfs_bin"
+        if run_quiet "$dwarfs_bin" --tool=dwarfsextract -i "$image" -O auto -o "$dest" \
+            && [[ -x "$dest/AppRun" ]]; then
             return 0
         fi
     fi
@@ -319,8 +323,13 @@ if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
     img="$WORK_DIR/RPCS3.AppImage"
     rm -rf "$WORK_DIR/squashfs-root"
     mkdir -p "$WORK_DIR/squashfs-root"
-    command -v dwarfsextract >/dev/null 2>&1 || pacman -Sy --noconfirm --needed dwarfs || true
-    dwarfsextract -i "$img" -O auto -o "$WORK_DIR/squashfs-root" || true
+    # dwarfs no esta en los repos de Arch: se usa el binario estatico oficial.
+    DWARFS_BIN="$WORK_DIR/dwarfs-universal"
+    if curl -fL --retry 3 --retry-delay 2 -o "$DWARFS_BIN" \
+        "https://github.com/mhx/dwarfs/releases/download/v0.15.8/dwarfs-universal-0.15.8-Linux-x86_64"; then
+        chmod +x "$DWARFS_BIN"
+        "$DWARFS_BIN" --tool=dwarfsextract -i "$img" -O auto -o "$WORK_DIR/squashfs-root" || true
+    fi
     if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
         command -v unsquashfs >/dev/null 2>&1 || pacman -Sy --noconfirm --needed squashfs-tools
         shoff=$(od -An -t u8 -j 40 -N 8 "$img" | tr -d ' ')
