@@ -69,6 +69,33 @@ check_network() {
 }
 
 ################################################################################
+# live_boot_disk()
+#
+# Devuelve (en stdout) el disco del que arranco el ISO live, por ejemplo el USB
+# de instalacion, o nada si no se puede determinar. El ISO de Arch monta su
+# medio en /run/archiso/bootmnt (sobreescribible con LIVE_BOOT_MOUNT para
+# pruebas). Instalar sobre ese disco borraria el sistema que esta corriendo.
+################################################################################
+live_boot_disk() {
+    local mount_point="${LIVE_BOOT_MOUNT:-/run/archiso/bootmnt}"
+    local source parent
+
+    command -v findmnt &> /dev/null || return 0
+
+    source=$(findmnt -n -o SOURCE "$mount_point" 2>/dev/null | head -n 1) || return 0
+    # findmnt agrega "[/subruta]" cuando el origen es un bind mount.
+    source="${source%%\[*}"
+    [[ -n "$source" ]] || return 0
+
+    parent=$(lsblk -n -o PKNAME "$source" 2>/dev/null | head -n 1 | awk '{$1=$1; print}')
+    if [[ -n "$parent" ]]; then
+        echo "/dev/$parent"
+    else
+        echo "$source"
+    fi
+}
+
+################################################################################
 # select_disk_device()
 #
 # Muestra los discos detectados y permite seleccionar el disco destino por numero
@@ -96,6 +123,19 @@ select_disk_device() {
     fi
 
     mapfile -t disks < <(lsblk -d -n -p -e 7,11 -o NAME,TYPE 2>/dev/null | awk '$2 == "disk" { print $1 }')
+
+    # El disco del que arranco el ISO nunca es un destino valido.
+    local live_disk
+    live_disk="$(live_boot_disk)"
+    if [[ -n "$live_disk" ]]; then
+        local -a candidates=("${disks[@]}")
+        disks=()
+        for disk in "${candidates[@]}"; do
+            [[ "$disk" == "$live_disk" ]] || disks+=("$disk")
+        done
+        echo "" >&2
+        echo "Se oculta $live_disk: es el medio de instalacion en uso." >&2
+    fi
 
     if [[ ${#disks[@]} -eq 0 ]]; then
         echo "ERROR: No se detectaron discos instalables." >&2
@@ -145,6 +185,13 @@ select_disk_device() {
         selected="${disks[$((answer - 1))]}"
     else
         selected="$answer"
+    fi
+
+    # Tambien se rechaza escribirlo a mano (o fijarlo en .env), incluidas sus
+    # particiones (/dev/sdb1, /dev/nvme0n1p1).
+    if [[ -n "$live_disk" && "$selected" =~ ^${live_disk}(p?[0-9]+)?$ ]]; then
+        echo "ERROR: '$selected' es el medio de instalacion en uso (arranque del ISO live); instalar ahi destruiria el sistema que esta corriendo." >&2
+        return 1
     fi
 
     if ! is_block_device "$selected"; then

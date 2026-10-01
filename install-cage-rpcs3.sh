@@ -210,6 +210,11 @@ main() {
     fi
 
     section "Particionado y montaje"
+    if ! prepare_disk_for_install "$DISK_DEVICE"; then
+        log_error "No se pudo liberar y limpiar el disco destino"
+        exit 1
+    fi
+
     if ! partition_disk "$DISK_DEVICE"; then
         log_error "Fallo en particionamiento del disco"
         exit 1
