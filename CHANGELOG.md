@@ -9,6 +9,10 @@ semantico cuando se publiquen releases formales.
 
 ### Agregado
 
+- CI en GitHub Actions (`.github/workflows/ci.yml`): `bash -n`, `shellcheck -S
+  warning`, `bats tests/` y `scripts/check-encoding.sh`, que falla si aparece un
+  BOM, doble codificacion UTF-8 o finales de linea CRLF.
+
 - Camino `install-cage-rpcs3.sh` y modulo `lib/rpcs3.sh`: Arch Linux + Cage +
   RPCS3 (AppImage extraido a `/opt/RPCS3`, sin FUSE) con arranque directo de
   Rock Band 3. La primera vez abre la GUI de RPCS3 para instalar firmware, juego

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Sintaxis, ShellCheck y codificacion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Codificacion y finales de linea
+        run: bash scripts/check-encoding.sh
+
+      - name: Sintaxis (bash -n)
+        run: |
+          for f in install-cage-*.sh lib/*.sh scripts/*.sh; do
+            bash -n "$f"
+          done
+
+      - name: ShellCheck (advertencias y errores)
+        run: shellcheck -x -S warning -s bash install-cage-*.sh lib/*.sh scripts/*.sh
+
+  test:
+    name: Pruebas BATS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar bats
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Ejecutar pruebas
+        env:
+          LC_ALL: C.UTF-8
+        run: bats tests/
