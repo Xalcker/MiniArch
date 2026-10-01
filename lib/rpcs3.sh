@@ -192,6 +192,58 @@ download_rpcs3_firmware() {
     run_quiet arch-chroot /mnt chown "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/PS3UPDAT.PUP"
 }
 
+# Descarga la ultima build de Rock Band 3 Deluxe para PS3 al home del usuario.
+# Es opcional: si falla solo se avisa; el paquete se instala despues desde RPCS3.
+download_rb3dx() {
+    if [[ "${RB3DX_DOWNLOAD:-true}" != "true" ]]; then
+        log "Descarga de RB3DX omitida (RB3DX_DOWNLOAD=false)"
+        return 0
+    fi
+
+    local target="/mnt/home/$KIOSK_USER/RB3DX-PS3.zip"
+
+    log "Descargando Rock Band 3 Deluxe (PS3) en /home/$KIOSK_USER/RB3DX-PS3.zip"
+    mkdir -p "/mnt/home/$KIOSK_USER"
+
+    if ! run_quiet curl -fL --retry 3 --retry-delay 2 -o "$target" "$RB3DX_URL" || [[ ! -s "$target" ]]; then
+        rm -f "$target"
+        warn "No se pudo descargar RB3DX desde $RB3DX_URL; descargalo manualmente desde https://rb3dx.milohax.org/downloads/"
+        return 0
+    fi
+
+    run_quiet arch-chroot /mnt chown "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/RB3DX-PS3.zip"
+}
+
+# Descarga los tres perfiles de configuracion de RB3DX de la guia de MiloHax
+# (recommended, minimum y potato) al home del usuario, sin descomprimirlos: se
+# instala uno desde el primer arranque, al configurar el juego. Cada zip trae
+# config/custom_configs/config_BLUS30463.yml y dx_high_memory.dta, para copiar
+# sobre la carpeta de datos de RPCS3. Es opcional: si falla solo se avisa.
+download_rb3dx_config_profiles() {
+    if [[ "${RB3DX_DOWNLOAD_CONFIGS:-true}" != "true" ]]; then
+        log "Descarga de perfiles de RB3DX omitida (RB3DX_DOWNLOAD_CONFIGS=false)"
+        return 0
+    fi
+
+    local profile target
+
+    mkdir -p "/mnt/home/$KIOSK_USER"
+
+    for profile in recommended minimum potato; do
+        target="/mnt/home/$KIOSK_USER/RB3DX-config-$profile.zip"
+        log "Descargando perfil de configuracion de RB3DX: $profile"
+
+        if ! run_quiet curl -fL --retry 3 --retry-delay 2 -o "$target" "${RB3DX_CONFIG_BASE_URL%/}/$profile.zip" || [[ ! -s "$target" ]]; then
+            rm -f "$target"
+            warn "No se pudo descargar el perfil $profile; descargalo desde https://guides.milohax.org/en/rb3pc/intro/quickconfig/"
+            continue
+        fi
+
+        run_quiet arch-chroot /mnt chown "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/RB3DX-config-$profile.zip"
+    done
+}
+
+
 configure_rpcs3_games_dir() {
     log "Creando carpeta de juegos de RPCS3: $RPCS3_GAMES_DIR"
 
