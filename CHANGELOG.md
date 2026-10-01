@@ -2,74 +2,84 @@
 
 Todos los cambios notables en este proyecto se documentan en este archivo.
 
-El formato sigue la idea de Keep a Changelog y el proyecto usa versionado
-semantico cuando se publiquen releases formales.
+El formato sigue la idea de Keep a Changelog y el proyecto usara versionado
+semantico cuando se publiquen releases formales (todavia no hay tags ni
+releases publicados).
 
 ## [No Publicado]
 
 ### Agregado
 
-- `tests/test_docs.bats`: verifica que README, CONTRIBUTING, SECURITY y CLONING
-  mencionen cada instalador, modulo, script y archivo de pruebas, documenten
-  cada variable de `.env.example`, los tres shares Samba y los tres updaters, y
-  tengan troubleshooting para cada camino con aplicacion.
+Caminos de instalacion:
 
-- Proteccion del disco destino: el selector oculta y rechaza el disco del que
-  arranco el ISO live (`live_boot_disk`), y `prepare_disk_for_install` desactiva
-  swap, desmonta, detiene LVM/RAID heredados y borra firmas (`wipefs`,
-  `sgdisk --zap-all`) antes de particionar, en los cuatro instaladores.
+- Camino Cage/RPCS3 (`install-cage-rpcs3.sh`, `lib/rpcs3.sh`): Arch Linux + Cage
+  + RPCS3 (AppImage extraido a `/opt/RPCS3`, sin FUSE) con arranque directo de
+  Rock Band 3. La primera vez abre la GUI de RPCS3 para instalar firmware, juego
+  y controles; despues el wrapper `run-rpcs3.sh` busca el juego por el titulo de
+  su `PARAM.SFO` (o `RPCS3_GAME_PATH`) en la carpeta de juegos, `dev_hdd0/disc` y
+  `dev_hdd0/game`, y lo lanza con `--no-gui`. Incluye share Samba `RPCS3-Games`,
+  descarga opcional del firmware, `update-rpcs3` con reemplazo atomico, menu de
+  mantenimiento, `LimitMEMLOCK=infinity` y `RPCS3_MIN_DISK_GB` (32 GB).
+- Camino Cage/Clone Hero (`install-cage-clonehero.sh`, `lib/clonehero.sh`):
+  descarga desde releases de `clonehero-game/releases`, updater
+  `update-clonehero`, wrapper `run-clonehero.sh`, share Samba `CloneHero-Songs` y
+  descargador de canciones `download-clonehero-songs.sh` (usa `links.csv`).
+- Camino Cage/YARG (`install-cage-yarg.sh`, `lib/cage.sh`, `lib/yarg.sh`): YARG
+  stable fijo, latest estable desde `YARC-Official/YARG` o nightly desde
+  `YARC-Official/YARG-BleedingEdge`; `YARG_SONGS_DIR` y
+  `YARG_PERSISTENT_DATA_DIR`; share Samba `YARG-Songs`; DBus de sesion desde
+  `cage-kiosk.service` y PipeWire ordenado desde `run-yarg.sh`; `update-yarg`
+  respeta `YARG_RELEASE_CHANNEL`; descargador de canciones
+  `download-yarg-songs.sh`.
+- Camino minimal `install-cage-kiosk.sh` (Cage + foot, sin juego).
+
+Configuracion y experiencia de instalacion:
+
+- Modo asistido en los instaladores: sin `.env` preguntan usuario, passwords,
+  hostname, zona horaria, SSH, Plymouth, NVIDIA, canal y resolucion.
+- Seleccion de resolucion (`YARG_RESOLUTION` y `CLONEHERO_RESOLUTION`: `4k`,
+  `2k`, `1080p`, `720p` o `ask`) y render por software opcional
+  (`YARG_FORCE_SOFTWARE_RENDER`, `CLONEHERO_FORCE_SOFTWARE_RENDER`).
+- `YARG_EXIT_MENU` y `CLONEHERO_EXIT_MENU` (`always`, `restart`, `never`) para
+  decidir que pasa al cerrar el juego, y `RPCS3_EXIT_MENU` en RPCS3.
+- Imagen de Plymouth por camino y resolucion (`select_plymouth_image`, assets
+  `yarg_*`, `clonehero_*` y `plymouth-image_*`, con `PLYMOUTH_TARGET_RESOLUTION`).
+- Cursor personalizado `MiniArchPick` (guitar pick) generado con `xcursorgen`.
+- Opcion de actualizacion en el menu de mantenimiento: `Actualizar YARG Stable`
+  o `Actualizar YARG Nightly`, `Actualizar Clone Hero` y `Actualizar RPCS3`.
+- Selector de disco con lista de discos, etiqueta de USB/removibles y
+  confirmacion escribiendo `INSTALAR`.
+- Paquetes `mc` (Midnight Commander) e `inetutils` (comando `hostname`) en el
+  sistema base de los caminos Cage.
+- `ESP_SIZE`, `ROOT_SIZE` y `SWAP_SIZE` configurables, y `check_disk` con minimo
+  opcional en GB (por defecto 16).
+- `NVIDIA_SKIP_GPU_CHECK` para omitir la deteccion de GPU NVIDIA.
+- Scripts `scripts/clone-miniarch.sh` y `scripts/expand-home.sh`: clonado de
+  disco, cambio de UUIDs/GUIDs, reparacion de `fstab` (`--repair-fstab`), GRUB
+  UEFI en modo removable y expansion de `/home`.
+
+Seguridad del disco:
+
+- El selector oculta y rechaza el disco del que arranco el ISO live
+  (`live_boot_disk`), y `prepare_disk_for_install` desactiva swap, desmonta,
+  detiene LVM/RAID heredados y borra firmas (`wipefs`, `sgdisk --zap-all`)
+  antes de particionar, en los cuatro instaladores.
+
+Infraestructura:
 
 - CI en GitHub Actions (`.github/workflows/ci.yml`): `bash -n`, `shellcheck -S
   warning`, `bats tests/` y `scripts/check-encoding.sh`, que falla si aparece un
   BOM, doble codificacion UTF-8 o finales de linea CRLF.
-
-- Camino `install-cage-rpcs3.sh` y modulo `lib/rpcs3.sh`: Arch Linux + Cage +
-  RPCS3 (AppImage extraido a `/opt/RPCS3`, sin FUSE) con arranque directo de
-  Rock Band 3. La primera vez abre la GUI de RPCS3 para instalar firmware, juego
-  y controles; despues el wrapper `run-rpcs3.sh` busca el juego por el titulo de
-  su `PARAM.SFO` (o `RPCS3_GAME_PATH`) y lo lanza con `--no-gui`. Incluye share
-  Samba `RPCS3-Games`, descarga opcional del firmware, `update-rpcs3` con
-  reemplazo atomico y menu de mantenimiento. Busca el juego tambien en
-  `dev_hdd0/disc` (volcados agregados desde la GUI) y el servicio fija
-  `LimitMEMLOCK=infinity` (RPCS3 pide 2 GiB de `RLIMIT_MEMLOCK`).
-- `check_disk` acepta un minimo opcional en GB (por defecto 16); el camino
-  RPCS3 exige 32 GB (`RPCS3_MIN_DISK_GB`).
-- Paquete `inetutils` en el stack Cage para asegurar disponibilidad del comando
-  `hostname`.
-- Opcion de actualizacion en el menu de mantenimiento: `Actualizar YARG Stable`
-  o `Actualizar YARG Nightly` para YARG, y `Actualizar Clone Hero` para Clone
-  Hero.
-- Instalador `install-cage-clonehero.sh` para el camino Cage/Clone Hero.
-- Modulo `lib/clonehero.sh` con descarga desde releases de
-  `clonehero-game/releases`, updater `update-clonehero`, wrapper
-  `run-clonehero.sh`, share Samba `CloneHero-Songs` y descargador CSV
-  `download-clonehero-songs.sh`.
-- Instalador `install-cage-yarg.sh` para el camino recomendado Cage/YARG.
-- Modulo `lib/cage.sh` con instalacion base de Cage, usuario, wrapper y
-  servicio `cage-kiosk.service`.
-- Modulo `lib/yarg.sh` con descarga de YARG, soporte stable, stable-latest y
-  nightly, settings iniciales, Samba, optimizaciones y updater.
-- Soporte para elegir YARG stable fijo, latest estable desde
-  `YARC-Official/YARG` o nightly desde `YARC-Official/YARG-BleedingEdge`.
-- Configuracion fija de canciones con `YARG_SONGS_DIR` y
-  `YARG_PERSISTENT_DATA_DIR`.
-- Share Samba `YARG-Songs` para cargar canciones por red.
-- Arranque de YARG con DBus de sesion desde `cage-kiosk.service` y PipeWire
-  ordenado desde `/usr/local/bin/run-yarg.sh`.
-- `update-yarg` respeta `YARG_RELEASE_CHANNEL`; en `stable-latest` consulta el
-  latest estable y en `nightly` consulta el latest de `YARG-BleedingEdge`.
-- Instalador minimal `install-cage-kiosk.sh` para Cage + foot sin YARG.
-- Scripts `scripts/clone-miniarch.sh` y `scripts/expand-home.sh` para clonado,
-  cambio de UUIDs y expansion de `/home`.
+- Pruebas nuevas: `test_common`, `test_env_loader`, `test_disk_safety`,
+  `test_partition_sizes`, `test_nvidia`, `test_rpcs3`, `test_repo_hygiene`,
+  `test_docs` (coherencia de la documentacion con el repo) y
+  `test_song_paths_and_menu`.
+- `.gitattributes` para mantener LF en scripts, pruebas y documentos.
 
 ### Cambiado
 
-- Documentacion alineada con el codigo: README (flujo del instalador, proteccion
-  del disco, `CURSOR_PATH`, descriptor de la suite de pruebas, descargador de
-  canciones de YARG, troubleshooting de Clone Hero y Samba), SECURITY (wrappers
-  y updaters de los tres caminos) y CONTRIBUTING (checklist de PR con los cuatro
-  caminos y nota sobre los scripts de clonado).
-
+- Nuevo `lib/common.sh` con el logging, `run_quiet`, los prompts y la limpieza
+  ante fallos que estaban copiados en los instaladores.
 - `ESP_SIZE`, `ROOT_SIZE` y `SWAP_SIZE` ahora se respetan (antes estaban en
   `.env.example` pero el esquema estaba fijo): se validan (minimos ESP 256M,
   root 4G, swap 512M y 2 GiB libres para `/home`) antes de pedir confirmacion.
@@ -77,11 +87,10 @@ semantico cuando se publiquen releases formales.
   `/home/${KIOSK_USER}/Songs`, hostname por camino documentado y fallback de
   zona horaria unificado en `America/Phoenix` (antes `lib/finalization.sh` usaba
   `America/Mexico_City`).
-
-- Nuevo `lib/common.sh` con el logging, `run_quiet`, los prompts y la limpieza
-  ante fallos que estaban copiados en los tres instaladores.
-- README alineado al repositorio oficial `Xalcker/MiniArch`.
-- Cage/YARG queda documentado como el camino recomendado para YARG.
+- Documentacion alineada con el codigo: README, SECURITY, CLONING y CONTRIBUTING
+  cubren los cuatro caminos (wrappers, updaters, shares Samba, troubleshooting).
+- README alineado al repositorio oficial `Xalcker/MiniArch`; Cage/YARG queda
+  como el camino recomendado para YARG.
 - La salida ruidosa de `pacman`, `pacstrap`, `mkfs`, `grub-mkconfig`,
   `mkinitcpio`, `curl` y `unzip` se envia al log por defecto. Use
   `VERBOSE_INSTALL=true` para verla en consola.
@@ -95,47 +104,40 @@ semantico cuando se publiquen releases formales.
 ### Removido
 
 - `TODO.md`: su unico pendiente (`YARG_FORCE_WAYLAND`) se sigue en el issue #10.
-
 - Funciones sin uso heredadas del instalador OpenBox y sus pruebas:
   `install_base_system`, `configure_chroot`, `install_graphics_drivers`,
   `apply_plymouth_image`, `install_extra_scripts` y `calculate_home_size`.
-
 - `install-arch-kiosk.sh`, `setup-yarg.sh` y `lib/gui.sh`.
 - Instaladores Debian/Ubuntu experimentales.
 - Bootstrap `bootstrap-arch-live.sh` y la documentacion de `curl | bash`.
 
 ### Corregido
 
-- El instalador ya no instala `nvidia-open` en GPU anteriores a Turing (GTX 10xx
-  y anteriores), donde dejaba el equipo sin video: `detect_nvidia_support` lee la
-  generacion con `lspci` y `resolve_nvidia_choice` (compartido por los caminos
-  YARG, Clone Hero y RPCS3) omite el driver con una advertencia clara.
-  `NVIDIA_SKIP_GPU_CHECK=true` desactiva la proteccion. Tambien se corrigio el
-  mensaje que decia `nvidia-dkms` cuando se instalaba `nvidia-open`.
-
 - El `.env` ya no se carga con `source` (que ejecutaba su contenido como root y
   rompia con passwords con simbolos): `load_env_file` en `lib/common.sh` lo lee
   como `CLAVE=valor`, sin evaluar valores, con comillas simples/dobles,
   expansion de `${NOMBRE}`, soporte CRLF y rechazo de variables reservadas.
-
+- El instalador ya no instala `nvidia-open` en GPU anteriores a Turing (GTX 10xx
+  y anteriores), donde dejaba el equipo sin video: `detect_nvidia_support` lee la
+  generacion con `lspci` y `resolve_nvidia_choice` (compartido por los caminos
+  YARG, Clone Hero y RPCS3) omite el driver con una advertencia clara. Tambien se
+  corrigio el mensaje que decia `nvidia-dkms` cuando se instalaba `nvidia-open`.
+- Las rutas de canciones y de datos persistentes de YARG y Clone Hero se
+  resuelven despues de preguntar el usuario kiosko; antes quedaban fijas en
+  `/home/kiosk/...` si se elegia otro usuario.
+- Las canciones de YARG y Clone Hero usan `/home/$KIOSK_USER/Songs` como carpeta
+  real (YARG crea `/opt/YARG/Songs` como enlace simbolico de compatibilidad,
+  tambien en `update-yarg`; Clone Hero enlaza su carpeta `Songs` hacia esa ruta,
+  y los updaters respetan la normalizacion).
+- `update-clonehero` y la instalacion de Clone Hero ya no fallan con
+  `Directory not empty` al actualizar sobre una instalacion existente; ahora
+  combinan los archivos nuevos con `cp -a` en vez de `mv`.
 - La suite BATS vuelve a ser ejecutable: se reparo `test_base_install.bats`
   (estaba duplicado y truncado), se quito el BOM y la doble codificacion UTF-8
   de `lib/drivers.sh`, `lib/bootloader.sh`, `lib/customization.sh` y
   `tests/test_customization.bats`, y se alinearon las pruebas con los mensajes,
-  paquetes y comandos actuales (zona horaria con `ln -sf`, GRUB, audio,
-  Plymouth). `install_grub` acepta `EFI_FIRMWARE_DIR` para poder probarse sin
-  depender del equipo.
-- Se agrego `.gitattributes` para mantener LF en scripts, pruebas y docs.
-
-- `update-clonehero` y la instalacion de Clone Hero ya no fallan con
-  `Directory not empty` al actualizar sobre una instalacion existente; ahora
-  combinan los archivos nuevos con `cp -a` en vez de `mv`.
-- Las rutas de canciones y de datos persistentes de YARG y Clone Hero ahora se
-  resuelven despues de preguntar el usuario kiosko; antes quedaban fijas en
-  `/home/kiosk/...` si se elegia otro usuario.
-- YARG ahora usa `/home/$KIOSK_USER/Songs` como carpeta real de canciones y
-  crea `/opt/YARG/Songs` como enlace simbolico de compatibilidad, incluyendo
-  `update-yarg`.
+  paquetes y comandos actuales. `install_grub` acepta `EFI_FIRMWARE_DIR` y las
+  pruebas ya no dependen de los discos reales del equipo (`is_block_device`).
 - El menu de mantenimiento de YARG y Clone Hero ya no muestra error si el
   comando `hostname` no existe.
 - Prompt de canal ahora pide `stable`, `stable-latest` o `nightly`, evitando
@@ -144,6 +146,9 @@ semantico cuando se publiquen releases formales.
   en repositorios actuales.
 - Plymouth ya no falla si ImageMagick no esta disponible; copia el PNG sin
   escalar como fallback.
+- Plymouth ya no fuerza modulos graficos en `MODULES`, restaura
+  `mkinitcpio.conf` si falla `mkinitcpio -P` y evita regenerar initramfs dos
+  veces al activar el tema.
 - La validacion de disco vacio ya no depende de `grep -c` bajo `pipefail`.
 - El wrapper de YARG deja trazas claras en journal antes de iniciar DBus,
   PipeWire y Cage para diagnosticar pantallas negras.
@@ -155,9 +160,6 @@ semantico cuando se publiquen releases formales.
 - `cage-kiosk.service` ahora escribe `XDG_RUNTIME_DIR` con el UID real del
   usuario kiosk en vez de usar `%U`, que podia expandirse como root (`0`) en
   los `ExecStartPre` y romper PipeWire/ALSA.
-- Plymouth ya no fuerza modulos graficos en `MODULES`, restaura
-  `mkinitcpio.conf` si falla `mkinitcpio -P` y evita regenerar initramfs dos
-  veces al activar el tema.
 
 ## [1.0.0] - Version Inicial
 
@@ -173,6 +175,3 @@ semantico cuando se publiquen releases formales.
 - Estructura modular en `lib/`.
 - Assets personalizables para Plymouth y cursor.
 - Esquema de particionado GPT/UEFI con ESP, root, swap y home.
-
-[No Publicado]: https://github.com/Xalcker/MiniArch/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Xalcker/MiniArch/releases/tag/v1.0.0
