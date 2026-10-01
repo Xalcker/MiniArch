@@ -60,7 +60,10 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 - Instalacion automatizada desde el live ISO de Arch Linux.
 - Validacion de entorno, red, disco y passwords.
 - Confirmacion antes de destruir particiones existentes.
-- Particionado GPT/UEFI:
+- El disco del ISO live nunca es un destino valido; antes de particionar se
+  limpian swap, montajes, LVM/RAID y firmas previas.
+- Particionado GPT/UEFI (tamanos ajustables con `ESP_SIZE`, `ROOT_SIZE` y
+  `SWAP_SIZE`):
   - ESP FAT32 en `/boot`.
   - Root ext4 en `/`.
   - Swap.
@@ -281,13 +284,16 @@ ni bloqueen `parted` o `mkfs`.
 
 1. Carga `.env` si existe; si no existe, entra en modo asistido.
 2. Pregunta valores faltantes o interactivos de la configuracion.
-3. Muestra el selector de disco y confirma el destino.
-4. Pregunta por NVIDIA si `INSTALL_NVIDIA` esta vacio.
+3. Muestra el selector de disco (sin el USB del ISO live) y confirma el destino.
+4. Detecta la GPU NVIDIA y pregunta si `INSTALL_NVIDIA` esta vacio; en GPU
+   anteriores a Turing omite el driver.
 5. Pregunta por canal de YARG si `YARG_RELEASE_CHANNEL=ask`.
 6. Pregunta por resolucion de YARG si `YARG_RESOLUTION=ask`.
-7. Valida entorno live, passwords, assets opcionales, red y disco.
+7. Valida entorno live, passwords, assets opcionales, red, disco y esquema de
+   particiones.
 8. Resuelve el release mas reciente si se eligio `stable-latest` o `nightly`.
-9. Particiona, formatea y monta el disco.
+9. Libera y limpia el disco (swap, montajes, LVM/RAID, firmas), particiona,
+   formatea y monta.
 10. Instala Arch base, Cage, Wayland/XWayland, Samba, dbus y stack grafico.
 11. Genera `fstab`.
 12. Configura hostname, locale, root, GRUB, Plymouth y NVIDIA si aplica.
@@ -420,6 +426,17 @@ Actualizar YARG:
 ```bash
 sudo update-yarg
 ```
+
+Descargar canciones desde CSV:
+
+```bash
+~/download-yarg-songs.sh
+```
+
+El instalador crea o copia `~/links.csv` (el `links.csv` de la raiz del repo si
+existe). Cada linea puede ser `nombre,url` o solo una URL; antes de descargar,
+el script pregunta por cada enlace, y los ZIP pueden extraerse directamente en
+la carpeta Songs. Admite enlaces publicos de Google Drive.
 
 ## Uso Despues De Instalar Cage/Clone Hero
 
@@ -560,7 +577,9 @@ Variables comunes:
 - `PLYMOUTH_TARGET_RESOLUTION`: resolucion final usada para preparar la imagen
   de Plymouth. En Cage/YARG y Cage/Clone Hero se calcula desde la resolucion
   elegida.
-- `CURSOR_PATH`: ruta opcional usada solo por validaciones/assets heredados.
+- `CURSOR_PATH`: cursor personalizado (por defecto `./assets/cursor/`, que trae
+  `guitar-pick-left.png`). Los caminos YARG, Clone Hero y RPCS3 lo instalan como
+  tema `MiniArchPick` (con `xcursorgen`); el camino foot no lo usa.
 - `LOG_FILE`: archivo donde se guarda la salida detallada de la instalacion.
 - `VERBOSE_INSTALL`: si es `true`, muestra en consola la salida completa de
   `pacman`, `pacstrap`, `unzip`, `grub-mkconfig`, etc. Por defecto es `false`.
@@ -639,7 +658,8 @@ MiniArch/
 |-- install-cage-yarg.sh       # Orquestador Cage/YARG integrado
 |-- scripts/
 |   |-- clone-miniarch.sh       # Clona disco, cambia UUIDs y puede expandir /home
-|   `-- expand-home.sh          # Expande /home despues de clonar
+|   |-- expand-home.sh          # Expande /home despues de clonar
+|   `-- check-encoding.sh       # CI: sin BOM, mojibake ni CRLF
 |-- lib/
 |   |-- common.sh              # Logging, prompts y limpieza compartidos
 |   |-- validation.sh          # Validacion de entorno, seguridad, red y disco
@@ -667,6 +687,8 @@ MiniArch/
 |-- tests/
 |   |-- test_common.bats
 |   |-- test_env_loader.bats
+|   |-- test_nvidia.bats
+|   |-- test_partition_sizes.bats
 |   |-- test_song_paths_and_menu.bats
 |   |-- test_validation.bats
 |   |-- test_partitioning.bats
@@ -677,13 +699,22 @@ MiniArch/
 |   |-- test_repo_hygiene.bats
 |   |-- test_drivers.bats
 |   |-- test_disk_safety.bats
+|   |-- test_docs.bats
 |   |-- test_customization.bats
 |   |-- test_finalization.bats
 |   `-- test_integration.bats
 ```
 
-La suite BATS cubre principalmente modulos compartidos. Los modulos
-`lib/cage.sh` y `lib/yarg.sh` todavia no tienen suite dedicada.
+La suite BATS cubre los modulos compartidos (`validation`, `partitioning`,
+`bootloader`, `plymouth`, `drivers`, `finalization`, `customization`, `common`),
+el cargador del `.env`, la proteccion del disco, la deteccion de NVIDIA, los
+tamanos de particion y el camino RPCS3 (con `find_game` y `update-rpcs3`
+ejecutados de verdad). Los wrappers y menus de `lib/cage.sh`, `lib/yarg.sh` y
+`lib/clonehero.sh` se verifican sobre todo con `grep` sobre el texto (salvo
+`update-clonehero`, que si se ejecuta en una prueba)
+(`test_song_paths_and_menu.bats`); las pruebas de integracion estan omitidas
+(ver #12 y #24). `scripts/clone-miniarch.sh` y `scripts/expand-home.sh` no tienen
+pruebas automaticas: pruebalos en una VM con un disco de prueba.
 
 ## Desarrollo Y Pruebas
 
@@ -782,6 +813,30 @@ journalctl -u cage-kiosk.service -b
 ls -la /opt/YARG
 ```
 
+Si el binario no existe, el wrapper abre `foot`. Puedes reinstalar con:
+
+```bash
+sudo update-yarg
+```
+
+### Clone Hero no arranca
+
+```bash
+systemctl status cage-kiosk.service
+journalctl -u cage-kiosk.service -b
+ls -la /opt/CloneHero
+```
+
+Si el binario no existe, el wrapper abre el menu de mantenimiento. Reinstala con:
+
+```bash
+sudo update-clonehero
+```
+
+Si el menu de mantenimiento no puede actualizar, revisa que
+`CLONEHERO_URL` (canal `url`) o el release de `clonehero-game/releases` (canal
+`latest`) tengan un asset Linux.
+
 ### RPCS3 no arranca el juego
 
 ```bash
@@ -822,11 +877,7 @@ O define en `.env`:
 VERBOSE_INSTALL=true
 ```
 
-Si el binario no existe, el wrapper abre `foot`. Puedes reinstalar con:
 
-```bash
-sudo update-yarg
-```
 
 ### Audio no funciona
 
@@ -853,8 +904,8 @@ y que no haya procesos PipeWire stale del usuario.
 ```bash
 sudo systemctl status smb nmb
 testparm
-grep -A10 "\[YARG-Songs\]" /etc/samba/smb.conf
-ls -la /home/kiosk/Songs
+grep -A10 "\[YARG-Songs\]" /etc/samba/smb.conf   # o [CloneHero-Songs] / [RPCS3-Games]
+ls -la /home/kiosk/Songs                         # RPCS3: /home/kiosk/Games
 ```
 
 ### Instrumentos no funcionan

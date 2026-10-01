@@ -85,13 +85,18 @@ bash -n scripts/clone-miniarch.sh scripts/expand-home.sh
 Si tocas `lib/drivers.sh`, `lib/validation.sh` o `lib/plymouth.sh`, revisa que
 no rompa los caminos Cage.
 
+`scripts/clone-miniarch.sh` y `scripts/expand-home.sh` no tienen pruebas BATS:
+si los modificas, pruebalos en una VM con un disco de prueba y menciona en el
+PR como los validaste.
+
 ## Pull Requests
 
 Incluye:
 
 - Que cambio.
 - Por que.
-- Que camino afecta: Cage/YARG, Cage/foot o ambos.
+- Que camino afecta: Cage/YARG, Cage/Clone Hero, Cage/RPCS3, Cage/foot o varios
+  (si tocas `lib/`, revisa los cuatro).
 - Pruebas ejecutadas.
 - Riesgos conocidos.
 

@@ -9,6 +9,11 @@ semantico cuando se publiquen releases formales.
 
 ### Agregado
 
+- `tests/test_docs.bats`: verifica que README, CONTRIBUTING, SECURITY y CLONING
+  mencionen cada instalador, modulo, script y archivo de pruebas, documenten
+  cada variable de `.env.example`, los tres shares Samba y los tres updaters, y
+  tengan troubleshooting para cada camino con aplicacion.
+
 - Proteccion del disco destino: el selector oculta y rechaza el disco del que
   arranco el ISO live (`live_boot_disk`), y `prepare_disk_for_install` desactiva
   swap, desmonta, detiene LVM/RAID heredados y borra firmas (`wipefs`,
@@ -58,6 +63,12 @@ semantico cuando se publiquen releases formales.
   cambio de UUIDs y expansion de `/home`.
 
 ### Cambiado
+
+- Documentacion alineada con el codigo: README (flujo del instalador, proteccion
+  del disco, `CURSOR_PATH`, descriptor de la suite de pruebas, descargador de
+  canciones de YARG, troubleshooting de Clone Hero y Samba), SECURITY (wrappers
+  y updaters de los tres caminos) y CONTRIBUTING (checklist de PR con los cuatro
+  caminos y nota sobre los scripts de clonado).
 
 - `ESP_SIZE`, `ROOT_SIZE` y `SWAP_SIZE` ahora se respetan (antes estaban en
   `.env.example` pero el esquema estaba fijo): se validan (minimos ESP 256M,
