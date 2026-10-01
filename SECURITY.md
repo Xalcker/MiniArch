@@ -84,6 +84,9 @@ El camino Cage/YARG crea el share:
 La configuracion permite `guest ok = yes` y fuerza escritura como el usuario
 kiosko para que cargar canciones sea simple.
 
+Los caminos Cage/Clone Hero y Cage/RPCS3 crean shares equivalentes
+(`CloneHero-Songs` y `RPCS3-Games`) con la misma configuracion.
+
 No expongas ese share a redes publicas o no confiables. En produccion, considera:
 
 - Firewall que limite SMB a tu LAN.
@@ -159,3 +162,12 @@ explotables. Contacta al mantenedor del repo y proporciona:
 - Pasos para reproducir.
 - Impacto.
 - Mitigacion sugerida si la tienes.
+
+## Descargas De RPCS3 Y Firmware
+
+El camino Cage/RPCS3 descarga el AppImage desde GitHub (HTTPS) y el firmware de
+PS3 desde `RPCS3_FIRMWARE_URL`. La URL oficial de PlayStation que usa por
+defecto es `http://`, sin cifrado ni verificacion de integridad por parte del
+instalador. Si necesitas mas garantias, descarga el `PS3UPDAT.PUP` por otro
+medio, compara su hash con el publicado y usa `RPCS3_DOWNLOAD_FIRMWARE=false`.
+El firmware lo valida RPCS3 al instalarlo desde su GUI.

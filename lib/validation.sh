@@ -164,17 +164,20 @@ select_disk_device() {
 ################################################################################
 # check_disk()
 #
-# Verifica que el disco especificado existe y tiene al menos 16GB de capacidad.
+# Verifica que el disco especificado existe y tiene al menos 16GB de capacidad
+# (o el minimo indicado en el segundo argumento).
 #
 # Arguments:
 #   $1 - Ruta del dispositivo de disco (ej: /dev/sda)
+#   $2 - Capacidad minima en GB (opcional, por defecto 16)
 #
 # Returns:
-#   0 - Si el disco existe y tiene >= 16GB
-#   1 - Si el disco no existe o tiene < 16GB
+#   0 - Si el disco existe y cumple la capacidad minima
+#   1 - Si el disco no existe o no cumple la capacidad minima
 ################################################################################
 check_disk() {
     local disk_device="$1"
+    local min_gb="${2:-16}"
 
     # Verificar que se proporcionó un argumento
     if [[ -z "$disk_device" ]]; then
@@ -200,9 +203,9 @@ check_disk() {
     # Convertir bytes a GB (1 GB = 1024^3 bytes)
     local disk_size_gb=$((disk_size_bytes / 1024 / 1024 / 1024))
 
-    # Verificar que el disco tiene al menos 16GB
-    if [[ $disk_size_gb -lt 16 ]]; then
-        echo "ERROR: El disco '$disk_device' tiene solo ${disk_size_gb}GB. Se requieren al menos 16GB." >&2
+    # Verificar que el disco cumple la capacidad minima
+    if [[ $disk_size_gb -lt $min_gb ]]; then
+        echo "ERROR: El disco '$disk_device' tiene solo ${disk_size_gb}GB. Se requieren al menos ${min_gb}GB." >&2
         return 1
     fi
 
@@ -219,6 +222,7 @@ check_disk() {
 #
 # Arguments:
 #   $1 - Ruta del dispositivo de disco (ej: /dev/sda)
+#   $2 - Capacidad minima en GB (opcional, por defecto 16)
 #
 # Returns:
 #   0 - Si el disco está vacío o el usuario confirma la destrucción de datos
