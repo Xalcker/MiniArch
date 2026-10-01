@@ -1028,8 +1028,7 @@ install_rpcs3_exit_hotkey() {
 
     log "Instalando atajo de salida de RPCS3 (Ctrl+Alt+Q / Guide+Start)"
     mkdir -p /mnt/usr/local/bin
-    printf '%s
-' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > /mnt/usr/local/bin/rpcs3-exit-hotkey.py
+    printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > /mnt/usr/local/bin/rpcs3-exit-hotkey.py
     chmod 755 /mnt/usr/local/bin/rpcs3-exit-hotkey.py
 }
 
