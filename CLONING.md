@@ -3,7 +3,9 @@
 Si ya tienes una instalacion lista y quieres replicarla a otro disco, puedes
 clonar el disco completo desde el live ISO de Arch Linux.
 
-Esto aplica tanto para el camino Cage/YARG como para el camino Cage/foot.
+Esto aplica a los cuatro caminos (Cage/YARG, Cage/Clone Hero, Cage/RPCS3 y
+Cage/foot): comparten el mismo esquema de particiones. Es especialmente util
+con RPCS3, cuyo juego y cache de shaders ocupan mucho de `/home`.
 
 ## Requisitos
 

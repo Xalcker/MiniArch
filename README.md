@@ -622,6 +622,8 @@ MiniArch/
 |   |-- yarg_1080p.png
 |   |-- clonehero_720p.png       # opcional/futuro
 |   |-- clonehero_1080p.png      # opcional/futuro
+|   |-- rpcs3_720p.png           # opcional
+|   |-- rpcs3_1080p.png          # opcional
 |   |-- plymouth-image.png.example
 |   `-- cursor/
 |-- tests/
