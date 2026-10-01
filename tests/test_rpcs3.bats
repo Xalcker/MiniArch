@@ -12,7 +12,7 @@ render_wrapper() {
     rpcs3_render "$RPCS3_WRAPPER_TEMPLATE" \
         "RPCS3_GAMES_DIR=$1" "RPCS3_GAME_PATH=${2:-}" \
         "RPCS3_GAME_MATCH=Rock Band 3" "RPCS3_EXIT_MENU=always" \
-        "RPCS3_QT_PLATFORM=" "RPCS3_HOME=$BATS_TEST_TMPDIR/home"
+        "RPCS3_QT_PLATFORM=" "RPCS3_AUDIO_VOLUME=1.0" "RPCS3_HOME=$BATS_TEST_TMPDIR/home"
 }
 
 @test "rpcs3_render sustituye todas las apariciones sin interpretar & # \\ ni /" {

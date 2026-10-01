@@ -609,6 +609,7 @@ RPCS3_GAME_PATH="__RPCS3_GAME_PATH__"
 RPCS3_GAME_MATCH="__RPCS3_GAME_MATCH__"
 RPCS3_EXIT_MENU="__RPCS3_EXIT_MENU__"
 RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
+RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
 
 export HOME="${HOME:-__RPCS3_HOME__}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -725,6 +726,13 @@ start_audio() {
     echo "run-rpcs3: esperando sink Pulse/PipeWire" >&2
     wait_for_pulse_sink 50 || \
         echo "Aviso: no se encontro un sink Pulse/PipeWire antes de iniciar RPCS3." >&2
+
+    # WirePlumber recuerda un volumen bajo (40 %) en algunos equipos; se fija el
+    # volumen de la salida por defecto y se quita el silencio.
+    if [[ -n "$RPCS3_AUDIO_VOLUME" ]] && command -v wpctl >/dev/null 2>&1; then
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+        wpctl set-volume @DEFAULT_AUDIO_SINK@ "$RPCS3_AUDIO_VOLUME" >/dev/null 2>&1 || true
+    fi
 }
 
 find_rpcs3_bin() {
@@ -856,6 +864,7 @@ install_rpcs3_cage_wrapper() {
         "RPCS3_GAME_MATCH=$RPCS3_GAME_MATCH" \
         "RPCS3_EXIT_MENU=${RPCS3_EXIT_MENU:-always}" \
         "RPCS3_QT_PLATFORM=${RPCS3_QT_PLATFORM:-}" \
+        "RPCS3_AUDIO_VOLUME=${RPCS3_AUDIO_VOLUME:-}" \
         "RPCS3_HOME=/home/$KIOSK_USER" > /mnt/usr/local/bin/run-rpcs3.sh
     chmod +x /mnt/usr/local/bin/run-rpcs3.sh
 }
