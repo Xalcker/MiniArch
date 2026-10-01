@@ -88,15 +88,25 @@ EOF
 }
 
 # rpcs3_unsquash_appimage APPIMAGE DESTINO
-# Extrae el squashfs de un AppImage tipo 2 sin ejecutarlo: el squashfs empieza
-# justo despues del runtime ELF (fin de la tabla de secciones).
+# Extrae un AppImage tipo 2 sin ejecutarlo ni usar FUSE. Los AppImage nuevos
+# de RPCS3 (uruntime) traen una imagen DwarFS; los clasicos, un squashfs que
+# empieza justo despues del runtime ELF (fin de la tabla de secciones).
 rpcs3_unsquash_appimage() {
     local image="$1" dest="$2"
     local shoff shentsize shnum offset
 
-    if ! command -v unsquashfs >/dev/null 2>&1; then
-        run_quiet pacman -Sy --noconfirm --needed squashfs-tools || return 1
+    rm -rf "$dest"
+    mkdir -p "$dest"
+
+    if command -v dwarfsextract >/dev/null 2>&1 \
+        || run_quiet pacman -Sy --noconfirm --needed dwarfs; then
+        if run_quiet dwarfsextract -i "$image" -O auto -o "$dest" && [[ -x "$dest/AppRun" ]]; then
+            return 0
+        fi
     fi
+
+    command -v unsquashfs >/dev/null 2>&1 \
+        || run_quiet pacman -Sy --noconfirm --needed squashfs-tools || return 1
 
     shoff=$(od -An -t u8 -j 40 -N 8 "$image" | tr -d ' ')
     shentsize=$(od -An -t u2 -j 58 -N 2 "$image" | tr -d ' ')
@@ -139,7 +149,7 @@ install_rpcs3() {
         _ "$chroot_appimage"; then
         # Los AppImage con runtime nuevo (uruntime) intentan FUSE incluso con
         # --appimage-extract y fallan en el chroot. Se lee el squashfs directo.
-        warn "Fallo --appimage-extract; extrayendo el squashfs con unsquashfs"
+        warn "Fallo --appimage-extract; extrayendo la imagen sin FUSE"
         rm -rf /mnt/opt/RPCS3 /mnt/opt/RPCS3.new
         if ! rpcs3_unsquash_appimage "$appimage" /mnt/opt/RPCS3; then
             log_error "Fallo al extraer el AppImage de RPCS3 (revise ${LOG_FILE:-el log de instalacion})"
@@ -304,15 +314,21 @@ chmod +x "$WORK_DIR/RPCS3.AppImage"
 # Se extrae primero y solo se reemplaza la instalacion si la extraccion salio bien.
 (cd "$WORK_DIR" && ./RPCS3.AppImage --appimage-extract >/dev/null) || true
 if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
-    # Runtime nuevo sin FUSE disponible: se lee el squashfs directo.
-    # El squashfs empieza al final de la tabla de secciones del ELF.
-    command -v unsquashfs >/dev/null 2>&1 || pacman -Sy --noconfirm --needed squashfs-tools
+    # Runtime nuevo sin FUSE disponible: se lee la imagen directo (DwarFS en
+    # los AppImage actuales; squashfs en los clasicos).
     img="$WORK_DIR/RPCS3.AppImage"
-    shoff=$(od -An -t u8 -j 40 -N 8 "$img" | tr -d ' ')
-    shentsize=$(od -An -t u2 -j 58 -N 2 "$img" | tr -d ' ')
-    shnum=$(od -An -t u2 -j 60 -N 2 "$img" | tr -d ' ')
     rm -rf "$WORK_DIR/squashfs-root"
-    unsquashfs -f -q -o "$((shoff + shentsize * shnum))" -d "$WORK_DIR/squashfs-root" "$img" || true
+    mkdir -p "$WORK_DIR/squashfs-root"
+    command -v dwarfsextract >/dev/null 2>&1 || pacman -Sy --noconfirm --needed dwarfs || true
+    dwarfsextract -i "$img" -O auto -o "$WORK_DIR/squashfs-root" || true
+    if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
+        command -v unsquashfs >/dev/null 2>&1 || pacman -Sy --noconfirm --needed squashfs-tools
+        shoff=$(od -An -t u8 -j 40 -N 8 "$img" | tr -d ' ')
+        shentsize=$(od -An -t u2 -j 58 -N 2 "$img" | tr -d ' ')
+        shnum=$(od -An -t u2 -j 60 -N 2 "$img" | tr -d ' ')
+        rm -rf "$WORK_DIR/squashfs-root"
+        unsquashfs -f -q -o "$((shoff + shentsize * shnum))" -d "$WORK_DIR/squashfs-root" "$img" || true
+    fi
 fi
 if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
     echo "El AppImage descargado no contiene AppRun; no se modifica $INSTALL_DIR." >&2
