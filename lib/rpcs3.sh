@@ -71,7 +71,7 @@ install_rpcs3_dependencies() {
 
     # libusb/libevdev: instrumentos y mandos; openal/alsa-plugins: audio.
     if ! run_quiet arch-chroot /mnt pacman -S --needed --noconfirm \
-        libusb libevdev openal alsa-plugins pipewire-alsa pulsemixer; then
+        libusb libevdev openal alsa-plugins pipewire-alsa pulsemixer python; then
         log_error "Fallo al instalar dependencias de RPCS3"
         return 1
     fi
@@ -598,6 +598,162 @@ EOF
 done
 TEMPLATE
 
+read -r -d '' RPCS3_EXIT_HOTKEY_TEMPLATE <<'TEMPLATE' || true
+#!/usr/bin/env python3
+"""Cierra RPCS3 con un atajo, sin depender del compositor ni de la ventana.
+
+Lee los dispositivos de entrada directamente (como evmapy/hotkeygen en Batocera):
+  - Teclado: Ctrl + Alt + Q
+  - Control: boton Guide (Xbox) + Start
+Al detectar la combinacion termina RPCS3; el wrapper del kiosko vuelve entonces
+al menu de mantenimiento. Los instrumentos (guitarras, baterias) se ignoran.
+
+Uso: rpcs3-exit-hotkey.py [--list]   (--list muestra que dispositivos detecta)
+"""
+import glob
+import os
+import select
+import struct
+import subprocess
+import sys
+import time
+
+EV_KEY = 1
+# struct input_event en x86_64: timeval (2 long), type, code, value.
+EVENT = struct.Struct("llHHi")
+
+KEY_Q, KEY_LEFTCTRL, KEY_LEFTALT, KEY_RIGHTCTRL, KEY_RIGHTALT = 16, 29, 56, 97, 100
+BTN_START, BTN_MODE = 315, 316
+
+CTRL = {KEY_LEFTCTRL, KEY_RIGHTCTRL}
+ALT = {KEY_LEFTALT, KEY_RIGHTALT}
+EXCLUDED_NAMES = ("santroller", "guitar", "drum", "harmonix", "rock band", "keytar")
+TARGETS = ("AppRun.wrapped", "rpcs3")
+RESCAN_SECONDS = 5
+COOLDOWN_SECONDS = 3
+
+
+def read_sysfs(event, name):
+    try:
+        with open("/sys/class/input/%s/device/%s" % (event, name)) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def key_capabilities(event):
+    """Devuelve la mascara de teclas/botones del dispositivo como entero."""
+    mask = 0
+    words = read_sysfs(event, "capabilities/key").split()
+    for i, word in enumerate(reversed(words)):
+        mask |= int(word, 16) << (64 * i)
+    return mask
+
+
+def classify(mask, name):
+    """Tipos de atajo que admite un dispositivo: 'kbd' y/o 'pad'."""
+    if any(excluded in name.lower() for excluded in EXCLUDED_NAMES):
+        return set()
+    has = lambda code: (mask >> code) & 1
+    kinds = set()
+    if has(KEY_Q) and has(KEY_LEFTCTRL) and has(KEY_LEFTALT):
+        kinds.add("kbd")
+    if has(BTN_MODE) and has(BTN_START):
+        kinds.add("pad")
+    return kinds
+
+
+def combo_pressed(kinds, held):
+    if "kbd" in kinds and held & CTRL and held & ALT and KEY_Q in held:
+        return "teclado"
+    if "pad" in kinds and BTN_MODE in held and BTN_START in held:
+        return "control"
+    return None
+
+
+def scan(devices, opened):
+    for path in sorted(glob.glob("/dev/input/event*")):
+        if path in opened:
+            continue
+        event = os.path.basename(path)
+        name = read_sysfs(event, "name")
+        kinds = classify(key_capabilities(event), name)
+        if not kinds:
+            continue
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+        except OSError:
+            continue
+        opened.add(path)
+        devices[fd] = {"path": path, "name": name, "kinds": kinds, "held": set()}
+        print("rpcs3-exit-hotkey: vigilando %s (%s) [%s]" % (path, name, ",".join(sorted(kinds))), flush=True)
+
+
+def close_device(devices, opened, fd):
+    opened.discard(devices[fd]["path"])
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+    del devices[fd]
+
+
+def terminate_rpcs3(source):
+    print("rpcs3-exit-hotkey: combinacion de %s; cerrando RPCS3" % source, flush=True)
+    for target in TARGETS:
+        subprocess.run(["pkill", "-x", target], check=False)
+
+
+def main():
+    devices, opened = {}, set()
+
+    if "--list" in sys.argv:
+        scan(devices, opened)
+        if not devices:
+            print("Sin dispositivos compatibles.")
+        return 0
+
+    last_scan = last_fire = 0.0
+    while True:
+        now = time.monotonic()
+        if now - last_scan >= RESCAN_SECONDS:
+            scan(devices, opened)
+            last_scan = now
+
+        if not devices:
+            time.sleep(1)
+            continue
+
+        ready, _, _ = select.select(list(devices), [], [], 1.0)
+        for fd in ready:
+            dev = devices[fd]
+            try:
+                data = os.read(fd, EVENT.size * 64)
+            except BlockingIOError:
+                continue
+            except OSError:
+                close_device(devices, opened, fd)
+                continue
+
+            for offset in range(0, len(data) - EVENT.size + 1, EVENT.size):
+                _, _, etype, code, value = EVENT.unpack_from(data, offset)
+                if etype != EV_KEY:
+                    continue
+                if value:
+                    dev["held"].add(code)
+                else:
+                    dev["held"].discard(code)
+
+                source = combo_pressed(dev["kinds"], dev["held"]) if value == 1 else None
+                if source and time.monotonic() - last_fire >= COOLDOWN_SECONDS:
+                    last_fire = time.monotonic()
+                    terminate_rpcs3(source)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+TEMPLATE
+
 read -r -d '' RPCS3_WRAPPER_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env bash
 set -euo pipefail
@@ -790,6 +946,17 @@ find_game() {
     return 0
 }
 
+# Atajo para cerrar RPCS3 desde el teclado (Ctrl+Alt+Q) o el control (Guide+Start).
+start_exit_hotkey() {
+    local script=/usr/local/bin/rpcs3-exit-hotkey.py
+
+    [[ -f "$script" ]] && command -v python3 >/dev/null 2>&1 || return 0
+    pgrep -u "$(id -u)" -f "$script" >/dev/null 2>&1 && return 0
+
+    python3 "$script" 2>&1 | sed 's/^/[exit-hotkey] /' >&2 &
+}
+
+start_exit_hotkey
 start_audio
 
 while true; do
@@ -848,6 +1015,21 @@ install_rpcs3_update_script() {
         "RPCS3_ASSET_REGEX=$RPCS3_ASSET_REGEX" \
         "OWNER=$KIOSK_USER" > /mnt/usr/local/bin/update-rpcs3
     chmod +x /mnt/usr/local/bin/update-rpcs3
+}
+
+# Instala el atajo de salida (teclado Ctrl+Alt+Q, control Guide+Start). Cage no
+# procesa Alt+F4 y RPCS3 sin GUI no tiene atajos para cerrarse, asi que un
+# proceso aparte lee los dispositivos de entrada, como hace evmapy en Batocera.
+install_rpcs3_exit_hotkey() {
+    if [[ "${RPCS3_EXIT_HOTKEY:-true}" != "true" ]]; then
+        log "Atajo de salida omitido (RPCS3_EXIT_HOTKEY=false)"
+        return 0
+    fi
+
+    log "Instalando atajo de salida de RPCS3 (Ctrl+Alt+Q / Guide+Start)"
+    mkdir -p /mnt/usr/local/bin
+    printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > /mnt/usr/local/bin/rpcs3-exit-hotkey.py
+    chmod 755 /mnt/usr/local/bin/rpcs3-exit-hotkey.py
 }
 
 install_rpcs3_cage_wrapper() {

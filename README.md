@@ -664,6 +664,11 @@ Variables de Cage/RPCS3:
   (`1.0` = 100 %, por defecto). Se fija con `wpctl` en cada arranque del wrapper y
   quita el silencio; vacio no lo toca. Util porque WirePlumber puede dejar un
   sink HDMI en 40 %.
+- `RPCS3_EXIT_HOTKEY`: `true` (por defecto) instala `/usr/local/bin/rpcs3-exit-hotkey.py`,
+  que el wrapper arranca para cerrar RPCS3 con **Ctrl+Alt+Q** (teclado) o
+  **Guide+Start** (control Xbox); el wrapper vuelve entonces al menu de
+  mantenimiento. Cage no procesa Alt+F4 y RPCS3 sin GUI no tiene atajo para
+  cerrarse. Ignora guitarras y baterias. `false` no lo instala.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`

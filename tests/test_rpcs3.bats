@@ -233,3 +233,39 @@ fake_appimage() {
 @test "el servicio fija LimitMEMLOCK=infinity para el requisito de 2 GiB de RPCS3" {
     grep -Fq 'LimitMEMLOCK=infinity' lib/rpcs3.sh
 }
+
+# --- atajo de salida ----------------------------------------------------------
+
+@test "el wrapper arranca el atajo de salida" {
+    run render_wrapper "$BATS_TEST_TMPDIR/games"
+    [[ "$output" == *"start_exit_hotkey"* ]]
+    [[ "$output" == *"rpcs3-exit-hotkey.py"* ]]
+}
+
+@test "el script del atajo de salida compila y detecta las combinaciones" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+
+    local script="$BATS_TEST_TMPDIR/rpcs3-exit-hotkey.py"
+    printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > "$script"
+
+    run python3 - "$script" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("hotkey", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+assert m.combo_pressed({"kbd"}, {29, 56, 16}) == "teclado"
+assert m.combo_pressed({"kbd"}, {29, 16}) is None
+assert m.combo_pressed({"pad"}, {316, 315}) == "control"
+assert m.combo_pressed({"pad"}, {315}) is None
+assert m.classify((1 << 316) | (1 << 315), "Xbox Controller") == {"pad"}
+assert m.classify((1 << 316) | (1 << 315), "sanjay900 Santroller") == set()
+PY
+    [ "$status" -eq 0 ]
+}
+
+@test "install_rpcs3_exit_hotkey no instala nada con RPCS3_EXIT_HOTKEY=false" {
+    RPCS3_EXIT_HOTKEY=false
+    run install_rpcs3_exit_hotkey
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"omitido"* ]]
+}

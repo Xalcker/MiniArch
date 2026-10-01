@@ -61,6 +61,8 @@ RPCS3_GAME_PATH="${RPCS3_GAME_PATH:-}"
 RPCS3_GAME_MATCH="${RPCS3_GAME_MATCH:-Rock Band 3}"
 RPCS3_QT_PLATFORM="${RPCS3_QT_PLATFORM:-}"
 RPCS3_EXIT_MENU="${RPCS3_EXIT_MENU:-always}"
+# true instala el atajo para cerrar RPCS3: Ctrl+Alt+Q (teclado) o Guide+Start (control).
+RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 # hdmi (HDMI/DP, por defecto), analog o auto: salida de audio preferida.
 RPCS3_AUDIO_OUTPUT="${RPCS3_AUDIO_OUTPUT:-hdmi}"
 # Volumen de la salida al arrancar (1.0 = 100 %); vacio no lo toca.
@@ -348,6 +350,8 @@ main() {
         log_error "Fallo en instalacion del updater de RPCS3"
         exit 1
     fi
+
+    install_rpcs3_exit_hotkey
 
     if ! install_rpcs3_cage_wrapper; then
         log_error "Fallo en creacion del wrapper de Cage/RPCS3"
