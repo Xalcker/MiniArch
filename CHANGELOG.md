@@ -95,6 +95,13 @@ semantico cuando se publiquen releases formales.
 
 ### Corregido
 
+- El instalador ya no instala `nvidia-open` en GPU anteriores a Turing (GTX 10xx
+  y anteriores), donde dejaba el equipo sin video: `detect_nvidia_support` lee la
+  generacion con `lspci` y `resolve_nvidia_choice` (compartido por los caminos
+  YARG, Clone Hero y RPCS3) omite el driver con una advertencia clara.
+  `NVIDIA_SKIP_GPU_CHECK=true` desactiva la proteccion. Tambien se corrigio el
+  mensaje que decia `nvidia-dkms` cuando se instalaba `nvidia-open`.
+
 - El `.env` ya no se carga con `source` (que ejecutaba su contenido como root y
   rompia con passwords con simbolos): `load_env_file` en `lib/common.sh` lo lee
   como `CLAVE=valor`, sin evaluar valores, con comillas simples/dobles,

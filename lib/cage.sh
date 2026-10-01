@@ -138,6 +138,108 @@ install_nvidia_drivers_if_requested() {
     fi
 }
 
+# Detecta las GPU NVIDIA con lspci y dice si nvidia-open puede manejarlas.
+#
+# nvidia-open solo soporta Turing (GTX 16xx / RTX 20xx) y posteriores. Con el
+# driver 590, Arch dejo fuera Pascal (GTX 10xx) y anteriores: solo quedan en el
+# AUR (nvidia-580xx-dkms), que un instalador desatendido no puede compilar.
+#
+# El nombre que lspci toma de pci.ids incluye el codigo del chip:
+#   Turing y posteriores: TU (Turing), GA (Ampere), AD (Ada), GB (Blackwell), GH (Hopper)
+#   Anteriores:           GV (Volta), GP (Pascal), GM (Maxwell), GK (Kepler),
+#                         GF (Fermi), GT (Tesla), G80-G98, NV (Curie y anteriores)
+#
+# Imprime en stdout uno de:
+#   none         no hay GPU NVIDIA
+#   supported    todas las GPU NVIDIA son Turing o mas nuevas
+#   unsupported  al menos una es anterior a Turing
+#   unknown      no se pudo determinar (sin lspci o chip no reconocido)
+detect_nvidia_support() {
+    local lines modern_re legacy_re line has_modern=false has_legacy=false has_unknown=false
+
+    if ! command -v lspci &> /dev/null; then
+        echo "unknown"
+        return 0
+    fi
+
+    lines=$(lspci -nn 2>/dev/null | grep -Ei 'VGA compatible|3D controller|Display controller' | grep -i 'nvidia' || true)
+    if [[ -z "$lines" ]]; then
+        echo "none"
+        return 0
+    fi
+
+    modern_re='\b(TU|GA|AD|GB|GH)[0-9]{2,3}[A-Z]*\b'
+    legacy_re='\b(GV|GP|GM|GK|GF|GT|G|NV|MCP)[0-9]{2,3}[A-Z]*\b'
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ $modern_re ]]; then
+            has_modern=true
+        elif [[ "$line" =~ $legacy_re ]]; then
+            has_legacy=true
+        else
+            has_unknown=true
+        fi
+    done <<< "$lines"
+
+    if [[ "$has_legacy" == "true" ]]; then
+        echo "unsupported"
+    elif [[ "$has_unknown" == "true" ]]; then
+        echo "unknown"
+    elif [[ "$has_modern" == "true" ]]; then
+        echo "supported"
+    else
+        echo "unknown"
+    fi
+}
+
+# Decide si se instala el driver NVIDIA. Pregunta si INSTALL_NVIDIA esta vacio y,
+# si se pidio instalarlo (por .env, pregunta o respuesta), evita instalar
+# nvidia-open en una GPU anterior a Turing: dejaria el equipo sin video porque
+# nvidia-utils pone nouveau en la lista negra. NVIDIA_SKIP_GPU_CHECK=true omite
+# esa proteccion (falsos positivos, GPU en passthrough, etc.).
+resolve_nvidia_choice() {
+    local gpu_state answer
+
+    gpu_state="$(detect_nvidia_support)"
+
+    if [[ -z "${INSTALL_NVIDIA:-}" ]]; then
+        case "$gpu_state" in
+            supported)
+                echo -e "${GREEN}Se detecto una GPU NVIDIA compatible con nvidia-open (Turing o mas nueva).${NC}"
+                ;;
+            unsupported)
+                warn "Se detecto una GPU NVIDIA anterior a Turing (GTX 10xx o anterior): nvidia-open no la soporta. Lo recomendado es responder N y usar Mesa/nouveau."
+                ;;
+            none)
+                echo "No se detecto ninguna GPU NVIDIA."
+                ;;
+            *)
+                echo "No se pudo identificar la GPU NVIDIA. Recuerda que nvidia-open solo soporta Turing (GTX 16xx / RTX 20xx) o mas nuevas."
+                ;;
+        esac
+
+        read -rp "$(echo -e "${BLUE}Instalar driver NVIDIA? (s/N): ${NC}")" answer
+        INSTALL_NVIDIA=false
+        [[ "${answer,,}" == "s" || "${answer,,}" == "y" ]] && INSTALL_NVIDIA=true
+    fi
+
+    if [[ "$INSTALL_NVIDIA" == "true" && "$gpu_state" == "unsupported" && "${NVIDIA_SKIP_GPU_CHECK:-false}" != "true" ]]; then
+        warn "Se omite el driver NVIDIA: la GPU detectada es anterior a Turing y nvidia-open no la soporta."
+        warn "Se usaran Mesa/nouveau. Para GTX 10xx y anteriores existe nvidia-580xx-dkms en el AUR (instalacion manual)."
+        warn "Define NVIDIA_SKIP_GPU_CHECK=true si quieres instalar nvidia-open de todos modos."
+        INSTALL_NVIDIA=false
+    fi
+
+    if [[ "$INSTALL_NVIDIA" == "true" ]]; then
+        if [[ "$gpu_state" == "none" ]]; then
+            warn "No se detecto una GPU NVIDIA, pero se instalara el driver porque INSTALL_NVIDIA=true."
+        fi
+        log "Se instalaran drivers NVIDIA (nvidia-open, nvidia-utils)"
+    else
+        warn "Driver NVIDIA omitido. Se instalaran Intel, AMD, Mesa y Vulkan base."
+    fi
+}
+
 configure_cage_plymouth() {
     if [[ "$ENABLE_PLYMOUTH" != "true" ]]; then
         log "Plymouth deshabilitado por ENABLE_PLYMOUTH=$ENABLE_PLYMOUTH"

@@ -570,7 +570,10 @@ Variables de Cage/YARG:
 - `ROOT_PASSWORD`: password de root. Cage lo exige con valor real.
 - `KIOSK_HOSTNAME`: hostname. Por defecto `minikiosk` (YARG y foot),
   `miniclonehero` (Clone Hero) o `minirpcs3` (RPCS3).
-- `INSTALL_NVIDIA`: `true`, `false` o vacio para preguntar.
+- `INSTALL_NVIDIA`: `true`, `false` o vacio para preguntar. Instala `nvidia-open`
+  y `nvidia-utils`, que **solo soportan GPU Turing o mas nuevas** (GTX 16xx,
+  RTX 20xx en adelante). Ver "NVIDIA y tarjetas anteriores a Turing".
+- `NVIDIA_SKIP_GPU_CHECK`: `true` omite la deteccion de GPU (ver mas abajo).
 - `YARG_RELEASE_CHANNEL`: `stable`, `stable-latest`, `nightly` o `ask`.
 - `YARG_URL`: ZIP estable de YARG.
 - `YARG_STABLE_API_URL`: endpoint del ultimo release estable.
@@ -740,6 +743,28 @@ Configura `DISK_DEVICE` en `.env`, por ejemplo:
 ```bash
 DISK_DEVICE=/dev/vda
 ```
+
+### NVIDIA y tarjetas anteriores a Turing
+
+`nvidia-open` solo soporta Turing (GTX 16xx / RTX 20xx) y posteriores. Con el
+driver 590, Arch dejo fuera Pascal (GTX 10xx) y anteriores; para esas tarjetas
+solo existe `nvidia-580xx-dkms` en el AUR, que hay que compilar a mano.
+
+Los instaladores detectan la GPU con `lspci` (el nombre del chip indica la
+generacion: `GP`/`GM`/`GK`/`GV`... son anteriores a Turing; `TU`/`GA`/`AD`/`GB`
+son compatibles):
+
+- Si pides el driver (`INSTALL_NVIDIA=true` o respondes `s`) y la GPU es anterior
+  a Turing, **no se instala** `nvidia-open` y se usa Mesa/nouveau, porque
+  `nvidia-utils` pone nouveau en la lista negra y el equipo se quedaria sin
+  video. El instalador lo avisa.
+- Al preguntar, muestra la GPU detectada y si es compatible.
+- `NVIDIA_SKIP_GPU_CHECK=true` omite la proteccion (falsos positivos, GPU en
+  passthrough...).
+- Si no se detecta GPU NVIDIA, solo avisa y respeta tu eleccion.
+
+Para una GTX 10xx, instala `nvidia-580xx-dkms` desde el AUR despues de la
+instalacion (con `base-devel`, `git` y los headers del kernel).
 
 ### Plymouth falla
 
