@@ -148,12 +148,120 @@ prepare_disk_for_install() {
 }
 
 ################################################################################
+# size_to_mib()
+#
+# Convierte un tamaño como 512M, 8G, 512MiB o 8GiB a MiB (entero) en stdout.
+#
+# Retorna:
+#   0 si el formato es valido, 1 en caso contrario
+################################################################################
+size_to_mib() {
+    local text="${1,,}"
+    local amount
+
+    if [[ "$text" =~ ^([0-9]+)(m|g)(ib|b)?$ ]]; then
+        amount=$((10#${BASH_REMATCH[1]}))
+        if [[ "${BASH_REMATCH[2]}" == "g" ]]; then
+            amount=$((amount * 1024))
+        fi
+        echo "$amount"
+        return 0
+    fi
+
+    return 1
+}
+
+################################################################################
+# resolve_partition_sizes()
+#
+# Lee ESP_SIZE, ROOT_SIZE y SWAP_SIZE (por defecto 512M, 8G y 2G), los valida y
+# deja los valores en MiB en PARTITION_ESP_MIB, PARTITION_ROOT_MIB y
+# PARTITION_SWAP_MIB. /home siempre ocupa el resto del disco.
+#
+# Minimos: ESP 256M, root 4G, swap 512M.
+#
+# Retorna:
+#   0 si los tres tamaños son validos, 1 en caso contrario
+################################################################################
+resolve_partition_sizes() {
+    local esp_text="${ESP_SIZE:-512M}"
+    local root_text="${ROOT_SIZE:-8G}"
+    local swap_text="${SWAP_SIZE:-2G}"
+
+    if ! PARTITION_ESP_MIB=$(size_to_mib "$esp_text"); then
+        log_error "ESP_SIZE invalido: '$esp_text'. Use un numero con M o G (ej: 512M)."
+        return 1
+    fi
+    if ! PARTITION_ROOT_MIB=$(size_to_mib "$root_text"); then
+        log_error "ROOT_SIZE invalido: '$root_text'. Use un numero con M o G (ej: 8G)."
+        return 1
+    fi
+    if ! PARTITION_SWAP_MIB=$(size_to_mib "$swap_text"); then
+        log_error "SWAP_SIZE invalido: '$swap_text'. Use un numero con M o G (ej: 2G)."
+        return 1
+    fi
+
+    if ((PARTITION_ESP_MIB < 256)); then
+        log_error "ESP_SIZE ($esp_text) es menor al minimo de 256M"
+        return 1
+    fi
+    if ((PARTITION_ROOT_MIB < 4096)); then
+        log_error "ROOT_SIZE ($root_text) es menor al minimo de 4G"
+        return 1
+    fi
+    if ((PARTITION_SWAP_MIB < 512)); then
+        log_error "SWAP_SIZE ($swap_text) es menor al minimo de 512M"
+        return 1
+    fi
+
+    export PARTITION_ESP_MIB PARTITION_ROOT_MIB PARTITION_SWAP_MIB
+}
+
+################################################################################
+# validate_partition_plan()
+#
+# Comprueba, antes de tocar el disco, que el esquema elegido (ESP + root + swap)
+# deja al menos 2 GiB para /home, y muestra el esquema resultante.
+#
+# Parametros:
+#   $1 - Dispositivo de bloque (ej: /dev/sda)
+#
+# Retorna:
+#   0 si el esquema cabe, 1 si no cabe o no se pudo leer el tamaño del disco
+################################################################################
+validate_partition_plan() {
+    local device="$1"
+    local disk_bytes disk_mib used_mib home_mib
+    local min_home_mib=2048
+
+    resolve_partition_sizes || return 1
+
+    disk_bytes=$(lsblk -b -d -n -o SIZE "$device" 2>/dev/null | awk '{print $1}')
+    if [[ -z "$disk_bytes" ]]; then
+        log_error "No se pudo leer el tamaño de $device para validar el esquema de particiones"
+        return 1
+    fi
+
+    disk_mib=$((disk_bytes / 1024 / 1024))
+    # 1 MiB inicial de alineacion; el resto del disco es /home.
+    used_mib=$((1 + PARTITION_ESP_MIB + PARTITION_ROOT_MIB + PARTITION_SWAP_MIB))
+    home_mib=$((disk_mib - used_mib))
+
+    if ((home_mib < min_home_mib)); then
+        log_error "El esquema (ESP $((PARTITION_ESP_MIB))M + root $((PARTITION_ROOT_MIB))M + swap $((PARTITION_SWAP_MIB))M) deja solo ${home_mib}MiB para /home en un disco de ${disk_mib}MiB; se requieren al menos ${min_home_mib}MiB."
+        return 1
+    fi
+
+    log "Esquema de particiones: ESP ${PARTITION_ESP_MIB}MiB, root ${PARTITION_ROOT_MIB}MiB, swap ${PARTITION_SWAP_MIB}MiB, /home ~$((home_mib / 1024))GiB (resto del disco)"
+}
+
+################################################################################
 # Función para particionar el disco
 #
 # Crea una tabla de particiones GPT y 4 particiones según el esquema definido:
-# 1. ESP: 512MB, tipo EFI System
-# 2. Root: 8GB, tipo Linux filesystem
-# 3. Swap: 2GB, tipo Linux swap
+# 1. ESP: ESP_SIZE (512M por defecto), tipo EFI System
+# 2. Root: ROOT_SIZE (8G por defecto), tipo Linux filesystem
+# 3. Swap: SWAP_SIZE (2G por defecto), tipo Linux swap
 # 4. Home: Espacio restante, tipo Linux filesystem
 #
 # Parámetros:
@@ -164,12 +272,18 @@ prepare_disk_for_install() {
 ################################################################################
 partition_disk() {
     local device="$1"
+    local esp_end root_end swap_end
 
     # Verificar que el dispositivo existe
     if ! is_block_device "$device"; then
         log_error "El dispositivo $device no existe"
         return 1
     fi
+
+    resolve_partition_sizes || return 1
+    esp_end=$((1 + PARTITION_ESP_MIB))
+    root_end=$((esp_end + PARTITION_ROOT_MIB))
+    swap_end=$((root_end + PARTITION_SWAP_MIB))
 
     log "Creando tabla de particiones GPT en $device"
 
@@ -179,9 +293,9 @@ partition_disk() {
         return 1
     fi
 
-    log "Creando partición ESP (512MB)"
-    # Crear partición ESP: 1MB - 513MB
-    if ! run_quiet parted -s "$device" mkpart ESP fat32 1MiB 513MiB; then
+    log "Creando partición ESP (${PARTITION_ESP_MIB}MiB)"
+    # Crear partición ESP: 1MiB - esp_end (513MiB con el tamaño por defecto)
+    if ! run_quiet parted -s "$device" mkpart ESP fat32 1MiB "${esp_end}MiB"; then
         log_error "Fallo al crear partición ESP"
         return 1
     fi
@@ -192,23 +306,23 @@ partition_disk() {
         return 1
     fi
 
-    log "Creando partición Root (8GB)"
-    # Crear partición Root: 513MB - 8705MB (513 + 8192)
-    if ! run_quiet parted -s "$device" mkpart primary ext4 513MiB 8705MiB; then
+    log "Creando partición Root (${PARTITION_ROOT_MIB}MiB)"
+    # Crear partición Root: esp_end - root_end (513MiB - 8705MiB por defecto)
+    if ! run_quiet parted -s "$device" mkpart primary ext4 "${esp_end}MiB" "${root_end}MiB"; then
         log_error "Fallo al crear partición Root"
         return 1
     fi
 
-    log "Creando partición Swap (2GB)"
-    # Crear partición Swap: 8705MB - 10753MB (8705 + 2048)
-    if ! run_quiet parted -s "$device" mkpart primary linux-swap 8705MiB 10753MiB; then
+    log "Creando partición Swap (${PARTITION_SWAP_MIB}MiB)"
+    # Crear partición Swap: root_end - swap_end (8705MiB - 10753MiB por defecto)
+    if ! run_quiet parted -s "$device" mkpart primary linux-swap "${root_end}MiB" "${swap_end}MiB"; then
         log_error "Fallo al crear partición Swap"
         return 1
     fi
 
     log "Creando partición Home (espacio restante)"
-    # Crear partición Home: 10753MB - 100%
-    if ! run_quiet parted -s "$device" mkpart primary ext4 10753MiB 100%; then
+    # Crear partición Home: swap_end - 100%
+    if ! run_quiet parted -s "$device" mkpart primary ext4 "${swap_end}MiB" 100%; then
         log_error "Fallo al crear partición Home"
         return 1
     fi

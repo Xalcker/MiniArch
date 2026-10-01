@@ -204,6 +204,11 @@ main() {
         exit 1
     fi
 
+    if ! validate_partition_plan "$DISK_DEVICE"; then
+        log_error "El esquema de particiones (ESP_SIZE, ROOT_SIZE, SWAP_SIZE) no cabe en el disco"
+        exit 1
+    fi
+
     if ! check_disk_empty "$DISK_DEVICE"; then
         log_error "Operacion cancelada: no se confirmo la destruccion de datos"
         exit 1
