@@ -161,17 +161,7 @@ ask_initial_questions() {
     echo -e "${YELLOW}Usuario kiosko:${NC} $KIOSK_USER"
     echo ""
 
-    if [[ -z "$INSTALL_NVIDIA" ]]; then
-        read -rp "$(echo -e "${BLUE}Instalar driver NVIDIA? (s/N): ${NC}")" answer
-        INSTALL_NVIDIA=false
-        [[ "${answer,,}" == "s" || "${answer,,}" == "y" ]] && INSTALL_NVIDIA=true
-    fi
-
-    if [[ "$INSTALL_NVIDIA" == "true" ]]; then
-        log "Se instalaran drivers NVIDIA (nvidia-dkms, nvidia-utils)"
-    else
-        warn "Driver NVIDIA omitido. Se instalaran Intel, AMD, Mesa y Vulkan base."
-    fi
+    resolve_nvidia_choice
 
     YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL,,}"
     if [[ "$YARG_RELEASE_CHANNEL" == "ask" ]]; then

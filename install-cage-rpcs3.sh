@@ -140,17 +140,7 @@ ask_initial_questions() {
     echo -e "${YELLOW}Usuario kiosko:${NC} $KIOSK_USER"
     echo ""
 
-    if [[ -z "$INSTALL_NVIDIA" ]]; then
-        read -rp "$(echo -e "${BLUE}Instalar driver NVIDIA? (s/N): ${NC}")" answer
-        INSTALL_NVIDIA=false
-        [[ "${answer,,}" == "s" || "${answer,,}" == "y" ]] && INSTALL_NVIDIA=true
-    fi
-
-    if [[ "$INSTALL_NVIDIA" == "true" ]]; then
-        log "Se instalaran drivers NVIDIA (nvidia-open, nvidia-utils)"
-    else
-        warn "Driver NVIDIA omitido. Se instalaran Intel, AMD, Mesa y Vulkan base."
-    fi
+    resolve_nvidia_choice
 
     # RPCS3 corre a la resolucion nativa de la pantalla (se ajusta en su GUI);
     # aqui solo se elige la imagen de Plymouth.
