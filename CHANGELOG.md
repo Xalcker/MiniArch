@@ -59,6 +59,9 @@ semantico cuando se publiquen releases formales.
 
 ### Corregido
 
+- `update-clonehero` y la instalacion de Clone Hero ya no fallan con
+  `Directory not empty` al actualizar sobre una instalacion existente; ahora
+  combinan los archivos nuevos con `cp -a` en vez de `mv`.
 - YARG ahora usa `/home/$KIOSK_USER/Songs` como carpeta real de canciones y
   crea `/opt/YARG/Songs` como enlace simbolico de compatibilidad, incluyendo
   `update-yarg`.

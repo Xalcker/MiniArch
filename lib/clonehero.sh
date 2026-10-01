@@ -111,7 +111,7 @@ install_clonehero() {
             ;;
     esac
 
-    run_quiet arch-chroot /mnt bash -c 'shopt -s dotglob nullglob; items=(/opt/CloneHero/.new/*); if [[ ${#items[@]} -eq 1 && -d ${items[0]} ]]; then mv "${items[0]}"/* /opt/CloneHero/; else mv /opt/CloneHero/.new/* /opt/CloneHero/; fi'
+    run_quiet arch-chroot /mnt bash -c 'shopt -s dotglob nullglob; items=(/opt/CloneHero/.new/*); if [[ ${#items[@]} -eq 1 && -d ${items[0]} ]]; then cp -a "${items[0]}"/. /opt/CloneHero/; else cp -a /opt/CloneHero/.new/. /opt/CloneHero/; fi'
     run_quiet arch-chroot /mnt rm -rf /opt/CloneHero/.new
     run_quiet arch-chroot /mnt find /opt/CloneHero -maxdepth 2 -type f \( -iname 'Clone Hero*' -o -iname 'CloneHero*' -o -iname 'clonehero' -o -iname '*.AppImage' \) -exec chmod +x {} +
     run_quiet arch-chroot /mnt mkdir -p "$CLONEHERO_SONGS_DIR" "$CLONEHERO_DATA_DIR"
@@ -292,9 +292,9 @@ esac
 shopt -s dotglob nullglob
 items=("\$INSTALL_DIR/.new"/*)
 if [[ \${#items[@]} -eq 1 && -d \${items[0]} ]]; then
-    mv "\${items[0]}"/* "\$INSTALL_DIR/"
+    cp -a "\${items[0]}"/. "\$INSTALL_DIR/"
 else
-    mv "\$INSTALL_DIR/.new"/* "\$INSTALL_DIR/"
+    cp -a "\$INSTALL_DIR/.new"/. "\$INSTALL_DIR/"
 fi
 rm -rf "\$INSTALL_DIR/.new"
 find "\$INSTALL_DIR" -maxdepth 2 -type f \( -iname 'Clone Hero*' -o -iname 'CloneHero*' -o -iname 'clonehero' -o -iname '*.AppImage' \) -exec chmod +x {} +
