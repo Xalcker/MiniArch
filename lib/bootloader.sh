@@ -107,6 +107,14 @@ install_grub() {
         return 1
     fi
 
+    # Copia de respaldo en EFI/BOOT/BOOTX64.EFI (ruta que toda BIOS UEFI busca).
+    # Algunas BIOS ignoran la entrada de NVRAM de arriba y, ademas, asi el disco
+    # (o USB) arranca tambien al moverlo a otro equipo. No toca la NVRAM.
+    log "Instalando copia de GRUB en la ruta removible EFI/BOOT"
+    if ! run_quiet arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --removable; then
+        log "Aviso: no se pudo instalar la copia removible de GRUB; el arranque depende de la entrada UEFI"
+    fi
+
     log "GRUB instalado exitosamente"
     return 0
 }

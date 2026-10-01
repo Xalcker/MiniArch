@@ -175,6 +175,28 @@ setup() {
     [[ "$output" == *"Fallo al instalar grub y efibootmgr"* ]]
 }
 
+@test "install_grub: si falla solo la copia removible, la instalacion sigue y retorna 0" {
+    arch-chroot() {
+        if [[ "$*" == *"--removable"* ]]; then
+            return 1
+        fi
+        return 0
+    }
+    export -f arch-chroot
+
+    mountpoint() {
+        if [[ "$*" == *"-q /mnt/boot"* ]]; then
+            return 0
+        fi
+        command mountpoint "$@"
+    }
+    export -f mountpoint
+
+    run install_grub
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"copia removible"* ]]
+}
+
 @test "install_grub: fallo al ejecutar grub-install retorna 1" {
     # Mock de arch-chroot que falla en grub-install
     arch-chroot() {
@@ -498,9 +520,9 @@ setup() {
     run install_grub
     [ "$status" -eq 0 ]
     
-    # Verificar que se generaron exactamente 2 comandos
+    # Verificar que se generaron exactamente 3 comandos
     local command_count=$(wc -l < /tmp/grub_commands.log)
-    [[ $command_count -eq 2 ]]
+    [[ $command_count -eq 3 ]]
     
     # Verificar el primer comando: instalación de paquetes
     local cmd1=$(sed -n '1p' /tmp/grub_commands.log)
@@ -510,6 +532,10 @@ setup() {
     local cmd2=$(sed -n '2p' /tmp/grub_commands.log)
     [[ "$cmd2" == "arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB" ]]
     
+    # Verificar el tercer comando: copia removible en EFI/BOOT
+    local cmd3=$(sed -n '3p' /tmp/grub_commands.log)
+    [[ "$cmd3" == "arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --removable" ]]
+
     # Verificar que el comando contiene todas las opciones requeridas
     [[ "$cmd2" == *"--target=x86_64-efi"* ]]
     [[ "$cmd2" == *"--efi-directory=/boot"* ]]
