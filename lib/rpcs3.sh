@@ -217,8 +217,9 @@ download_rb3dx() {
 # Descarga los tres perfiles de configuracion de RB3DX de la guia de MiloHax
 # (recommended, minimum y potato) al home del usuario, sin descomprimirlos: se
 # instala uno desde el primer arranque, al configurar el juego. Cada zip trae
-# config/custom_configs/config_BLUS30463.yml y dx_high_memory.dta, para copiar
-# sobre la carpeta de datos de RPCS3. Es opcional: si falla solo se avisa.
+# config/custom_configs/config_BLUS30463.yml y dx_high_memory.dta. En Linux el
+# perfil va en ~/.config/rpcs3/custom_configs/ (no en config/custom_configs/,
+# que es la ruta de Windows y RPCS3 no lee aqui). Es opcional: si falla solo se avisa.
 download_rb3dx_config_profiles() {
     if [[ "${RB3DX_DOWNLOAD_CONFIGS:-true}" != "true" ]]; then
         log "Descarga de perfiles de RB3DX omitida (RB3DX_DOWNLOAD_CONFIGS=false)"
@@ -691,28 +692,49 @@ find_rpcs3_bin() {
     fi
 }
 
-# Imprime la ruta del EBOOT.BIN a lanzar. Si RPCS3_GAME_PATH esta definida se
-# usa tal cual; si no, se busca en la carpeta de juegos, en dev_hdd0/disc
-# (volcados de disco agregados desde la GUI) y en dev_hdd0/game (juegos
-# instalados) el primer PARAM.SFO cuyo titulo contiene RPCS3_GAME_MATCH.
+# Imprime lo que hay que pasarle a rpcs3 para lanzar el juego. Si
+# RPCS3_GAME_PATH esta definida se usa tal cual; si no se busca, en orden:
+#   1. Un .iso en la carpeta de juegos cuyo nombre contiene RPCS3_GAME_MATCH.
+#   2. Un juego en carpeta (<juego>/PS3_GAME) en la carpeta de juegos o en
+#      dev_hdd0/disc (volcados agregados desde la GUI), por el titulo del
+#      PARAM.SFO.
+#   3. Un juego instalado en dev_hdd0/game (solo si no hay disco: un paquete
+#      de actualizacion como RB3DX tambien esta ahi y no arranca solo).
 find_game() {
-    local sfo game_dir eboot
+    local iso base sfo game_dir eboot pass
+    local -a roots
 
     if [[ -n "$RPCS3_GAME_PATH" ]]; then
         [[ -e "$RPCS3_GAME_PATH" ]] && echo "$RPCS3_GAME_PATH"
         return 0
     fi
 
-    while IFS= read -r sfo; do
-        if grep -aqi -- "$RPCS3_GAME_MATCH" "$sfo" 2>/dev/null; then
-            game_dir="$(dirname "$sfo")"
-            eboot="$game_dir/USRDIR/EBOOT.BIN"
-            if [[ -f "$eboot" ]]; then
-                echo "$eboot"
-                return 0
-            fi
+    while IFS= read -r iso; do
+        base="${iso##*/}"
+        if [[ "${base,,}" == *"${RPCS3_GAME_MATCH,,}"* ]]; then
+            echo "$iso"
+            return 0
         fi
-    done < <(find "$RPCS3_GAMES_DIR" "$RPCS3_CONFIG_DIR/dev_hdd0/disc" "$RPCS3_CONFIG_DIR/dev_hdd0/game" -maxdepth 4 -name PARAM.SFO 2>/dev/null)
+    done < <(find "$RPCS3_GAMES_DIR" -maxdepth 2 -type f -iname '*.iso' 2>/dev/null | sort)
+
+    for pass in disc installed; do
+        if [[ "$pass" == "disc" ]]; then
+            roots=("$RPCS3_GAMES_DIR" "$RPCS3_CONFIG_DIR/dev_hdd0/disc")
+        else
+            roots=("$RPCS3_CONFIG_DIR/dev_hdd0/game")
+        fi
+
+        while IFS= read -r sfo; do
+            if grep -aqi -- "$RPCS3_GAME_MATCH" "$sfo" 2>/dev/null; then
+                game_dir="$(dirname "$sfo")"
+                eboot="$game_dir/USRDIR/EBOOT.BIN"
+                if [[ -f "$eboot" ]]; then
+                    echo "$eboot"
+                    return 0
+                fi
+            fi
+        done < <(find "${roots[@]}" -maxdepth 4 -name PARAM.SFO 2>/dev/null)
+    done
 
     return 0
 }

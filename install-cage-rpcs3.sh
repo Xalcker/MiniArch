@@ -363,7 +363,8 @@ main() {
     if ! cleanup_and_finish \
         "Cage + RPCS3 quedan instalados en /opt/RPCS3." \
         "En el primer arranque se abre la GUI de RPCS3 para instalar firmware, juego y controles.
-Antes de configurar Rock Band 3 lea las advertencias y la guia: $RB3DX_DISCLAIMERS_URL"; then
+Antes de configurar Rock Band 3 lea las advertencias y la guia: $RB3DX_DISCLAIMERS_URL
+Perfiles de RB3DX en /home/$KIOSK_USER/RB3DX-config-*.zip: copie config/custom_configs/config_BLUS30463.yml a ~/.config/rpcs3/custom_configs/ (RB3DX necesita Debug Console Mode)."; then
         log_error "Fallo en limpieza/finalizacion de la instalacion"
         exit 1
     fi

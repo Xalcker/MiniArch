@@ -515,11 +515,15 @@ servidores oficiales de PlayStation (`RPCS3_FIRMWARE_URL`).
 Como encuentra el juego el wrapper, en orden:
 
 1. `RPCS3_GAME_PATH`, si esta definida y existe.
-2. El primer `PARAM.SFO` cuyo titulo contiene `RPCS3_GAME_MATCH` (por defecto
-   `Rock Band 3`), buscando en `RPCS3_GAMES_DIR` (juegos de disco, estructura
-   `<juego>/PS3_GAME/`), en `~/.config/rpcs3/dev_hdd0/disc` (volcados de disco
-   agregados desde la GUI) y en `~/.config/rpcs3/dev_hdd0/game` (juegos
-   instalados).
+2. Un archivo `.iso` en `RPCS3_GAMES_DIR` cuyo nombre contiene
+   `RPCS3_GAME_MATCH` (por defecto `Rock Band 3`, sin distinguir mayusculas).
+3. El primer `PARAM.SFO` cuyo titulo contiene `RPCS3_GAME_MATCH`, en un juego en
+   carpeta (estructura `<juego>/PS3_GAME/`) dentro de `RPCS3_GAMES_DIR` o en
+   `~/.config/rpcs3/dev_hdd0/disc` (volcados agregados desde la GUI).
+4. Solo si no hay disco, un juego instalado en `~/.config/rpcs3/dev_hdd0/game`.
+   Un paquete de actualizacion como RB3DX tambien aparece ahi, pero sin los
+   datos del juego base no arranca por si solo; RPCS3 lo aplica al lanzar el
+   ISO o la carpeta del juego base.
 
 Si no lo encuentra abre la GUI. Desde el menu de mantenimiento (aparece al
 salir del juego, salvo `RPCS3_EXIT_MENU=restart` o `never`) la opcion
@@ -640,14 +644,17 @@ Variables de Cage/RPCS3:
   configuracion de la guia de MiloHax (`recommended`, `minimum`, `potato`) como
   `/home/<usuario>/RB3DX-config-<perfil>.zip`, sin descomprimir; se instala uno
   al configurar el juego. Cada zip trae `config/custom_configs/config_BLUS30463.yml`
-  y `dev_hdd0/.../dx_high_memory.dta`.
+  y `dev_hdd0/.../dx_high_memory.dta`. En Linux el perfil se copia a
+  `~/.config/rpcs3/custom_configs/config_BLUS30463.yml` (la carpeta `config/` del
+  zip es la ruta de Windows y RPCS3 no la lee). Aplica `Debug Console Mode`, que
+  RB3DX necesita para arrancar.
 - `RB3DX_CONFIG_BASE_URL`: carpeta donde estan los zips de los perfiles.
 - `RPCS3_GAMES_DIR`: carpeta de juegos y share Samba. Por defecto
   `/home/${KIOSK_USER}/Games`.
-- `RPCS3_GAME_PATH`: ruta fija al `EBOOT.BIN` a lanzar; tiene prioridad sobre la
-  deteccion automatica.
-- `RPCS3_GAME_MATCH`: texto que debe contener el titulo del juego en su
-  `PARAM.SFO`. Por defecto `Rock Band 3`.
+- `RPCS3_GAME_PATH`: ruta fija al `.iso` o al `EBOOT.BIN` a lanzar; tiene
+  prioridad sobre la deteccion automatica.
+- `RPCS3_GAME_MATCH`: texto que debe contener el nombre del `.iso` o el titulo
+  del juego en su `PARAM.SFO`. Por defecto `Rock Band 3`.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`
@@ -861,7 +868,7 @@ ls -la /opt/RPCS3 /home/kiosk/Games
 ```
 
 - Si ves `no se encontro el juego`, el titulo no coincide: revisa
-  `RPCS3_GAME_MATCH` o fija `RPCS3_GAME_PATH` al `EBOOT.BIN`.
+  `RPCS3_GAME_MATCH` o fija `RPCS3_GAME_PATH` al `.iso` o al `EBOOT.BIN`.
 - Si la ventana no aparece o no responde el teclado/mando, prueba
   `RPCS3_QT_PLATFORM=xcb` (XWayland) o `wayland` y reinstala el wrapper.
 - RPCS3 necesita Vulkan y una CPU con AVX2; en maquinas virtuales sin GPU no
