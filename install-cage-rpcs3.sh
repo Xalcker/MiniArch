@@ -318,6 +318,8 @@ main() {
         exit 1
     fi
 
+    configure_rpcs3_usb_access
+
     if ! install_rpcs3; then
         log_error "Fallo en instalacion de RPCS3"
         exit 1

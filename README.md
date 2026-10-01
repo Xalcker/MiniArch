@@ -126,7 +126,9 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 - Firmware oficial de PS3 descargado en `/home/kiosk/PS3UPDAT.PUP`.
 - Carpeta de juegos `RPCS3_GAMES_DIR` (por defecto `/home/kiosk/Games`).
 - Share Samba `RPCS3-Games`.
-- Reglas HID para instrumentos `hidraw`, `libusb` y `libevdev`.
+- Reglas HID para instrumentos `hidraw`, `libusb` y `libevdev`. El camino RPCS3 agrega
+  `70-rpcs3-usb.rules` (`uaccess` sobre dispositivos USB), porque RPCS3 abre los
+  instrumentos por libusb y sin ese permiso falla con `Unable to open ... device`.
 - `vm.max_map_count` alto, limites de tiempo real y `cpupower` en performance.
 - Updater `/usr/local/bin/update-rpcs3`.
 - Servicio `cage-kiosk.service` y wrapper `/usr/local/bin/run-rpcs3.sh`.
