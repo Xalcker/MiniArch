@@ -27,7 +27,7 @@ setup() {
     export -f log_error
 
     # Variable de configuración para zona horaria
-    export TIMEZONE="America/Mexico_City"
+    export TIMEZONE="America/Phoenix"
     export DISK_DEVICE="/dev/sda"
     export ENABLE_SSH="true"
 }
@@ -135,7 +135,7 @@ setup() {
     [ "$status" -eq 0 ]
 
     # Verificar que se configuró la zona horaria
-    grep -q "arch-chroot /mnt ln -sf /usr/share/zoneinfo/America/Mexico_City /etc/localtime" /tmp/chroot_commands.log
+    grep -q "arch-chroot /mnt ln -sf /usr/share/zoneinfo/America/Phoenix /etc/localtime" /tmp/chroot_commands.log
 
     # Limpiar
     rm -f /tmp/chroot_commands.log
@@ -788,7 +788,7 @@ setup() {
 @test "Property 32: configuración de zona horaria enlaza /etc/localtime correctamente para 50 zonas horarias válidas" {
     # Lista extensa de zonas horarias válidas para probar
     local timezones=(
-        "America/Mexico_City"
+        "America/Phoenix"
         "America/New_York"
         "America/Los_Angeles"
         "America/Chicago"
@@ -948,7 +948,7 @@ setup() {
 
 @test "configure_network: ENABLE_SSH=false omite OpenSSH y sshd" {
     ENABLE_SSH="false"
-    TIMEZONE="America/Mexico_City"
+    TIMEZONE="America/Phoenix"
     rm -f /tmp/finalization_commands.log
 
     arch-chroot() {

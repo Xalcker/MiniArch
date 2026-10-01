@@ -145,6 +145,9 @@ de shaders no caben en el `/home` de un disco de 16 GB.
 - Arch Linux ISO actual.
 - Maquina fisica o VM con UEFI habilitado.
 - Disco de al menos 16 GB (32 GB para el camino RPCS3).
+  Esquema por defecto: ESP 512 MiB, root 8 GiB, swap 2 GiB y `/home` con el
+  resto. En un disco de 16 GB `/home` queda de ~5.5 GB, en 32 GB de ~21.5 GB y
+  en 128 GB de ~117.5 GB. Ajustable con `ESP_SIZE`, `ROOT_SIZE` y `SWAP_SIZE`.
 - 2 GB de RAM o mas.
 - Conexion a internet durante la instalacion.
 - ImageMagick en el entorno live si vas a usar imagen personalizada de
@@ -539,6 +542,10 @@ kiosko base, diagnostico o para instalar tu propia aplicacion despues.
 Variables comunes:
 
 - `DISK_DEVICE`: disco destino. Por defecto `ask`, muestra selector interactivo.
+- `ESP_SIZE`, `ROOT_SIZE`, `SWAP_SIZE`: tamanos de las particiones (numero con
+  `M` o `G`; por defecto `512M`, `8G` y `2G`). `/home` ocupa el resto del disco.
+  Minimos: ESP 256M, root 4G, swap 512M y 2 GiB libres para `/home`; el
+  instalador valida el esquema antes de pedir confirmacion.
 - `KIOSK_USER`: usuario kiosko.
 - `KIOSK_PASSWORD`: password del usuario kiosko.
 - `TIMEZONE`: zona horaria.
@@ -561,7 +568,8 @@ Variables comunes:
 Variables de Cage/YARG:
 
 - `ROOT_PASSWORD`: password de root. Cage lo exige con valor real.
-- `KIOSK_HOSTNAME`: hostname. Por defecto `minikiosk`.
+- `KIOSK_HOSTNAME`: hostname. Por defecto `minikiosk` (YARG y foot),
+  `miniclonehero` (Clone Hero) o `minirpcs3` (RPCS3).
 - `INSTALL_NVIDIA`: `true`, `false` o vacio para preguntar.
 - `YARG_RELEASE_CHANNEL`: `stable`, `stable-latest`, `nightly` o `ask`.
 - `YARG_URL`: ZIP estable de YARG.

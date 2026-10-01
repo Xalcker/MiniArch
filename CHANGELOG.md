@@ -59,6 +59,14 @@ semantico cuando se publiquen releases formales.
 
 ### Cambiado
 
+- `ESP_SIZE`, `ROOT_SIZE` y `SWAP_SIZE` ahora se respetan (antes estaban en
+  `.env.example` pero el esquema estaba fijo): se validan (minimos ESP 256M,
+  root 4G, swap 512M y 2 GiB libres para `/home`) antes de pedir confirmacion.
+- `.env.example` alineado con el codigo: rutas de canciones en
+  `/home/${KIOSK_USER}/Songs`, hostname por camino documentado y fallback de
+  zona horaria unificado en `America/Phoenix` (antes `lib/finalization.sh` usaba
+  `America/Mexico_City`).
+
 - Nuevo `lib/common.sh` con el logging, `run_quiet`, los prompts y la limpieza
   ante fallos que estaban copiados en los tres instaladores.
 - README alineado al repositorio oficial `Xalcker/MiniArch`.

@@ -46,7 +46,7 @@ configure_network() {
         log "SSH deshabilitado por configuracion (ENABLE_SSH=false)"
     fi
 
-    local tz="${TIMEZONE:-America/Mexico_City}"
+    local tz="${TIMEZONE:-America/Phoenix}"
     log "Configurando zona horaria a $tz..."
 
     if ! run_quiet arch-chroot /mnt ln -sf "/usr/share/zoneinfo/$tz" /etc/localtime; then

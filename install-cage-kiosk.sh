@@ -203,6 +203,7 @@ main() {
     [[ "$ENABLE_PLYMOUTH" != "true" ]] || preflight_optional_assets "$PLYMOUTH_IMAGE_PATH" "$CURSOR_PATH" || exit 1
     check_network || exit 1
     check_disk "$DISK_DEVICE" || exit 1
+    validate_partition_plan "$DISK_DEVICE" || exit 1
     check_disk_empty "$DISK_DEVICE" || exit 1
 
     prepare_disk_for_install "$DISK_DEVICE" || exit 1
