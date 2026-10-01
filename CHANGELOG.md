@@ -9,6 +9,17 @@ semantico cuando se publiquen releases formales.
 
 ### Agregado
 
+- Camino `install-cage-rpcs3.sh` y modulo `lib/rpcs3.sh`: Arch Linux + Cage +
+  RPCS3 (AppImage extraido a `/opt/RPCS3`, sin FUSE) con arranque directo de
+  Rock Band 3. La primera vez abre la GUI de RPCS3 para instalar firmware, juego
+  y controles; despues el wrapper `run-rpcs3.sh` busca el juego por el titulo de
+  su `PARAM.SFO` (o `RPCS3_GAME_PATH`) y lo lanza con `--no-gui`. Incluye share
+  Samba `RPCS3-Games`, descarga opcional del firmware, `update-rpcs3` con
+  reemplazo atomico y menu de mantenimiento. Busca el juego tambien en
+  `dev_hdd0/disc` (volcados agregados desde la GUI) y el servicio fija
+  `LimitMEMLOCK=infinity` (RPCS3 pide 2 GiB de `RLIMIT_MEMLOCK`).
+- `check_disk` acepta un minimo opcional en GB (por defecto 16); el camino
+  RPCS3 exige 32 GB (`RPCS3_MIN_DISK_GB`).
 - Paquete `inetutils` en el stack Cage para asegurar disponibilidad del comando
   `hostname`.
 - Opcion de actualizacion en el menu de mantenimiento: `Actualizar YARG Stable`

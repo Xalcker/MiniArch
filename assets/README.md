@@ -22,6 +22,9 @@ primero el asset especifico del camino y resolucion elegidos:
 - `yarg_1080p.png`
 - `clonehero_720p.png`
 - `clonehero_1080p.png`
+- `rpcs3_720p.png`
+- `rpcs3_1080p.png` (el camino RPCS3 usa 1080p; si no existe cae a
+  `plymouth-image_1080p.png`)
 
 Si no existe, cae a `plymouth-image_720p.png`, `plymouth-image_1080p.png` y
 finalmente a `plymouth-image.png`. Si defines `PLYMOUTH_IMAGE_PATH` con una ruta

@@ -7,7 +7,7 @@ Repositorio oficial: [Xalcker/MiniArch](https://github.com/Xalcker/MiniArch).
 
 ## Caminos De Instalacion
 
-MiniArch mantiene tres caminos basados en Cage:
+MiniArch mantiene cuatro caminos basados en Cage:
 
 - `install-cage-yarg.sh`: camino recomendado para YARG. Instala Arch Linux,
   Cage, Wayland/XWayland, YARG, audio, Samba y la carpeta de canciones en un
@@ -15,6 +15,10 @@ MiniArch mantiene tres caminos basados en Cage:
 - `install-cage-clonehero.sh`: camino equivalente para Clone Hero. Instala
   Arch Linux, Cage, Wayland/XWayland, Clone Hero, audio, Samba y la carpeta de
   canciones en un solo flujo.
+- `install-cage-rpcs3.sh`: camino para jugar Rock Band 3 (o cualquier juego de
+  PS3) con el emulador RPCS3. Instala Arch Linux, Cage, RPCS3 (AppImage
+  extraido a `/opt/RPCS3`), audio, Samba y la carpeta de juegos. Despues de
+  configurar el emulador una vez, arranca solo el juego.
 - `install-cage-kiosk.sh`: camino minimalista. Instala Arch Linux, Cage y
   `foot` solamente, util como base de kiosko o terminal de mantenimiento.
 
@@ -23,6 +27,7 @@ En corto:
 ```text
 Recomendado: install-cage-yarg.sh
 Clone Hero:  install-cage-clonehero.sh
+RPCS3:       install-cage-rpcs3.sh (Rock Band 3 via emulador)
 Minimal:     install-cage-kiosk.sh
 ```
 
@@ -41,6 +46,9 @@ compartidos de `lib/` y mueve lo especifico a:
   iniciales, Samba, rendimiento y updater.
 - `lib/clonehero.sh`: descarga de Clone Hero desde GitHub, carpeta compartida
   de canciones, Samba, updater y wrapper `/usr/local/bin/run-clonehero.sh`.
+- `lib/rpcs3.sh`: descarga y extraccion del AppImage de RPCS3, firmware, carpeta
+  de juegos, Samba, updater, menu de mantenimiento y wrapper
+  `/usr/local/bin/run-rpcs3.sh` (arranque directo del juego).
 
 `install-cage-kiosk.sh` conserva el particionado, GRUB, Plymouth opcional,
 red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
@@ -104,6 +112,25 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 - Descargador `/home/kiosk/download-clonehero-songs.sh` usando `links.csv`.
 - Servicio `cage-kiosk.service`.
 
+### Cage/RPCS3
+
+`install-cage-rpcs3.sh` instala y configura:
+
+- Cage como compositor de kiosko.
+- Wayland y XWayland.
+- Mesa, Vulkan Intel/AMD y NVIDIA opcional.
+- RPCS3 en `/opt/RPCS3` (AppImage extraido, no necesita FUSE).
+- Firmware oficial de PS3 descargado en `/home/kiosk/PS3UPDAT.PUP`.
+- Carpeta de juegos `RPCS3_GAMES_DIR` (por defecto `/home/kiosk/Games`).
+- Share Samba `RPCS3-Games`.
+- Reglas HID para instrumentos `hidraw`, `libusb` y `libevdev`.
+- `vm.max_map_count` alto, limites de tiempo real y `cpupower` en performance.
+- Updater `/usr/local/bin/update-rpcs3`.
+- Servicio `cage-kiosk.service` y wrapper `/usr/local/bin/run-rpcs3.sh`.
+
+Requiere un disco de al menos 32 GB (`RPCS3_MIN_DISK_GB`): el juego y la cache
+de shaders no caben en el `/home` de un disco de 16 GB.
+
 ### Cage/foot
 
 `install-cage-kiosk.sh` instala:
@@ -117,7 +144,7 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 
 - Arch Linux ISO actual.
 - Maquina fisica o VM con UEFI habilitado.
-- Disco de al menos 16 GB.
+- Disco de al menos 16 GB (32 GB para el camino RPCS3).
 - 2 GB de RAM o mas.
 - Conexion a internet durante la instalacion.
 - ImageMagick en el entorno live si vas a usar imagen personalizada de
@@ -196,6 +223,13 @@ chmod +x install-cage-clonehero.sh
 ./install-cage-clonehero.sh
 ```
 
+Rock Band 3 con RPCS3 (disco de al menos 32 GB):
+
+```bash
+chmod +x install-cage-rpcs3.sh
+./install-cage-rpcs3.sh
+```
+
 Cage/foot minimal:
 
 ```bash
@@ -203,7 +237,7 @@ chmod +x install-cage-kiosk.sh
 ./install-cage-kiosk.sh
 ```
 
-Advertencia: ambos instaladores destruyen el disco seleccionado. Con
+Advertencia: los instaladores destruyen el disco seleccionado. Con
 `DISK_DEVICE=ask`, el instalador muestra un selector interactivo con los discos
 detectados, marca USB/removibles y pide confirmar escribiendo `INSTALAR`.
 Tambien acepta `instalar`.
@@ -411,6 +445,56 @@ Descargar canciones desde CSV:
 El instalador crea o copia `~/links.csv`. Cada linea puede ser `nombre,url` o
 solo una URL. Los ZIP pueden extraerse directamente en la carpeta Songs.
 
+## Uso Despues De Instalar Cage/RPCS3
+
+RPCS3 no se puede configurar de forma desatendida: hay que instalar el
+firmware, agregar el juego y mapear los controles una vez. El kiosko lo hace
+asi:
+
+1. En el primer arranque `run-rpcs3.sh` no encuentra el juego y **abre la GUI de
+   RPCS3**.
+2. En la GUI: `File > Install Firmware` y elige
+   `/home/kiosk/PS3UPDAT.PUP`; agrega o instala el juego (disco volcado en
+   `/home/kiosk/Games`, o PKG/DLC); configura guitarras, bateria, microfono y
+   mandos en `Pads`. Para mandos e instrumentos que no son originales de PS3,
+   el `Handler` debe ser `evdev` (ya estan `libevdev` y el grupo `input`).
+3. Cierra RPCS3. A partir de ahi, el wrapper busca el juego y lo lanza con
+   `rpcs3 --no-gui <EBOOT.BIN>`.
+
+Rock Band 3, los DLC y el firmware de PS3 **no se distribuyen con MiniArch**: tu
+aportas tu propio volcado del juego. El firmware se descarga desde los
+servidores oficiales de PlayStation (`RPCS3_FIRMWARE_URL`).
+
+Como encuentra el juego el wrapper, en orden:
+
+1. `RPCS3_GAME_PATH`, si esta definida y existe.
+2. El primer `PARAM.SFO` cuyo titulo contiene `RPCS3_GAME_MATCH` (por defecto
+   `Rock Band 3`), buscando en `RPCS3_GAMES_DIR` (juegos de disco, estructura
+   `<juego>/PS3_GAME/`), en `~/.config/rpcs3/dev_hdd0/disc` (volcados de disco
+   agregados desde la GUI) y en `~/.config/rpcs3/dev_hdd0/game` (juegos
+   instalados).
+
+Si no lo encuentra abre la GUI. Desde el menu de mantenimiento (aparece al
+salir del juego, salvo `RPCS3_EXIT_MENU=restart` o `never`) la opcion
+`Abrir RPCS3` vuelve a abrir la GUI para cambiar controles o agregar juegos.
+
+Share Samba para subir juegos:
+
+```text
+\\<hostname>\RPCS3-Games
+```
+
+Con hostname por defecto: `\\minirpcs3\RPCS3-Games`.
+
+Actualizar RPCS3 (tambien desde el menu de mantenimiento):
+
+```bash
+sudo update-rpcs3
+```
+
+El updater extrae el AppImage nuevo aparte y solo reemplaza `/opt/RPCS3` si
+la extraccion salio bien.
+
 ## Uso Despues De Instalar Cage/foot
 
 El camino minimal `install-cage-kiosk.sh` inicia el mismo servicio
@@ -483,6 +567,27 @@ Variables de Cage/Clone Hero:
 - `CLONEHERO_EXIT_MENU`: `always` muestra menu al salir de Clone Hero;
   `restart` relanza Clone Hero directo; `never` sale del wrapper.
 
+Variables de Cage/RPCS3:
+
+- `RPCS3_URL`: descarga fija del AppImage. Si esta vacia se usa el ultimo
+  release de `RPCS3/rpcs3-binaries-linux`.
+- `RPCS3_API_URL` / `RPCS3_ASSET_REGEX`: endpoint del ultimo release y patron
+  del AppImage de Linux x86_64.
+- `RPCS3_DOWNLOAD_FIRMWARE`: `true` (por defecto) descarga el firmware en el
+  home del usuario; `false` lo omite.
+- `RPCS3_FIRMWARE_URL`: URL del `PS3UPDAT.PUP`.
+- `RPCS3_GAMES_DIR`: carpeta de juegos y share Samba. Por defecto
+  `/home/${KIOSK_USER}/Games`.
+- `RPCS3_GAME_PATH`: ruta fija al `EBOOT.BIN` a lanzar; tiene prioridad sobre la
+  deteccion automatica.
+- `RPCS3_GAME_MATCH`: texto que debe contener el titulo del juego en su
+  `PARAM.SFO`. Por defecto `Rock Band 3`.
+- `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
+  si la ventana no aparece o falla el teclado/mando.
+- `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`
+  relanza directo; `never` sale del wrapper.
+- `RPCS3_MIN_DISK_GB`: disco minimo en GB. Por defecto `32`.
+
 Nota: `REQUIRE_ROOT_PASSWORD` existe como control interno. Los caminos Cage lo
 activan por defecto.
 
@@ -492,6 +597,7 @@ activan por defecto.
 MiniArch/
 |-- install-cage-kiosk.sh      # Orquestador Cage/foot minimal
 |-- install-cage-clonehero.sh  # Orquestador Cage/Clone Hero integrado
+|-- install-cage-rpcs3.sh      # Orquestador Cage/RPCS3 (Rock Band 3)
 |-- install-cage-yarg.sh       # Orquestador Cage/YARG integrado
 |-- scripts/
 |   |-- clone-miniarch.sh       # Clona disco, cambia UUIDs y puede expandir /home
@@ -506,6 +612,7 @@ MiniArch/
 |   |-- drivers.sh             # Drivers, PipeWire, codecs y Bluetooth
 |   |-- cage.sh                # Cage, usuario, servicio y wrapper
 |   |-- clonehero.sh           # Clone Hero, Samba, updater y CSV
+|   |-- rpcs3.sh               # RPCS3, firmware, Samba, wrapper y updater
 |   |-- yarg.sh                # YARG, settings, Samba, rendimiento y updater
 |   |-- customization.sh       # Mensajes, cursor, assets y scripts extra
 |   `-- finalization.sh        # Red, SSH opcional, limpieza y desmontaje
@@ -515,6 +622,8 @@ MiniArch/
 |   |-- yarg_1080p.png
 |   |-- clonehero_720p.png       # opcional/futuro
 |   |-- clonehero_1080p.png      # opcional/futuro
+|   |-- rpcs3_720p.png           # opcional
+|   |-- rpcs3_1080p.png          # opcional
 |   |-- plymouth-image.png.example
 |   `-- cursor/
 |-- tests/
@@ -525,6 +634,7 @@ MiniArch/
 |   |-- test_base_install.bats
 |   |-- test_bootloader.bats
 |   |-- test_plymouth.bats
+|   |-- test_rpcs3.bats
 |   |-- test_drivers.bats
 |   |-- test_customization.bats
 |   |-- test_finalization.bats
@@ -554,6 +664,8 @@ Valida sintaxis:
 ```bash
 bash -n install-cage-kiosk.sh
 bash -n install-cage-yarg.sh
+bash -n install-cage-clonehero.sh
+bash -n install-cage-rpcs3.sh
 bash -n scripts/clone-miniarch.sh scripts/expand-home.sh
 for file in lib/*.sh; do bash -n "$file"; done
 ```
@@ -606,6 +718,28 @@ systemctl status cage-kiosk.service
 journalctl -u cage-kiosk.service -b
 ls -la /opt/YARG
 ```
+
+### RPCS3 no arranca el juego
+
+```bash
+systemctl status cage-kiosk.service
+journalctl -u cage-kiosk.service -b | grep -i rpcs3
+ls -la /opt/RPCS3 /home/kiosk/Games
+```
+
+- Si ves `no se encontro el juego`, el titulo no coincide: revisa
+  `RPCS3_GAME_MATCH` o fija `RPCS3_GAME_PATH` al `EBOOT.BIN`.
+- Si la ventana no aparece o no responde el teclado/mando, prueba
+  `RPCS3_QT_PLATFORM=xcb` (XWayland) o `wayland` y reinstala el wrapper.
+- RPCS3 necesita Vulkan y una CPU con AVX2; en maquinas virtuales sin GPU no
+  correra a una velocidad jugable.
+- Si un juego dejo de funcionar de repente, borra la cache (es seguro; solo
+  guarda logs y shaders compilados, y el siguiente arranque tarda mas):
+  `rm -rf ~/.cache/rpcs3`.
+- Si los objetos aparecen de golpe mientras se compilan shaders, en
+  `Config > GPU` pon `Shader Mode` en `Async with Shader Interpreter`.
+- Si RPCS3 reporta `Failed to set RLIMIT_MEMLOCK size to 2 GiB`, revisa que
+  `cage-kiosk.service` tenga `LimitMEMLOCK=infinity` (el instalador lo agrega).
 
 ### Necesito ver la salida completa del instalador
 
@@ -673,7 +807,8 @@ Reconecta el dispositivo despues de instalar para que udev aplique la regla.
 - No versiones `.env`.
 - Cambia `KIOSK_PASSWORD` y `ROOT_PASSWORD`.
 - El usuario kiosko tiene sudo sin password para mantenimiento.
-- Samba permite guest en `YARG-Songs`; no lo expongas a redes no confiables.
+- Samba permite guest en `YARG-Songs`, `CloneHero-Songs` y `RPCS3-Games`; no los
+  expongas a redes no confiables.
 - `ENABLE_SSH=false` es el valor recomendado para Cage.
 
 Consulta [SECURITY.md](SECURITY.md) para mas detalles.
