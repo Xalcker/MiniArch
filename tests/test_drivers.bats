@@ -158,7 +158,7 @@ setup() {
     run install_audio_system
     [ "$status" -eq 0 ]
     [[ "$output" == *"Instalando sistema de audio PipeWire"* ]]
-    [[ "$output" == *"PipeWire, firmware de audio y utilidades de hardware instalados exitosamente"* ]]
+    [[ "$output" == *"PipeWire y firmware de audio instalados exitosamente"* ]]
     
     # Limpiar
     rm -f /tmp/arch_chroot_commands.log /tmp/pacman_commands.log
@@ -216,10 +216,10 @@ setup() {
     run install_audio_system
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"Fallo al instalar PipeWire, firmware de audio y utilidades de hardware"* ]]
+    [[ "$output" == *"Fallo al instalar PipeWire, códecs y utilidades de hardware"* ]]
 }
 
-@test "install_audio_system: comando contiene exactamente los 5 paquetes requeridos" {
+@test "install_audio_system: comando contiene los paquetes de audio requeridos" {
     # Mock de arch-chroot que registra los comandos
     arch-chroot() {
         if [[ "$2" == "pacman" ]]; then
@@ -239,8 +239,12 @@ setup() {
     # Leer el comando ejecutado
     local command=$(cat /tmp/arch_chroot_commands.log)
     
-    # Verificar que el comando contiene los paquetes base esperados
-    [[ "$command" == *"pipewire pipewire-alsa pipewire-pulse pipewire-jack sof-firmware alsa-utils usbutils bluez bluez-utils"* ]]
+    # Verificar que el comando contiene los paquetes base esperados (la lista
+    # completa incluye ademas codecs y plugins; se comprueban los esenciales)
+    local pkg
+    for pkg in pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber sof-firmware alsa-utils usbutils bluez bluez-utils; do
+        [[ " $command " == *" $pkg "* ]]
+    done
     
     # Limpiar
     rm -f /tmp/arch_chroot_commands.log
@@ -249,17 +253,22 @@ setup() {
 @test "install_audio_system: menciona habilitación de servicios para el usuario" {
     # Mock de arch-chroot que registra los comandos
     arch-chroot() {
+        echo "arch-chroot $*" >> /tmp/arch_chroot_commands_svc.log
         return 0
     }
     export -f arch-chroot
     
+    rm -f /tmp/arch_chroot_commands_svc.log
     run install_audio_system
     [ "$status" -eq 0 ]
     
     # Verificar que el output menciona la habilitación de servicios
     [[ "$output" == *"servicios de PipeWire"* ]]
     [[ "$output" == *"usuario del sistema"* ]]
-    [[ "$output" == *"bluetooth.service"* ]]
+
+    # Bluetooth se habilita explicitamente en el sistema destino
+    command grep -q "arch-chroot /mnt systemctl enable bluetooth.service" /tmp/arch_chroot_commands_svc.log
+    rm -f /tmp/arch_chroot_commands_svc.log
 }
 
 ################################################################################

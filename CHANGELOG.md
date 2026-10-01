@@ -61,6 +61,15 @@ semantico cuando se publiquen releases formales.
 
 ### Corregido
 
+- La suite BATS vuelve a ser ejecutable: se reparo `test_base_install.bats`
+  (estaba duplicado y truncado), se quito el BOM y la doble codificacion UTF-8
+  de `lib/drivers.sh`, `lib/bootloader.sh`, `lib/customization.sh` y
+  `tests/test_customization.bats`, y se alinearon las pruebas con los mensajes,
+  paquetes y comandos actuales (zona horaria con `ln -sf`, GRUB, audio,
+  Plymouth). `install_grub` acepta `EFI_FIRMWARE_DIR` para poder probarse sin
+  depender del equipo.
+- Se agrego `.gitattributes` para mantener LF en scripts, pruebas y docs.
+
 - `update-clonehero` y la instalacion de Clone Hero ya no fallan con
   `Directory not empty` al actualizar sobre una instalacion existente; ahora
   combinan los archivos nuevos con `cp -a` en vez de `mv`.
