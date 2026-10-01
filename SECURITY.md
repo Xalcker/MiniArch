@@ -114,7 +114,8 @@ Ajusta el rango de red a tu LAN real.
 
 ## Cage, DBus Y PipeWire
 
-`run-yarg.sh` crea un DBus de sesion con `dbus-run-session` si el servicio
+Los wrappers (`run-yarg.sh`, `run-clonehero.sh` y `run-rpcs3.sh`) crean un DBus
+de sesion con `dbus-run-session` si el servicio
 systemd no lo provee. Esto ayuda a que WirePlumber, PipeWire Pulse y apps con
 integraciones de escritorio funcionen en un kiosko minimo.
 
@@ -143,6 +144,13 @@ Para YARG:
 
 ```bash
 sudo update-yarg
+```
+
+Para Clone Hero y RPCS3:
+
+```bash
+sudo update-clonehero
+sudo update-rpcs3
 ```
 
 Nota: si instalaste `stable-latest` o `nightly`, `update-yarg` consulta el
