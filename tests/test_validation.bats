@@ -14,6 +14,10 @@
 setup() {
     # Cargar el módulo de validación
     source lib/validation.sh
+
+    # Los discos reales del equipo no deben influir: se simula que todo dispositivo
+    # pedido es un dispositivo de bloque (las pruebas de "inexistente" lo sobrescriben).
+    is_block_device() { return 0; }
 }
 
 ################################################################################
@@ -326,13 +330,8 @@ setup() {
     }
     export -f grep
 
-    # Mock de read para simular confirmación del usuario
-    read() {
-        confirmation="sí"
-    }
-    export -f read
-
-    run check_disk_empty "/dev/sda"
+    # La confirmacion se entrega por stdin: no se sobrescribe read porque bats lo usa por dentro.
+    run check_disk_empty "/dev/sda" <<< "sí"
     [ "$status" -eq 0 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
     [[ "$output" == *"2 partición(es) existente(s)"* ]]
@@ -364,13 +363,8 @@ setup() {
     }
     export -f grep
 
-    # Mock de read para simular confirmación del usuario (sin acento)
-    read() {
-        confirmation="si"
-    }
-    export -f read
-
-    run check_disk_empty "/dev/sda"
+    # La confirmacion se entrega por stdin: no se sobrescribe read porque bats lo usa por dentro.
+    run check_disk_empty "/dev/sda" <<< "si"
     [ "$status" -eq 0 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
     [[ "$output" == *"Confirmación recibida"* ]]
@@ -405,13 +399,8 @@ setup() {
     }
     export -f grep
 
-    # Mock de read para simular confirmación del usuario (mayúsculas)
-    read() {
-        confirmation="SI"
-    }
-    export -f read
-
-    run check_disk_empty "/dev/sda"
+    # La confirmacion se entrega por stdin: no se sobrescribe read porque bats lo usa por dentro.
+    run check_disk_empty "/dev/sda" <<< "SI"
     [ "$status" -eq 0 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
     [[ "$output" == *"3 partición(es) existente(s)"* ]]
@@ -444,13 +433,8 @@ setup() {
     }
     export -f grep
 
-    # Mock de read para simular rechazo del usuario
-    read() {
-        confirmation="no"
-    }
-    export -f read
-
-    run check_disk_empty "/dev/sda"
+    # La confirmacion se entrega por stdin: no se sobrescribe read porque bats lo usa por dentro.
+    run check_disk_empty "/dev/sda" <<< "no"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ADVERTENCIA"* ]]
     [[ "$output" == *"Operación cancelada por el usuario"* ]]
@@ -481,13 +465,8 @@ setup() {
     }
     export -f grep
 
-    # Mock de read para simular respuesta inválida
-    read() {
-        confirmation="maybe"
-    }
-    export -f read
-
-    run check_disk_empty "/dev/sda"
+    # La confirmacion se entrega por stdin: no se sobrescribe read porque bats lo usa por dentro.
+    run check_disk_empty "/dev/sda" <<< "maybe"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Operación cancelada por el usuario"* ]]
 }
@@ -607,4 +586,11 @@ setup() {
     [[ "$output" == *"debe ser PNG válido"* ]]
 
     rm -f "$tmp_file"
+}
+
+@test "is_block_device real devuelve falso para una ruta que no existe" {
+    unset -f is_block_device
+    source lib/validation.sh
+    run is_block_device "/dev/no-existe-miniarch-xyz"
+    [ "$status" -eq 1 ]
 }

@@ -15,6 +15,10 @@ setup() {
     # Cargar el módulo de particionamiento
     source lib/partitioning.sh
 
+    # Los discos reales del equipo no deben influir: se simula que todo dispositivo
+    # pedido es un dispositivo de bloque.
+    is_block_device() { return 0; }
+
     # Mock de funciones de logging
     log() {
         echo "$*"

@@ -12,6 +12,7 @@ jobs:
   lint:
     name: Sintaxis, ShellCheck y codificacion
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +31,7 @@ jobs:
   test:
     name: Pruebas BATS
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -41,4 +43,5 @@ jobs:
       - name: Ejecutar pruebas
         env:
           LC_ALL: C.UTF-8
-        run: bats tests/
+        # Sin stdin: cualquier read sin alimentar falla en lugar de colgar el job.
+        run: bats tests/ < /dev/null
