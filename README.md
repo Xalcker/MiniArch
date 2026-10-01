@@ -497,6 +497,7 @@ MiniArch/
 |   |-- clone-miniarch.sh       # Clona disco, cambia UUIDs y puede expandir /home
 |   `-- expand-home.sh          # Expande /home despues de clonar
 |-- lib/
+|   |-- common.sh              # Logging, prompts y limpieza compartidos
 |   |-- validation.sh          # Validacion de entorno, seguridad, red y disco
 |   |-- partitioning.sh        # GPT/UEFI, formateo, montaje y swap
 |   |-- base_install.sh        # Pacstrap base y fstab
@@ -517,13 +518,14 @@ MiniArch/
 |   |-- plymouth-image.png.example
 |   `-- cursor/
 |-- tests/
+|   |-- test_common.bats
+|   |-- test_song_paths_and_menu.bats
 |   |-- test_validation.bats
 |   |-- test_partitioning.bats
 |   |-- test_base_install.bats
 |   |-- test_bootloader.bats
 |   |-- test_plymouth.bats
 |   |-- test_drivers.bats
-|   |-- test_gui.bats
 |   |-- test_customization.bats
 |   |-- test_finalization.bats
 |   `-- test_integration.bats

@@ -42,6 +42,8 @@ Mantener responsabilidades claras:
 - `partitioning.sh`: particionado, formateo, montaje y swap.
 - `base_install.sh`: sistema base y fstab.
 - `bootloader.sh`: GRUB.
+- `common.sh`: logging, `run_quiet`, prompts y limpieza compartidos por los
+  instaladores.
 - `plymouth.sh`: Plymouth compartido.
 - `drivers.sh`: audio, codecs, Bluetooth y drivers compartidos.
 - `cage.sh`: Cage, usuario, servicio y wrapper.
