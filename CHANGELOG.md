@@ -62,6 +62,9 @@ semantico cuando se publiquen releases formales.
 - `update-clonehero` y la instalacion de Clone Hero ya no fallan con
   `Directory not empty` al actualizar sobre una instalacion existente; ahora
   combinan los archivos nuevos con `cp -a` en vez de `mv`.
+- Las rutas de canciones y de datos persistentes de YARG y Clone Hero ahora se
+  resuelven despues de preguntar el usuario kiosko; antes quedaban fijas en
+  `/home/kiosk/...` si se elegia otro usuario.
 - YARG ahora usa `/home/$KIOSK_USER/Songs` como carpeta real de canciones y
   crea `/opt/YARG/Songs` como enlace simbolico de compatibilidad, incluyendo
   `update-yarg`.

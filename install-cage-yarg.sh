@@ -86,8 +86,10 @@ PLYMOUTH_IMAGE_PATH="${PLYMOUTH_IMAGE_PATH:-./assets/plymouth-image.png}"
 PLYMOUTH_TARGET_RESOLUTION="${PLYMOUTH_TARGET_RESOLUTION:-1280x720}"
 CURSOR_PATH="${CURSOR_PATH:-./assets/cursor/}"
 PLYMOUTH_ASSET_AVAILABLE="${PLYMOUTH_ASSET_AVAILABLE:-false}"
-YARG_SONGS_DIR="${YARG_SONGS_DIR:-/home/$KIOSK_USER/Songs}"
-YARG_PERSISTENT_DATA_DIR="${YARG_PERSISTENT_DATA_DIR:-/home/$KIOSK_USER/.config/yarg-kiosk}"
+# Las rutas que dependen de KIOSK_USER se resuelven en resolve_user_paths(),
+# despues de preguntar el usuario kiosko.
+YARG_SONGS_DIR="${YARG_SONGS_DIR:-}"
+YARG_PERSISTENT_DATA_DIR="${YARG_PERSISTENT_DATA_DIR:-}"
 YARG_RESOLUTION="${YARG_RESOLUTION:-ask}"
 YARG_FORCE_SOFTWARE_RENDER="${YARG_FORCE_SOFTWARE_RENDER:-false}"
 YARG_EXIT_MENU="${YARG_EXIT_MENU:-always}"
@@ -141,6 +143,11 @@ resolve_yarg_resolution() {
             return 1
             ;;
     esac
+}
+
+resolve_user_paths() {
+    YARG_SONGS_DIR="${YARG_SONGS_DIR:-/home/$KIOSK_USER/Songs}"
+    YARG_PERSISTENT_DATA_DIR="${YARG_PERSISTENT_DATA_DIR:-/home/$KIOSK_USER/.config/yarg-kiosk}"
 }
 
 prompt_value() {
@@ -261,9 +268,7 @@ ask_guided_configuration() {
             ;;
     esac
 
-    if [[ "$ENV_FILE_LOADED" != "true" || -z "${YARG_PERSISTENT_DATA_DIR:-}" ]]; then
-        YARG_PERSISTENT_DATA_DIR="/home/$KIOSK_USER/.config/yarg-kiosk"
-    fi
+    resolve_user_paths
 }
 
 ask_initial_questions() {

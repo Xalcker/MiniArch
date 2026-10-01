@@ -79,8 +79,10 @@ CLONEHERO_RELEASE_CHANNEL="${CLONEHERO_RELEASE_CHANNEL:-latest}"
 CLONEHERO_API_URL="${CLONEHERO_API_URL:-https://api.github.com/repos/clonehero-game/releases/releases}"
 CLONEHERO_ASSET_REGEX="${CLONEHERO_ASSET_REGEX:-linux.*(x86_64|x64|64|amd64).*(zip|tar\\.xz|tar\\.gz|appimage)$}"
 CLONEHERO_URL="${CLONEHERO_URL:-}"
-CLONEHERO_SONGS_DIR="${CLONEHERO_SONGS_DIR:-/home/$KIOSK_USER/Songs}"
-CLONEHERO_DATA_DIR="${CLONEHERO_DATA_DIR:-/home/$KIOSK_USER/.clonehero}"
+# Las rutas que dependen de KIOSK_USER se resuelven en resolve_user_paths(),
+# despues de preguntar el usuario kiosko.
+CLONEHERO_SONGS_DIR="${CLONEHERO_SONGS_DIR:-}"
+CLONEHERO_DATA_DIR="${CLONEHERO_DATA_DIR:-}"
 CLONEHERO_RESOLUTION="${CLONEHERO_RESOLUTION:-ask}"
 CLONEHERO_FORCE_SOFTWARE_RENDER="${CLONEHERO_FORCE_SOFTWARE_RENDER:-false}"
 CLONEHERO_EXIT_MENU="${CLONEHERO_EXIT_MENU:-always}"
@@ -128,6 +130,11 @@ resolve_clonehero_resolution() {
             return 1
             ;;
     esac
+}
+
+resolve_user_paths() {
+    CLONEHERO_SONGS_DIR="${CLONEHERO_SONGS_DIR:-/home/$KIOSK_USER/Songs}"
+    CLONEHERO_DATA_DIR="${CLONEHERO_DATA_DIR:-/home/$KIOSK_USER/.clonehero}"
 }
 
 prompt_value() {
@@ -248,9 +255,7 @@ ask_guided_configuration() {
             ;;
     esac
 
-    if [[ "$ENV_FILE_LOADED" != "true" || -z "${CLONEHERO_DATA_DIR:-}" ]]; then
-        CLONEHERO_DATA_DIR="/home/$KIOSK_USER/.clonehero"
-    fi
+    resolve_user_paths
 }
 
 ask_initial_questions() {
