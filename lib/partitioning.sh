@@ -52,6 +52,102 @@ get_partition_path() {
 }
 
 ################################################################################
+# prepare_disk_for_install()
+#
+# Deja el disco destino listo para particionarlo desde cero:
+#   - se niega a tocar el disco del que arranco el ISO live;
+#   - desactiva swap y desmonta lo que este montado desde el disco;
+#   - detiene volumenes LVM/cifrados/RAID heredados que lo estén usando;
+#   - borra las firmas de sistemas de archivos, RAID, LVM, etc. (primero las
+#     particiones y luego el disco) y la tabla de particiones.
+# Sin esto, firmas viejas (mdraid, LVM, ZFS) pueden reactivarse solas en el live
+# y hacer que parted o mkfs fallen con el disco ocupado.
+#
+# Parametros:
+#   $1 - Dispositivo de bloque (ej: /dev/sda)
+#
+# Retorna:
+#   0 si el disco quedo limpio, 1 si no se pudo liberar o es el medio live
+################################################################################
+prepare_disk_for_install() {
+    local device="$1"
+    local live_disk name type mountpoint
+
+    if [[ -z "$device" ]] || ! is_block_device "$device"; then
+        log_error "El dispositivo '$device' no existe"
+        return 1
+    fi
+
+    live_disk=""
+    if declare -F live_boot_disk >/dev/null; then
+        live_disk="$(live_boot_disk)"
+    fi
+    if [[ -n "$live_disk" && "$device" == "$live_disk" ]]; then
+        log_error "$device es el medio de instalacion en uso; no se puede instalar ahi"
+        return 1
+    fi
+
+    log "Liberando y limpiando $device antes de particionar"
+
+    # Swap activo en el disco.
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        log "Desactivando swap en $name"
+        run_quiet swapoff "$name" || log "No se pudo desactivar swap en $name; se continua"
+    done < <(swapon --noheadings --raw --show=NAME 2>/dev/null | grep -E "^${device}(p?[0-9]+)?$" || true)
+
+    # Montajes (los mas profundos primero).
+    while read -r name mountpoint; do
+        [[ -n "$mountpoint" ]] || continue
+        log "Desmontando $mountpoint ($name)"
+        if ! run_quiet umount -R "$mountpoint"; then
+            log_error "No se pudo desmontar $mountpoint; no se puede limpiar $device"
+            return 1
+        fi
+    done < <(lsblk -n -r -p -o NAME,MOUNTPOINT "$device" 2>/dev/null | awk 'NF >= 2 { print }' | tac)
+
+    # LVM, cifrado y RAID heredados sobre el disco.
+    while read -r name type; do
+        case "$type" in
+            lvm | crypt)
+                run_quiet dmsetup remove --force "$name" || log "No se pudo quitar el volumen $name; se continua"
+                ;;
+            raid*)
+                run_quiet mdadm --stop "$name" || log "No se pudo detener el RAID $name; se continua"
+                ;;
+        esac
+    done < <(lsblk -n -r -p -o NAME,TYPE "$device" 2>/dev/null | tac)
+
+    # Firmas: particiones primero, luego el disco completo.
+    while read -r name type; do
+        [[ "$type" == "part" ]] || continue
+        if ! run_quiet wipefs --all --force "$name"; then
+            log_error "Fallo al borrar las firmas de $name"
+            return 1
+        fi
+    done < <(lsblk -n -r -p -o NAME,TYPE "$device" 2>/dev/null | tac)
+
+    if ! run_quiet wipefs --all --force "$device"; then
+        log_error "Fallo al borrar las firmas de $device"
+        return 1
+    fi
+
+    if command -v sgdisk &> /dev/null; then
+        run_quiet sgdisk --zap-all "$device" || log "sgdisk no pudo limpiar la tabla de particiones; se continua"
+    fi
+
+    if command -v partprobe &> /dev/null; then
+        run_quiet partprobe "$device" || true
+    fi
+    if command -v udevadm &> /dev/null; then
+        run_quiet udevadm settle || true
+    fi
+
+    log "Disco $device limpio"
+    return 0
+}
+
+################################################################################
 # Función para particionar el disco
 #
 # Crea una tabla de particiones GPT y 4 particiones según el esquema definido:

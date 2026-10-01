@@ -264,6 +264,14 @@ Tambien puedes fijar `DISK_DEVICE` manualmente, por ejemplo `/dev/sda`,
 `/dev/nvme0n1` o `/dev/vda`; aun asi el instalador mostrara el selector para
 evitar errores antes de particionar.
 
+Proteccion del disco: el selector **oculta el disco del que arrancaste el ISO**
+(el USB de instalacion, detectado desde `/run/archiso/bootmnt`) y rechaza
+escribirlo a mano o fijarlo en `.env`, incluidas sus particiones. Antes de
+particionar, el instalador desactiva el swap y desmonta lo que este usando el
+disco destino, detiene volumenes LVM/RAID heredados y borra las firmas
+previas (`wipefs` y `sgdisk --zap-all`) para que firmas viejas no se reactiven
+ni bloqueen `parted` o `mkfs`.
+
 ## Flujo De Cage/YARG
 
 `install-cage-yarg.sh` ejecuta, en orden:
@@ -657,6 +665,7 @@ MiniArch/
 |   |-- test_rpcs3.bats
 |   |-- test_repo_hygiene.bats
 |   |-- test_drivers.bats
+|   |-- test_disk_safety.bats
 |   |-- test_customization.bats
 |   |-- test_finalization.bats
 |   `-- test_integration.bats

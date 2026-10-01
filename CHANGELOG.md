@@ -9,6 +9,11 @@ semantico cuando se publiquen releases formales.
 
 ### Agregado
 
+- Proteccion del disco destino: el selector oculta y rechaza el disco del que
+  arranco el ISO live (`live_boot_disk`), y `prepare_disk_for_install` desactiva
+  swap, desmonta, detiene LVM/RAID heredados y borra firmas (`wipefs`,
+  `sgdisk --zap-all`) antes de particionar, en los cuatro instaladores.
+
 - CI en GitHub Actions (`.github/workflows/ci.yml`): `bash -n`, `shellcheck -S
   warning`, `bats tests/` y `scripts/check-encoding.sh`, que falla si aparece un
   BOM, doble codificacion UTF-8 o finales de linea CRLF.
