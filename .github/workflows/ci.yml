@@ -21,12 +21,12 @@ jobs:
 
       - name: Sintaxis (bash -n)
         run: |
-          for f in install-cage-*.sh lib/*.sh scripts/*.sh; do
+          for f in install-cage-*.sh lib/*.sh scripts/*.sh assets/*.sh; do
             bash -n "$f"
           done
 
       - name: ShellCheck (advertencias y errores)
-        run: shellcheck -x -S warning -s bash install-cage-*.sh lib/*.sh scripts/*.sh
+        run: shellcheck -x -S warning -s bash install-cage-*.sh lib/*.sh scripts/*.sh assets/*.sh
 
   test:
     name: Pruebas BATS

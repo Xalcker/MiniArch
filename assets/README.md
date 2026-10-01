@@ -1,205 +1,95 @@
-# Assets para Instalador de Arch Linux Kiosko
+# Assets del instalador
 
-Este directorio contiene los recursos visuales personalizables para el instalador.
+Recursos visuales que usan los instaladores `install-cage-*.sh`: la imagen de
+arranque de Plymouth y el cursor del kiosko.
 
-## Estructura
+## Contenido
 
-```
+```text
 assets/
-├── plymouth-image.png     # Imagen para Plymouth (1280x720)
-├── cursor/                # Cursor personalizado
-│   └── README.md         # Instrucciones para el cursor
-└── README.md             # Este archivo
+├── yarg_720p.png            # Plymouth para el camino Cage/YARG (1280x720)
+├── yarg_1080p.png           # Plymouth para el camino Cage/YARG (1920x1080)
+├── clonehero_720p.png       # Plymouth para el camino Cage/Clone Hero
+├── clonehero_1080p.png
+├── plymouth-image_720p.png  # Imagen genérica de respaldo
+├── plymouth-image_1080p.png
+├── plymouth-image.png.example   # Nota sobre cómo usar tu propia imagen
+├── create-example-assets.sh     # Genera una imagen de ejemplo con ImageMagick
+└── cursor/                  # Cursor del kiosko (ver cursor/README.md)
 ```
 
-## Seleccion Automatica Por Camino
+## Cómo se elige la imagen de Plymouth
 
-En `install-cage-yarg.sh` e `install-cage-clonehero.sh`, el valor por defecto
-de `PLYMOUTH_IMAGE_PATH` activa seleccion automatica. El instalador busca
-primero el asset especifico del camino y resolucion elegidos:
+Con el valor por defecto de `PLYMOUTH_IMAGE_PATH` (`./assets/plymouth-image.png`),
+`install-cage-yarg.sh`, `install-cage-clonehero.sh` e `install-cage-rpcs3.sh`
+eligen automáticamente la primera imagen que exista, según el camino y la
+resolución elegidos (`select_plymouth_image`):
 
-- `yarg_720p.png`
-- `yarg_1080p.png`
-- `clonehero_720p.png`
-- `clonehero_1080p.png`
-- `rpcs3_720p.png`
-- `rpcs3_1080p.png` (el camino RPCS3 usa 1080p; si no existe cae a
-  `plymouth-image_1080p.png`)
+1. `<camino>_<resolución>.png` (por ejemplo `yarg_1080p.png`) y sus variantes
+   `<camino>-<resolución>.png` y `<camino>_<ancho>x<alto>.png`.
+2. `plymouth-image_<resolución>.png`.
+3. `plymouth-image.png`.
 
-Si no existe, cae a `plymouth-image_720p.png`, `plymouth-image_1080p.png` y
-finalmente a `plymouth-image.png`. Si defines `PLYMOUTH_IMAGE_PATH` con una ruta
-propia, esa imagen se respeta. ImageMagick del entorno live se usa como respaldo
-para ajustar la imagen a la resolucion seleccionada; si no esta disponible, se
-intenta dentro del sistema instalado.
+El camino RPCS3 no trae imagen propia: usa 1080p y cae en
+`plymouth-image_1080p.png`. Puedes agregar `rpcs3_720p.png` o `rpcs3_1080p.png`
+para personalizarla.
 
-## Imagen de Plymouth (plymouth-image.png)
+Si defines `PLYMOUTH_IMAGE_PATH` con una ruta propia, se respeta tal cual.
+`install-cage-kiosk.sh` (foot) no elige por resolución: usa `PLYMOUTH_IMAGE_PATH` y
+la escala a 1280x720.
 
-### Requisitos
+## Usar tu propia imagen
 
-- **Formato**: PNG válido
-- **Resolución recomendada**: 1280x720 píxeles
-- **Profundidad de color**: 24-bit o 32-bit (con alpha)
-- **Tamaño de archivo**: Preferiblemente < 5MB
+Requisitos:
 
-### Cómo Crear la Imagen
+- **Formato:** PNG válido (el instalador lo comprueba con `file`; un archivo que
+  no sea PNG detiene la instalación).
+- **Resolución:** la de tu pantalla. Si ImageMagick está disponible, el
+  instalador la **escala a la resolución elegida** (`PLYMOUTH_TARGET_RESOLUTION`,
+  por ejemplo `1920x1080`); si no, copia el PNG sin escalar.
+- **Recomendado:** fondo oscuro, poco detalle y menos de 5 MB. Es una imagen
+  estática que se muestra durante el arranque y el apagado.
 
-#### Opción 1: Usar GIMP (Recomendado)
-
-1. Abre GIMP
-2. Crea una nueva imagen: `Archivo → Nuevo`
-   - Ancho: 1280 píxeles
-   - Alto: 720 píxeles
-3. Diseña tu imagen de arranque
-4. Exporta como PNG: `Archivo → Exportar como`
-   - Nombre: `plymouth-image.png`
-   - Ubicación: Este directorio (`assets/`)
-
-#### Opción 2: Usar ImageMagick desde línea de comandos
+Elige una de estas formas:
 
 ```bash
-# Crear una imagen simple con texto
-convert -size 1280x720 xc:black \
-    -font Arial -pointsize 72 -fill white \
-    -gravity center -annotate +0+0 "Arch Linux Kiosko" \
-    plymouth-image.png
+# 1) Nombre por camino y resolución: se detecta sola
+cp mi-imagen.png assets/yarg_1080p.png
 
-# Crear una imagen con gradiente
-convert -size 1280x720 gradient:blue-black \
-    -font Arial -pointsize 60 -fill white \
-    -gravity center -annotate +0+0 "Bienvenido" \
-    plymouth-image.png
-
-# Redimensionar una imagen existente
-convert mi-imagen.png -resize 1280x720! plymouth-image.png
+# 2) Ruta explícita en .env
+PLYMOUTH_IMAGE_PATH=/ruta/a/mi-imagen.png
 ```
 
-#### Opción 3: Usar Python con Pillow
+El repo se clona dentro del ISO live (`git clone https://github.com/Xalcker/MiniArch.git`),
+así que copia tus imágenes a la carpeta `assets/` del clon **antes** de ejecutar
+el instalador, o apunta `PLYMOUTH_IMAGE_PATH` a un archivo en un USB montado.
+ImageMagick no viene en el ISO: instálalo con `pacman -Sy imagemagick` si quieres
+el escalado.
 
-```python
-from PIL import Image, ImageDraw, ImageFont
+Si la imagen falta, Plymouth se instala sin imagen personalizada y la
+instalación continúa; si existe pero no es un PNG válido, la instalación se
+detiene antes de tocar el disco.
 
-# Crear imagen
-img = Image.new('RGB', (1280, 720), color='#1a1a2e')
+## Crear una imagen de ejemplo
 
-# Agregar texto
-draw = ImageDraw.Draw(img)
-try:
-    font = ImageFont.truetype("arial.ttf", 60)
-except:
-    font = ImageFont.load_default()
-
-text = "Arch Linux Kiosko"
-bbox = draw.textbbox((0, 0), text, font=font)
-text_width = bbox[2] - bbox[0]
-text_height = bbox[3] - bbox[1]
-
-position = ((1280 - text_width) // 2, (720 - text_height) // 2)
-draw.text(position, text, fill='white', font=font)
-
-# Guardar
-img.save('plymouth-image.png')
-```
-
-### Imagen de Ejemplo Incluida
-
-Si no proporcionas una imagen personalizada, el script usará una imagen predeterminada simple. Para crear tu propia imagen de ejemplo:
+`create-example-assets.sh` genera un degradado con texto en la resolución que
+indiques (por defecto `1920x1080`) usando ImageMagick (`magick` o `convert`):
 
 ```bash
-# Instalar ImageMagick si no lo tienes
-# Ubuntu/Debian: sudo apt-get install imagemagick
-# macOS: brew install imagemagick
-# Windows: Descargar desde https://imagemagick.org/
-
-# Crear imagen de ejemplo
 cd assets
-convert -size 1280x720 gradient:#0f2027-#203a43-#2c5364 \
-    -font Arial-Bold -pointsize 80 -fill white \
-    -gravity center -annotate +0-50 "Arch Linux" \
-    -pointsize 40 -annotate +0+50 "Modo Kiosko" \
-    plymouth-image.png
+bash create-example-assets.sh              # plymouth-image.png en 1920x1080
+bash create-example-assets.sh 1280x720     # otra resolución
 ```
 
-### Validar la Imagen
-
-Antes de usar la imagen, valida que sea un PNG correcto:
+También puedes diseñarla en GIMP, Inkscape o cualquier editor; basta con
+exportar un PNG. Para comprobarla:
 
 ```bash
-# Verificar formato
-file plymouth-image.png
-# Debe mostrar: PNG image data, 1280 x 720, ...
-
-# Verificar dimensiones
-identify plymouth-image.png
-# Debe mostrar: plymouth-image.png PNG 1280x720 ...
+file mi-imagen.png        # PNG image data, 1920 x 1080, ...
+identify mi-imagen.png    # (ImageMagick) dimensiones
 ```
 
-### Notas Importantes
+## Cursor
 
-- El script escalará automáticamente la imagen a 1280x720 si tiene dimensiones diferentes
-- Se recomienda usar imágenes con fondo oscuro para mejor contraste
-- Evita imágenes muy complejas o con mucho detalle (pueden verse mal durante el arranque)
-- La imagen se mostrará durante el arranque y apagado del sistema
-
-## Cursor Personalizado
-
-Ver `cursor/README.md` para instrucciones sobre cómo agregar un cursor personalizado.
-
-## Transferir Assets a la VM
-
-### Método 1: SCP (Recomendado)
-
-```bash
-# Desde tu máquina host
-scp plymouth-image.png root@<IP_DE_LA_VM>:/root/arch-kiosk-installer/assets/
-scp -r cursor/* root@<IP_DE_LA_VM>:/root/arch-kiosk-installer/assets/cursor/
-```
-
-### Método 2: Carpeta Compartida de VirtualBox
-
-1. En VirtualBox: `Configuración → Carpetas compartidas`
-2. Agregar carpeta compartida apuntando a `assets/`
-3. En la VM:
-```bash
-mkdir /mnt/shared
-mount -t vboxsf nombre_compartido /mnt/shared
-cp /mnt/shared/plymouth-image.png /root/arch-kiosk-installer/assets/
-```
-
-### Método 3: Servidor Web Temporal
-
-```bash
-# En tu máquina host (con Python)
-cd assets
-python3 -m http.server 8000
-
-# En la VM
-cd /root/arch-kiosk-installer/assets
-wget http://<IP_DEL_HOST>:8000/plymouth-image.png
-```
-
-## Ejemplos de Diseño
-
-### Diseño Minimalista
-
-- Fondo negro sólido
-- Logo o texto centrado en blanco
-- Sin animaciones (Plymouth mostrará la imagen estática)
-
-### Diseño Corporativo
-
-- Colores de la marca
-- Logo de la empresa centrado
-- Texto opcional con nombre del sistema
-
-### Diseño Moderno
-
-- Gradiente suave de colores
-- Tipografía moderna
-- Elementos geométricos simples
-
-## Recursos Adicionales
-
-- [Plymouth Themes](https://www.gnome-look.org/browse?cat=108)
-- [ImageMagick Documentation](https://imagemagick.org/index.php)
-- [GIMP Tutorials](https://www.gimp.org/tutorials/)
-- [Pillow Documentation](https://pillow.readthedocs.io/)
+Ver [cursor/README.md](cursor/README.md): el instalador genera el tema
+`MiniArchPick` a partir de un PNG.

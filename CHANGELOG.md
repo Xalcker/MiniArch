@@ -72,11 +72,20 @@ Infraestructura:
   BOM, doble codificacion UTF-8 o finales de linea CRLF.
 - Pruebas nuevas: `test_common`, `test_env_loader`, `test_disk_safety`,
   `test_partition_sizes`, `test_nvidia`, `test_rpcs3`, `test_repo_hygiene`,
-  `test_docs` (coherencia de la documentacion con el repo) y
+  `test_docs` (coherencia de la documentacion con el repo), `test_assets` y
   `test_song_paths_and_menu`.
 - `.gitattributes` para mantener LF en scripts, pruebas y documentos.
 
 ### Cambiado
+
+- Documentacion de `assets/` reescrita para describir el flujo real:
+  seleccion de la imagen de Plymouth por camino y resolucion, y generacion del
+  tema de cursor `MiniArchPick` a partir de un PNG (`xcursorgen`, punto activo
+  fijo en 23,8). `assets/create-example-assets.sh` ahora acepta `ANCHOxALTO`,
+  soporta `magick` y `convert`, y ya no genera un tema X11 completo.
+- Los specs del instalador OpenBox (`.kiro/specs/arch-kiosk-installer/`) se
+  archivaron en `docs/historico/instalador-openbox/` con un aviso de que no
+  describen el codigo actual.
 
 - Nuevo `lib/common.sh` con el logging, `run_quiet`, los prompts y la limpieza
   ante fallos que estaban copiados en los instaladores.
@@ -102,6 +111,9 @@ Infraestructura:
 - El antiguo camino OpenBox fue reemplazado por Cage/foot.
 
 ### Removido
+
+- `assets/cursor/PLACEHOLDER.txt` (el directorio ya incluye el cursor) y la
+  configuracion de Kiro `.kiro/specs/arch-kiosk-installer/.config.kiro`.
 
 - `TODO.md`: su unico pendiente (`YARG_FORCE_WAYLAND`) se sigue en el issue #10.
 - Funciones sin uso heredadas del instalador OpenBox y sus pruebas:

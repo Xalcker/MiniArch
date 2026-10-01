@@ -13,7 +13,7 @@
 
 @test "el README no menciona archivos de pruebas ni modulos que ya no existen" {
     local name
-    for name in $(grep -oE '(test_[a-z0-9_]+\.bats|[a-z0-9_]+\.sh)' README.md | sort -u); do
+    for name in $(grep -oE '(test_[a-z0-9_]+\.bats|[a-z0-9_-]+\.sh)' README.md | sort -u); do
         if [[ "$name" == test_*.bats ]]; then
             [ -e "tests/$name" ] || { echo "README menciona tests/$name, que no existe" >&2; return 1; }
         else
