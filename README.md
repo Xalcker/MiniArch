@@ -633,6 +633,14 @@ Variables de Cage/RPCS3:
 - `RPCS3_DOWNLOAD_FIRMWARE`: `true` (por defecto) descarga el firmware en el
   home del usuario; `false` lo omite.
 - `RPCS3_FIRMWARE_URL`: URL del `PS3UPDAT.PUP`.
+- `RB3DX_DOWNLOAD`: `true` (por defecto) descarga la ultima build de Rock Band 3
+  Deluxe para PS3 (~750 MB) a `/home/<usuario>/RB3DX-PS3.zip`; `false` la omite.
+- `RB3DX_URL`: URL del zip de RB3DX (por defecto la build `develop` en nightly.link).
+- `RB3DX_CONFIG_PROFILE`: perfil de configuracion de la guia de MiloHax:
+  `recommended`, `minimum`, `potato` o `none`. Vacio = el instalador pregunta.
+  Copia `custom_configs/config_BLUS30463.yml` y `dx_high_memory.dta` a
+  `~/.config/rpcs3` del usuario.
+- `RB3DX_CONFIG_BASE_URL`: carpeta donde estan los zips de los perfiles.
 - `RPCS3_GAMES_DIR`: carpeta de juegos y share Samba. Por defecto
   `/home/${KIOSK_USER}/Games`.
 - `RPCS3_GAME_PATH`: ruta fija al `EBOOT.BIN` a lanzar; tiene prioridad sobre la

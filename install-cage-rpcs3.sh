@@ -47,6 +47,13 @@ RPCS3_API_URL="${RPCS3_API_URL:-https://api.github.com/repos/RPCS3/rpcs3-binarie
 RPCS3_ASSET_REGEX="${RPCS3_ASSET_REGEX:-linux64.*\\.AppImage$}"
 RPCS3_DOWNLOAD_FIRMWARE="${RPCS3_DOWNLOAD_FIRMWARE:-true}"
 RPCS3_FIRMWARE_URL="${RPCS3_FIRMWARE_URL:-http://dus01.ps3.update.playstation.net/update/ps3/image/us/2026_0318_a2b60b6ac1d2e49e230144345616927c/PS3UPDAT.PUP}"
+# Rock Band 3 Deluxe: ultima build para PS3 (nightly.link, rama develop) y
+# perfiles de configuracion recomendados de la guia de MiloHax.
+RB3DX_DOWNLOAD="${RB3DX_DOWNLOAD:-true}"
+RB3DX_URL="${RB3DX_URL:-https://nightly.link/hmxmilohax/rock-band-3-deluxe/workflows/build/develop/RB3DX-PS3.zip}"
+RB3DX_CONFIG_BASE_URL="${RB3DX_CONFIG_BASE_URL:-https://guides.milohax.org/downloads/rb3/rpcs3/customconfigs}"
+RB3DX_CONFIG_PROFILE="${RB3DX_CONFIG_PROFILE:-}"
+RB3DX_DISCLAIMERS_URL="https://guides.milohax.org/en/rb3pc/intro/disclaimers/"
 # Las rutas que dependen de KIOSK_USER se resuelven en resolve_user_paths(),
 # despues de preguntar el usuario kiosko.
 RPCS3_GAMES_DIR="${RPCS3_GAMES_DIR:-}"
@@ -109,6 +116,28 @@ ask_guided_configuration() {
             ;;
         *)
             log_error "RPCS3_EXIT_MENU invalido: $RPCS3_EXIT_MENU. Use always, restart o never."
+            return 1
+            ;;
+    esac
+
+    if [[ -z "${RB3DX_CONFIG_PROFILE:-}" ]]; then
+        local profile_answer="recommended"
+        echo ""
+        echo "Perfil de configuracion de RB3DX (guia de MiloHax):"
+        echo "  recommended  PC que cumple los requisitos recomendados"
+        echo "  minimum      PC con requisitos minimos"
+        echo "  potato       experimental, OpenGL para graficos integrados (no recomendado)"
+        echo "  none         no aplicar ningun perfil"
+        read -rp "$(echo -e "${BLUE}Perfil [recommended/minimum/potato/none] (${profile_answer}): ${NC}")" profile_answer
+        RB3DX_CONFIG_PROFILE="${profile_answer:-recommended}"
+    fi
+
+    case "${RB3DX_CONFIG_PROFILE,,}" in
+        recommended|minimum|potato|none)
+            RB3DX_CONFIG_PROFILE="${RB3DX_CONFIG_PROFILE,,}"
+            ;;
+        *)
+            log_error "RB3DX_CONFIG_PROFILE invalido: $RB3DX_CONFIG_PROFILE. Use recommended, minimum, potato o none."
             return 1
             ;;
     esac
@@ -308,6 +337,8 @@ main() {
     fi
 
     download_rpcs3_firmware
+    download_rb3dx
+    install_rb3dx_config_profile
 
     if ! configure_rpcs3_games_dir; then
         log_error "Fallo en la carpeta de juegos de RPCS3"
@@ -353,7 +384,8 @@ main() {
     section "Finalizacion"
     if ! cleanup_and_finish \
         "Cage + RPCS3 quedan instalados en /opt/RPCS3." \
-        "En el primer arranque se abre la GUI de RPCS3 para instalar firmware, juego y controles."; then
+        "En el primer arranque se abre la GUI de RPCS3 para instalar firmware, juego y controles.
+Antes de configurar Rock Band 3 lea las advertencias y la guia: $RB3DX_DISCLAIMERS_URL"; then
         log_error "Fallo en limpieza/finalizacion de la instalacion"
         exit 1
     fi
