@@ -9,6 +9,10 @@ Este documento resume las consideraciones de seguridad para MiniArch.
 Recomendaciones:
 
 - Mantener `.env` fuera de Git. Ya esta incluido en `.gitignore`.
+- El instalador lee `.env` como `CLAVE=valor` y **no lo ejecuta**: no hay
+  sustitucion de comandos y las variables reservadas (`PATH`, `IFS`, `LD_PRELOAD`,
+  ...) se rechazan. Usa comillas simples para passwords con simbolos
+  (`KIOSK_PASSWORD='pa$$w0rd'`).
 - Usar permisos restrictivos:
 
 ```bash

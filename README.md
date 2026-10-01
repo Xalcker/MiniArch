@@ -209,6 +209,25 @@ YARG_FORCE_SOFTWARE_RENDER=false
 YARG_EXIT_MENU=always
 ```
 
+### Formato del .env
+
+El `.env` **no se ejecuta como script**: el instalador lo lee linea por linea
+como `CLAVE=valor` y nunca evalua el valor (no hay sustitucion de comandos).
+
+```bash
+# Comentario
+KIOSK_USER=kiosk                        # sin comillas: literal; " #" inicia un comentario
+KIOSK_PASSWORD='pa$$w0rd&x;(y)!'        # comillas simples: totalmente literal (recomendado para passwords)
+ROOT_PASSWORD="con \"comillas\" y \\"   # comillas dobles: admiten \\  \"  \$  \`
+YARG_SONGS_DIR=/home/${KIOSK_USER}/Songs  # solo se expande ${NOMBRE} (con llaves)
+```
+
+- Un `$` suelto no se expande: `pa$$word` queda tal cual.
+- Una linea que no sea `CLAVE=valor`, unas comillas sin cerrar o una variable
+  reservada (`PATH`, `IFS`, `HOME`, `LD_PRELOAD`, ...) detienen la instalacion con
+  el numero de linea del problema.
+- Se aceptan finales de linea CRLF (por si editas el archivo en Windows).
+
 Ejecuta el camino recomendado:
 
 ```bash
@@ -628,6 +647,7 @@ MiniArch/
 |   `-- cursor/
 |-- tests/
 |   |-- test_common.bats
+|   |-- test_env_loader.bats
 |   |-- test_song_paths_and_menu.bats
 |   |-- test_validation.bats
 |   |-- test_partitioning.bats

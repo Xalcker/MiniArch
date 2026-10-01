@@ -17,10 +17,7 @@ source "$SCRIPT_DIR/lib/common.sh" || { echo "No se pudo importar common.sh" >&2
 
 if [[ -f "$SCRIPT_DIR/.env" ]]; then
     log "Cargando configuracion desde .env..."
-    set -a
-    # shellcheck disable=SC1090
-    source <(grep -v '^#' "$SCRIPT_DIR/.env" | grep -v '^$')
-    set +a
+    load_env_file "$SCRIPT_DIR/.env" || exit 1
     log "Configuracion cargada desde .env"
 fi
 
