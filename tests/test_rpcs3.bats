@@ -191,3 +191,16 @@ fake_appimage() {
     grep -Fq 'local min_gb="${2:-16}"' lib/validation.sh
     grep -Fq 'Se requieren al menos ${min_gb}GB' lib/validation.sh
 }
+
+@test "find_game encuentra un volcado de disco agregado desde la GUI (dev_hdd0/disc)" {
+    local games="$BATS_TEST_TMPDIR/games"
+    mkdir -p "$games"
+    make_game "$BATS_TEST_TMPDIR/cfg/dev_hdd0/disc/RockBand3/PS3_GAME" "Rock Band 3"
+    load_find_game "$games"
+    run find_game
+    [ "$output" = "$BATS_TEST_TMPDIR/cfg/dev_hdd0/disc/RockBand3/PS3_GAME/USRDIR/EBOOT.BIN" ]
+}
+
+@test "el servicio fija LimitMEMLOCK=infinity para el requisito de 2 GiB de RPCS3" {
+    grep -Fq 'LimitMEMLOCK=infinity' lib/rpcs3.sh
+}

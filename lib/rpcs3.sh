@@ -572,8 +572,9 @@ find_rpcs3_bin() {
 }
 
 # Imprime la ruta del EBOOT.BIN a lanzar. Si RPCS3_GAME_PATH esta definida se
-# usa tal cual; si no, se busca en la carpeta de juegos y en dev_hdd0/game el
-# primer PARAM.SFO cuyo titulo contiene RPCS3_GAME_MATCH.
+# usa tal cual; si no, se busca en la carpeta de juegos, en dev_hdd0/disc
+# (volcados de disco agregados desde la GUI) y en dev_hdd0/game (juegos
+# instalados) el primer PARAM.SFO cuyo titulo contiene RPCS3_GAME_MATCH.
 find_game() {
     local sfo game_dir eboot
 
@@ -591,7 +592,7 @@ find_game() {
                 return 0
             fi
         fi
-    done < <(find "$RPCS3_GAMES_DIR" "$RPCS3_CONFIG_DIR/dev_hdd0/game" -maxdepth 4 -name PARAM.SFO 2>/dev/null)
+    done < <(find "$RPCS3_GAMES_DIR" "$RPCS3_CONFIG_DIR/dev_hdd0/disc" "$RPCS3_CONFIG_DIR/dev_hdd0/game" -maxdepth 4 -name PARAM.SFO 2>/dev/null)
 
     return 0
 }
@@ -700,6 +701,8 @@ StandardError=journal
 TTYReset=yes
 TTYVHangup=yes
 TTYVTDisallocate=yes
+# RPCS3 pide fijar RLIMIT_MEMLOCK a 2 GiB; no depender de pam_limits.
+LimitMEMLOCK=infinity
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
 Environment=XDG_RUNTIME_DIR=/run/user/$kiosk_uid
 ExecStartPre=+/usr/bin/mkdir -p /run/user/$kiosk_uid

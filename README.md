@@ -456,7 +456,8 @@ asi:
 2. En la GUI: `File > Install Firmware` y elige
    `/home/kiosk/PS3UPDAT.PUP`; agrega o instala el juego (disco volcado en
    `/home/kiosk/Games`, o PKG/DLC); configura guitarras, bateria, microfono y
-   mandos en `Pads`.
+   mandos en `Pads`. Para mandos e instrumentos que no son originales de PS3,
+   el `Handler` debe ser `evdev` (ya estan `libevdev` y el grupo `input`).
 3. Cierra RPCS3. A partir de ahi, el wrapper busca el juego y lo lanza con
    `rpcs3 --no-gui <EBOOT.BIN>`.
 
@@ -469,7 +470,9 @@ Como encuentra el juego el wrapper, en orden:
 1. `RPCS3_GAME_PATH`, si esta definida y existe.
 2. El primer `PARAM.SFO` cuyo titulo contiene `RPCS3_GAME_MATCH` (por defecto
    `Rock Band 3`), buscando en `RPCS3_GAMES_DIR` (juegos de disco, estructura
-   `<juego>/PS3_GAME/`) y en `~/.config/rpcs3/dev_hdd0/game` (juegos instalados).
+   `<juego>/PS3_GAME/`), en `~/.config/rpcs3/dev_hdd0/disc` (volcados de disco
+   agregados desde la GUI) y en `~/.config/rpcs3/dev_hdd0/game` (juegos
+   instalados).
 
 Si no lo encuentra abre la GUI. Desde el menu de mantenimiento (aparece al
 salir del juego, salvo `RPCS3_EXIT_MENU=restart` o `never`) la opcion
@@ -728,6 +731,13 @@ ls -la /opt/RPCS3 /home/kiosk/Games
   `RPCS3_QT_PLATFORM=xcb` (XWayland) o `wayland` y reinstala el wrapper.
 - RPCS3 necesita Vulkan y una CPU con AVX2; en maquinas virtuales sin GPU no
   correra a una velocidad jugable.
+- Si un juego dejo de funcionar de repente, borra la cache (es seguro; solo
+  guarda logs y shaders compilados, y el siguiente arranque tarda mas):
+  `rm -rf ~/.cache/rpcs3`.
+- Si los objetos aparecen de golpe mientras se compilan shaders, en
+  `Config > GPU` pon `Shader Mode` en `Async with Shader Interpreter`.
+- Si RPCS3 reporta `Failed to set RLIMIT_MEMLOCK size to 2 GiB`, revisa que
+  `cage-kiosk.service` tenga `LimitMEMLOCK=infinity` (el instalador lo agrega).
 
 ### Necesito ver la salida completa del instalador
 
