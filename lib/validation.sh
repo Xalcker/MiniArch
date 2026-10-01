@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Indica si $1 es un dispositivo de bloque. Es una funcion (y no un [[ -b ]]
+# directo) para que las pruebas puedan sustituirla sin depender de los discos
+# reales del equipo que las corre.
+if ! declare -F is_block_device >/dev/null; then
+    is_block_device() { [[ -b "$1" ]]; }
+fi
+
 ################################################################################
 # Módulo de Validación
 #
@@ -140,7 +147,7 @@ select_disk_device() {
         selected="$answer"
     fi
 
-    if [[ ! -b "$selected" ]]; then
+    if ! is_block_device "$selected"; then
         echo "ERROR: El dispositivo '$selected' no existe o no es un dispositivo de bloque." >&2
         return 1
     fi
@@ -186,7 +193,7 @@ check_disk() {
     fi
 
     # Verificar que el dispositivo existe
-    if [[ ! -b "$disk_device" ]]; then
+    if ! is_block_device "$disk_device"; then
         echo "ERROR: El dispositivo '$disk_device' no existe o no es un dispositivo de bloque." >&2
         return 1
     fi
@@ -238,7 +245,7 @@ check_disk_empty() {
     fi
 
     # Verificar que el dispositivo existe
-    if [[ ! -b "$disk_device" ]]; then
+    if ! is_block_device "$disk_device"; then
         echo "ERROR: El dispositivo '$disk_device' no existe o no es un dispositivo de bloque." >&2
         return 1
     fi

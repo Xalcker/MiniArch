@@ -635,6 +635,7 @@ MiniArch/
 |   |-- test_bootloader.bats
 |   |-- test_plymouth.bats
 |   |-- test_rpcs3.bats
+|   |-- test_repo_hygiene.bats
 |   |-- test_drivers.bats
 |   |-- test_customization.bats
 |   |-- test_finalization.bats

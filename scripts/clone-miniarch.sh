@@ -232,7 +232,8 @@ confirm_clone() {
 clone_disk() {
     local source_disk="$1"
     local target_disk="$2"
-    local mapfile_path="/tmp/miniarch-ddrescue-$(basename "$source_disk")-to-$(basename "$target_disk").map"
+    local mapfile_path
+    mapfile_path="/tmp/miniarch-ddrescue-$(basename "$source_disk")-to-$(basename "$target_disk").map"
 
     log "Clonando $source_disk hacia $target_disk..."
     if command -v ddrescue >/dev/null 2>&1; then

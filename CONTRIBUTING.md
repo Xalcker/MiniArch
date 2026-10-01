@@ -66,6 +66,11 @@ bats tests/*.bats
 Si corres `bats` desde Git Bash en Windows, exporta `LC_ALL=C.UTF-8` (los
 nombres de prueba llevan acentos) y usa una copia con finales de linea LF.
 
+El CI (GitHub Actions, `.github/workflows/ci.yml`) ejecuta en cada PR la
+verificacion de codificacion (`scripts/check-encoding.sh`: sin BOM, mojibake ni
+CRLF), `bash -n`, `shellcheck -S warning` y `bats tests/`. Puedes correr las
+mismas comprobaciones en local.
+
 Valida sintaxis de Bash:
 
 ```bash

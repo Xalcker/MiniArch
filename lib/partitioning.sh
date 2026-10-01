@@ -4,6 +4,13 @@ if ! declare -F run_quiet >/dev/null; then
     run_quiet() { "$@"; }
 fi
 
+# Indica si $1 es un dispositivo de bloque. Es una funcion (y no un [[ -b ]]
+# directo) para que las pruebas puedan sustituirla sin depender de los discos
+# reales del equipo que las corre.
+if ! declare -F is_block_device >/dev/null; then
+    is_block_device() { [[ -b "$1" ]]; }
+fi
+
 ################################################################################
 # Módulo de Particionamiento
 #
@@ -63,7 +70,7 @@ partition_disk() {
     local device="$1"
 
     # Verificar que el dispositivo existe
-    if [[ ! -b "$device" ]]; then
+    if ! is_block_device "$device"; then
         log_error "El dispositivo $device no existe"
         return 1
     fi
