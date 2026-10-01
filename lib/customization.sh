@@ -5,12 +5,11 @@
 #
 # Este módulo contiene funciones para personalizar la apariencia y comportamiento
 # del sistema, incluyendo ocultación de mensajes del sistema, instalación de
-# cursor personalizado y aplicación de imagen de Plymouth.
+# cursor personalizado.
 #
 # Funciones:
 # - hide_system_messages(): Oculta todos los mensajes del sistema
 # - install_custom_cursor(): Instala cursor personalizado
-# - apply_plymouth_image(): Valida y copia imagen PNG para Plymouth
 ################################################################################
 
 ################################################################################
@@ -248,136 +247,3 @@ EOF
     return 0
 }
 
-################################################################################
-# apply_plymouth_image()
-#
-# Valida que un archivo es una imagen PNG válida y la copia al directorio
-# del tema de Plymouth. Si la imagen tiene dimensiones diferentes a 1280x720,
-# la escala a esa resolución.
-#
-# Arguments:
-#   $1 - image_path: Ruta a la imagen PNG
-#   $2 - theme_name: Nombre del tema de Plymouth
-#
-# Returns:
-#   0 - Si la imagen fue aplicada exitosamente
-#   1 - Si hubo algún error
-################################################################################
-apply_plymouth_image() {
-    local image_path="$1"
-    local theme_name="$2"
-    local theme_dir="/mnt/usr/share/plymouth/themes/$theme_name"
-    
-    if [[ -z "$image_path" ]]; then
-        log_error "Image path not provided"
-        return 1
-    fi
-    
-    if [[ -z "$theme_name" ]]; then
-        log_error "Theme name not provided"
-        return 1
-    fi
-    
-    # Verificar que la imagen existe
-    if [[ ! -f "$image_path" ]]; then
-        log_error "Image file does not exist: $image_path"
-        return 1
-    fi
-    
-    log "Applying Plymouth image: $image_path"
-    
-    # Validar que el archivo es un PNG válido usando el comando file
-    local file_type
-    file_type=$(file -b --mime-type "$image_path")
-    
-    if [[ "$file_type" != "image/png" ]]; then
-        log_error "File is not a valid PNG image: $image_path (detected: $file_type)"
-        return 1
-    fi
-    
-    log "PNG image validated successfully"
-    
-    # Verificar que el directorio del tema existe
-    if [[ ! -d "$theme_dir" ]]; then
-        log_error "Plymouth theme directory does not exist: $theme_dir"
-        return 1
-    fi
-    
-    # Obtener dimensiones de la imagen
-    local image_info
-    if command -v identify &> /dev/null; then
-        image_info=$(identify -format "%wx%h" "$image_path" 2>/dev/null)
-    else
-        log "ImageMagick not available, skipping dimension check"
-        image_info=""
-    fi
-    
-    # Copiar y escalar la imagen si es necesario
-    local target_image="$theme_dir/background.png"
-    
-    if [[ "$image_info" == "1280x720" ]]; then
-        # La imagen ya tiene las dimensiones correctas, copiar directamente
-        log "Image already has correct dimensions (1280x720), copying..."
-        if ! cp "$image_path" "$target_image"; then
-            log_error "Failed to copy image to theme directory"
-            return 1
-        fi
-    elif [[ -n "$image_info" ]]; then
-        # La imagen tiene dimensiones diferentes, escalar a 1280x720
-        log "Scaling image from $image_info to 1280x720..."
-        
-        # Intentar usar convert (ImageMagick) o magick
-        if command -v convert &> /dev/null; then
-            if ! convert "$image_path" -resize 1280x720! "$target_image"; then
-                log_error "Failed to scale image using convert"
-                return 1
-            fi
-        elif command -v magick &> /dev/null; then
-            if ! magick "$image_path" -resize 1280x720! "$target_image"; then
-                log_error "Failed to scale image using magick"
-                return 1
-            fi
-        else
-            log "ImageMagick not available, copying image without scaling"
-            if ! cp "$image_path" "$target_image"; then
-                log_error "Failed to copy image to theme directory"
-                return 1
-            fi
-        fi
-    else
-        # No se pudo obtener información de dimensiones, copiar sin escalar
-        log "Could not determine image dimensions, copying without scaling"
-        if ! cp "$image_path" "$target_image"; then
-            log_error "Failed to copy image to theme directory"
-            return 1
-        fi
-    fi
-    
-    log "Plymouth image applied successfully"
-    return 0
-}
-
-################################################################################
-# install_extra_scripts()
-#
-# Copia scripts adicionales útiles (como el de instalación de YARG) al directorio
-# home del usuario kiosko y les da permisos de ejecución.
-#
-# Arguments:
-#   $1 - username: Nombre del usuario para el cual instalar scripts
-#
-# Returns:
-#   0 - Si la instalación fue exitosa
-#   1 - Si hubo algún error
-################################################################################
-install_extra_scripts() {
-    local username="$1"
-
-    if [[ -z "$username" ]]; then
-        log_error "Username not provided for extra scripts installation"
-        return 1
-    fi
-
-    log "No extra scripts configured for user: $username"
-    return 0
-}
