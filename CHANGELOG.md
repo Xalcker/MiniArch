@@ -82,6 +82,11 @@ semantico cuando se publiquen releases formales.
 
 ### Corregido
 
+- El `.env` ya no se carga con `source` (que ejecutaba su contenido como root y
+  rompia con passwords con simbolos): `load_env_file` en `lib/common.sh` lo lee
+  como `CLAVE=valor`, sin evaluar valores, con comillas simples/dobles,
+  expansion de `${NOMBRE}`, soporte CRLF y rechazo de variables reservadas.
+
 - La suite BATS vuelve a ser ejecutable: se reparo `test_base_install.bats`
   (estaba duplicado y truncado), se quito el BOM y la doble codificacion UTF-8
   de `lib/drivers.sh`, `lib/bootloader.sh`, `lib/customization.sh` y
