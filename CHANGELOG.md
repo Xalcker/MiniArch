@@ -66,6 +66,8 @@ semantico cuando se publiquen releases formales.
 
 ### Removido
 
+- `TODO.md`: su unico pendiente (`YARG_FORCE_WAYLAND`) se sigue en el issue #10.
+
 - Funciones sin uso heredadas del instalador OpenBox y sus pruebas:
   `install_base_system`, `configure_chroot`, `install_graphics_drivers`,
   `apply_plymouth_image`, `install_extra_scripts` y `calculate_home_size`.
