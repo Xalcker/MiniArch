@@ -7,44 +7,11 @@
 
 set -euo pipefail
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="${LOG_FILE:-/var/log/arch-cage-install.log}"
 VERBOSE_INSTALL="${VERBOSE_INSTALL:-false}"
 
-log() {
-    local message="$*"
-    echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] ${GREEN}INFO:${NC} $message" | tee -a "$LOG_FILE"
-}
-
-log_error() {
-    local message="$*"
-    echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] ${RED}ERROR:${NC} $message" | tee -a "$LOG_FILE" >&2
-}
-
-section() {
-    echo -e "\n${CYAN}== $1 ==${NC}"
-}
-
-warn() {
-    echo -e "${YELLOW}  ! $1${NC}"
-}
-
-run_quiet() {
-    if [[ "${VERBOSE_INSTALL:-false}" == "true" ]]; then
-        "$@"
-        return $?
-    fi
-
-    "$@" >> "$LOG_FILE" 2>&1
-}
+source "$SCRIPT_DIR/lib/common.sh" || { echo "No se pudo importar common.sh" >&2; exit 1; }
 
 ENV_FILE_LOADED=false
 if [[ -f "$SCRIPT_DIR/.env" ]]; then
@@ -135,86 +102,6 @@ resolve_clonehero_resolution() {
 resolve_user_paths() {
     CLONEHERO_SONGS_DIR="${CLONEHERO_SONGS_DIR:-/home/$KIOSK_USER/Songs}"
     CLONEHERO_DATA_DIR="${CLONEHERO_DATA_DIR:-/home/$KIOSK_USER/.clonehero}"
-}
-
-prompt_value() {
-    local var_name="$1"
-    local label="$2"
-    local default_value="$3"
-    local current_value="${!var_name-}"
-    local answer
-
-    if [[ -n "$current_value" && "$ENV_FILE_LOADED" == "true" ]]; then
-        return 0
-    fi
-
-    read -rp "$(echo -e "${BLUE}${label} (${current_value:-$default_value}): ${NC}")" answer
-    answer="${answer:-${current_value:-$default_value}}"
-    printf -v "$var_name" "%s" "$answer"
-}
-
-prompt_bool() {
-    local var_name="$1"
-    local label="$2"
-    local default_value="$3"
-    local current_value="${!var_name-}"
-    local prompt_default answer normalized
-
-    if [[ -n "$current_value" && "$ENV_FILE_LOADED" == "true" ]]; then
-        return 0
-    fi
-
-    prompt_default="$default_value"
-    [[ "$prompt_default" == "true" ]] && prompt_default="s"
-    [[ "$prompt_default" == "false" ]] && prompt_default="N"
-
-    read -rp "$(echo -e "${BLUE}${label} (s/N, default ${prompt_default}): ${NC}")" answer
-    answer="${answer:-${current_value:-$default_value}}"
-    normalized="${answer,,}"
-
-    case "$normalized" in
-        s|si|sí|y|yes|true|1)
-            printf -v "$var_name" "%s" "true"
-            ;;
-        n|no|false|0)
-            printf -v "$var_name" "%s" "false"
-            ;;
-        *)
-            log_error "Respuesta invalida para $label: $answer"
-            return 1
-            ;;
-    esac
-}
-
-prompt_password() {
-    local var_name="$1"
-    local label="$2"
-    local current_value="${!var_name-}"
-    local password confirmation
-
-    if [[ -n "$current_value" && "$ENV_FILE_LOADED" == "true" ]]; then
-        return 0
-    fi
-
-    while true; do
-        read -rsp "$(echo -e "${BLUE}${label}: ${NC}")" password
-        echo ""
-        read -rsp "$(echo -e "${BLUE}Confirme ${label}: ${NC}")" confirmation
-        echo ""
-
-        if [[ -z "$password" ]]; then
-            log_error "$label no puede quedar vacia"
-            continue
-        fi
-
-        if [[ "$password" != "$confirmation" ]]; then
-            log_error "Las contrasenas no coinciden"
-            continue
-        fi
-
-        printf -v "$var_name" "%s" "$password"
-        return 0
-    done
 }
 
 ask_guided_configuration() {
@@ -332,22 +219,6 @@ ask_initial_questions() {
 
     log "Resolucion de Clone Hero seleccionada: $CLONEHERO_RESOLUTION (${CLONEHERO_SCREEN_WIDTH}x${CLONEHERO_SCREEN_HEIGHT})"
     select_plymouth_image "clonehero" "$CLONEHERO_RESOLUTION" "$CLONEHERO_SCREEN_WIDTH" "$CLONEHERO_SCREEN_HEIGHT"
-}
-
-cleanup_on_exit() {
-    local exit_status=$?
-
-    if [[ ${INSTALL_SUCCESS:-0} -eq 1 || $exit_status -eq 0 ]]; then
-        return 0
-    fi
-
-    if [[ ${INSTALL_MOUNTS_CREATED:-0} -ne 1 ]]; then
-        return "$exit_status"
-    fi
-
-    log_error "Instalacion interrumpida. Intentando desmontar particiones y desactivar swap..."
-    cleanup_mounts || log_error "No se pudo completar la limpieza automatica"
-    return "$exit_status"
 }
 
 main() {

@@ -39,6 +39,8 @@ semantico cuando se publiquen releases formales.
 
 ### Cambiado
 
+- Nuevo `lib/common.sh` con el logging, `run_quiet`, los prompts y la limpieza
+  ante fallos que estaban copiados en los tres instaladores.
 - README alineado al repositorio oficial `Xalcker/MiniArch`.
 - Cage/YARG queda documentado como el camino recomendado para YARG.
 - La salida ruidosa de `pacman`, `pacstrap`, `mkfs`, `grub-mkconfig`,
