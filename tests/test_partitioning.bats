@@ -27,41 +27,9 @@ setup() {
     export -f log_error
 }
 
-################################################################################
-# Pruebas para calculate_home_size()
-################################################################################
 
-@test "calculate_home_size: disco de 16GB retorna 5.5GB para home" {
-    command -v bc >/dev/null || skip "bc no esta instalado"
-    run calculate_home_size 16
-    [ "$status" -eq 0 ]
-    # 16 - 0.5 - 8 - 2 = 5.5
-    [[ "$output" == "5.5" ]]
-}
 
-@test "calculate_home_size: disco de 20GB retorna 9.5GB para home" {
-    command -v bc >/dev/null || skip "bc no esta instalado"
-    run calculate_home_size 20
-    [ "$status" -eq 0 ]
-    # 20 - 0.5 - 8 - 2 = 9.5
-    [[ "$output" == "9.5" ]]
-}
 
-@test "calculate_home_size: disco de 100GB retorna 89.5GB para home" {
-    command -v bc >/dev/null || skip "bc no esta instalado"
-    run calculate_home_size 100
-    [ "$status" -eq 0 ]
-    # 100 - 0.5 - 8 - 2 = 89.5
-    [[ "$output" == "89.5" ]]
-}
-
-@test "calculate_home_size: disco de 1000GB retorna 989.5GB para home" {
-    command -v bc >/dev/null || skip "bc no esta instalado"
-    run calculate_home_size 1000
-    [ "$status" -eq 0 ]
-    # 1000 - 0.5 - 8 - 2 = 989.5
-    [[ "$output" == "989.5" ]]
-}
 
 ################################################################################
 # Pruebas para partition_disk()
@@ -666,41 +634,6 @@ setup() {
     rm -f /tmp/mount_commands.log
 }
 
-################################################################################
-# Prueba de Propiedad para calculate_home_size()
-# Property 6: Cálculo correcto del espacio restante
-# Validates: Requirements 2.5
-################################################################################
-
-@test "Property 6: calculate_home_size calcula correctamente para 100 tamaños de disco aleatorios" {
-    # Contador de pruebas exitosas
-    local success_count=0
-    local total_tests=100
-
-    # Probar con 100 tamaños de disco aleatorios entre 16GB y 1TB
-    for i in $(seq 1 $total_tests); do
-        # Generar tamaño aleatorio entre 16GB y 1000GB
-        local disk_size_gb=$((16 + RANDOM % 985))
-
-        # Calcular espacio esperado para home
-        # home = disk_size - 0.5 (ESP) - 8 (Root) - 2 (Swap) = disk_size - 10.5
-        local expected_home=$(echo "$disk_size_gb - 10.5" | bc)
-
-        # Ejecutar función
-        local result=$(calculate_home_size "$disk_size_gb")
-
-        # Verificar que el resultado es correcto
-        if [[ "$result" == "$expected_home" ]]; then
-            success_count=$((success_count + 1))
-        else
-            echo "FALLO: Para disco de ${disk_size_gb}GB, esperado ${expected_home}GB, obtenido ${result}GB" >&2
-            return 1
-        fi
-    done
-
-    # Verificar que todas las pruebas pasaron
-    [[ $success_count -eq $total_tests ]]
-}
 
 ################################################################################
 # Pruebas para get_partition_path()

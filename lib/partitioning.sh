@@ -45,32 +45,6 @@ get_partition_path() {
 }
 
 ################################################################################
-# Función auxiliar para calcular el tamaño de la partición home
-#
-# Calcula el espacio restante del disco después de restar las particiones
-# ESP (512MB), Root (8GB) y Swap (2GB)
-#
-# Parámetros:
-#   $1 - Tamaño total del disco en GB
-#
-# Retorna:
-#   Tamaño de la partición home en GB (stdout)
-################################################################################
-calculate_home_size() {
-    local disk_size_gb="$1"
-
-    # Convertir 512MB a GB (0.5GB)
-    local esp_size_gb=0.5
-    local root_size_gb=8
-    local swap_size_gb=2
-
-    # Calcular espacio restante: disk_size - (0.5 + 8 + 2) = disk_size - 10.5
-    local home_size_gb=$(echo "$disk_size_gb - $esp_size_gb - $root_size_gb - $swap_size_gb" | bc)
-
-    echo "$home_size_gb"
-}
-
-################################################################################
 # Función para particionar el disco
 #
 # Crea una tabla de particiones GPT y 4 particiones según el esquema definido:

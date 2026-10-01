@@ -55,6 +55,10 @@ semantico cuando se publiquen releases formales.
 
 ### Removido
 
+- Funciones sin uso heredadas del instalador OpenBox y sus pruebas:
+  `install_base_system`, `configure_chroot`, `install_graphics_drivers`,
+  `apply_plymouth_image`, `install_extra_scripts` y `calculate_home_size`.
+
 - `install-arch-kiosk.sh`, `setup-yarg.sh` y `lib/gui.sh`.
 - Instaladores Debian/Ubuntu experimentales.
 - Bootstrap `bootstrap-arch-live.sh` y la documentacion de `curl | bash`.
