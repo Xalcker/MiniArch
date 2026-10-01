@@ -90,6 +90,35 @@ make_game() { # dir titulo
     [ -z "$output" ]
 }
 
+@test "find_game encuentra un .iso por nombre, sin distinguir mayusculas" {
+    local games="$BATS_TEST_TMPDIR/games"
+    mkdir -p "$games"
+    : > "$games/Otro Juego.iso"
+    : > "$games/rock band 3 (USA).DEC.ISO"
+    load_find_game "$games"
+    run find_game
+    [ "$output" = "$games/rock band 3 (USA).DEC.ISO" ]
+}
+
+@test "find_game prefiere el .iso al paquete instalado en dev_hdd0/game (parche RB3DX)" {
+    local games="$BATS_TEST_TMPDIR/games"
+    mkdir -p "$games"
+    : > "$games/Rock Band 3.iso"
+    make_game "$BATS_TEST_TMPDIR/cfg/dev_hdd0/game/BLUS30463" "Rock Band 3"
+    load_find_game "$games"
+    run find_game
+    [ "$output" = "$games/Rock Band 3.iso" ]
+}
+
+@test "find_game prefiere el juego en carpeta al instalado en dev_hdd0/game" {
+    local games="$BATS_TEST_TMPDIR/games"
+    make_game "$games/RB3/PS3_GAME" "Rock Band 3"
+    make_game "$BATS_TEST_TMPDIR/cfg/dev_hdd0/game/BLUS30463" "Rock Band 3"
+    load_find_game "$games"
+    run find_game
+    [ "$output" = "$games/RB3/PS3_GAME/USRDIR/EBOOT.BIN" ]
+}
+
 @test "find_game usa RPCS3_GAME_PATH si existe y lo ignora si no existe" {
     local games="$BATS_TEST_TMPDIR/games" f="$BATS_TEST_TMPDIR/EBOOT.BIN"
     mkdir -p "$games"; : > "$f"
