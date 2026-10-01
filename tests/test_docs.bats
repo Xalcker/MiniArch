@@ -64,3 +64,26 @@
         grep -Fq "$item" README.md || { echo "falta la seccion '$item'" >&2; return 1; }
     done
 }
+
+@test "el CHANGELOG menciona cada instalador y los modulos de cada camino" {
+    local f item
+    for f in install-cage-*.sh; do
+        grep -Fq "$f" CHANGELOG.md || { echo "CHANGELOG no menciona $f" >&2; return 1; }
+    done
+    for item in lib/rpcs3.sh lib/clonehero.sh lib/yarg.sh lib/cage.sh lib/common.sh; do
+        grep -Fq "$item" CHANGELOG.md || { echo "CHANGELOG no menciona $item" >&2; return 1; }
+    done
+}
+
+@test "el CHANGELOG no enlaza releases ni comparaciones de tags que no existen" {
+    # Mientras el repo no publique tags, los enlaces compare/releases darian 404.
+    ! grep -Eq '^\[[^]]+\]: https://github.com/.*/(compare|releases/tag)/' CHANGELOG.md
+}
+
+@test "el CHANGELOG tiene las secciones estandar bajo [No Publicado]" {
+    local section
+    for section in "### Agregado" "### Cambiado" "### Removido" "### Corregido"; do
+        grep -Fxq "$section" CHANGELOG.md || { echo "falta '$section'" >&2; return 1; }
+    done
+    grep -Fxq "## [No Publicado]" CHANGELOG.md
+}
