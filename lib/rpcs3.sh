@@ -1244,6 +1244,45 @@ install_rpcs3_exit_hotkey() {
     chmod 755 /mnt/usr/local/bin/rpcs3-exit-hotkey.py
 }
 
+# Aplica el perfil de configuracion de RB3DX elegido (RB3DX_CONFIG_PROFILE:
+# recommended, minimum o potato; "none" no aplica ninguno). Los zips ya vienen
+# adaptados a Linux (download_rb3dx_config_profiles) con rutas relativas a
+# ~/.config/rpcs3, asi que basta descomprimir: trae la configuracion propia del
+# juego (custom_configs) con Debug Console Mode, que RB3DX necesita, y
+# dx_high_memory.dta. Los otros perfiles quedan como zips en el home.
+apply_rb3dx_config_profile() {
+    local profile="${RB3DX_CONFIG_PROFILE:-none}"
+    local zip="/home/$KIOSK_USER/RB3DX-config-${profile,,}.zip"
+
+    case "${profile,,}" in
+        none|"")
+            log "Perfil de configuracion de RB3DX omitido (los zips quedan en /home/$KIOSK_USER)"
+            return 0
+            ;;
+        recommended|minimum|potato)
+            profile="${profile,,}"
+            ;;
+        *)
+            warn "RB3DX_CONFIG_PROFILE invalido: $profile; no se aplica ningun perfil."
+            return 0
+            ;;
+    esac
+
+    if [[ ! -s "/mnt$zip" ]]; then
+        warn "No se descargo el perfil $profile; aplicalo despues: https://guides.milohax.org/en/rb3pc/intro/quickconfig/"
+        return 0
+    fi
+
+    log "Aplicando el perfil de configuracion de RB3DX: $profile"
+    mkdir -p "/mnt/home/$KIOSK_USER/.config/rpcs3"
+    run_quiet arch-chroot /mnt unzip -q -o "$zip" -d "/home/$KIOSK_USER/.config/rpcs3" || true
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
+
+    if [[ ! -f "/mnt/home/$KIOSK_USER/.config/rpcs3/custom_configs/config_BLUS30463.yml" ]]; then
+        warn "El perfil $profile no quedo aplicado (falta custom_configs/config_BLUS30463.yml); aplicalo con: unzip -o ~/RB3DX-config-$profile.zip -d ~/.config/rpcs3"
+    fi
+}
+
 # Nota MIDI -> pieza de la bateria cuando el kit las manda distintas a lo que
 # espera RPCS3 (RPCS3_MIDI_NOTE_OVERRIDE, p. ej. "49=Ride,51=Crash" si el crash y
 # el ride llegan invertidos). Vive en rb3drums.yml, que RPCS3 crea con estos

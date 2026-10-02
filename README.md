@@ -644,13 +644,20 @@ Variables de Cage/RPCS3:
 - `RB3DX_URL`: URL del zip de RB3DX (por defecto la build `develop` en nightly.link).
 - `RB3DX_DOWNLOAD_CONFIGS`: `true` (por defecto) descarga los tres perfiles de
   configuracion de la guia de MiloHax (`recommended`, `minimum`, `potato`) como
-  `/home/<usuario>/RB3DX-config-<perfil>.zip`, sin descomprimir; se instala uno
-  al configurar el juego. El instalador reescribe cada zip para Linux: las rutas
-  quedan relativas a `~/.config/rpcs3` (`custom_configs/config_BLUS30463.yml` y
-  `dev_hdd0/.../dx_high_memory.dta`), se corrige `Shader Mode` (valor que RPCS3 ya
-  no acepta) y el renderer de audio `XAudio2` (solo Windows) pasa a `Cubeb`. Para
-  aplicar uno: `unzip -o ~/RB3DX-config-minimum.zip -d ~/.config/rpcs3`. Aplica
-  `Debug Console Mode`, que RB3DX necesita para arrancar.
+  `/home/<usuario>/RB3DX-config-<perfil>.zip`. El instalador reescribe cada zip
+  para Linux: las rutas quedan relativas a `~/.config/rpcs3`
+  (`custom_configs/config_BLUS30463.yml` y `dev_hdd0/.../dx_high_memory.dta`), se
+  corrige `Shader Mode` (valor que RPCS3 ya no acepta), el renderer de audio
+  `XAudio2` (solo Windows) pasa a `Cubeb`, el buffer de audio baja a
+  `RPCS3_AUDIO_BUFFER_MS` y el perfil usa las fuentes de microfono por jugador.
+  Todos traen `Debug Console Mode`, que RB3DX necesita para arrancar.
+- `RB3DX_CONFIG_PROFILE`: perfil que se **aplica** durante la instalacion:
+  `recommended` (equipo que cumple los requisitos recomendados), `minimum`
+  (menos resolucion, sin VSync y menos precision; es el que mejor va en un equipo
+  justo como un Ryzen de 35 W con graficos integrados), `potato` (experimental,
+  OpenGL) o `none`. Vacio = el instalador pregunta (por defecto `recommended`). Se
+  descomprime en `~/.config/rpcs3`; los otros dos quedan como zips y se cambia de
+  perfil con `unzip -o ~/RB3DX-config-minimum.zip -d ~/.config/rpcs3`.
 - `RB3DX_CONFIG_BASE_URL`: carpeta donde estan los zips de los perfiles.
 - `RPCS3_GAMES_DIR`: carpeta de juegos y share Samba. Por defecto
   `/home/${KIOSK_USER}/Games`.

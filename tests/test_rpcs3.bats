@@ -583,3 +583,63 @@ run_updater_tail() {
     run grep -n 'mv "$(readlink -f squashfs-root)" /opt/RPCS3' lib/rpcs3.sh
     [ "$status" -eq 0 ]
 }
+
+# --- perfil de RB3DX elegido en el instalador -------------------------------------
+
+@test "apply_rb3dx_config_profile no aplica nada con none" {
+    RB3DX_CONFIG_PROFILE=none KIOSK_USER=kiosk run apply_rb3dx_config_profile
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"omitido"* ]]
+}
+
+@test "apply_rb3dx_config_profile rechaza un perfil invalido sin romper la instalacion" {
+    RB3DX_CONFIG_PROFILE=ninguno KIOSK_USER=kiosk run apply_rb3dx_config_profile
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"invalido"* ]]
+}
+
+@test "apply_rb3dx_config_profile avisa si el zip del perfil no se descargo" {
+    RB3DX_CONFIG_PROFILE=potato KIOSK_USER=usuario-inexistente-xyz run apply_rb3dx_config_profile
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"No se descargo el perfil potato"* ]]
+}
+
+@test "apply_rb3dx_config_profile descomprime el perfil elegido en ~/.config/rpcs3" {
+    command -v unzip >/dev/null || skip "unzip no esta instalado"
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+
+    local dest="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$dest/home/kiosk"
+
+    # zip ya adaptado a Linux (rutas relativas a ~/.config/rpcs3)
+    python3 - "$dest/home/kiosk/RB3DX-config-minimum.zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("custom_configs/config_BLUS30463.yml", "Core:\n  Debug Console Mode: true\n")
+    z.writestr("dev_hdd0/game/BLUS30463/USRDIR/dx_high_memory.dta", "(dx_high_memory 190000000)\n")
+PY
+
+    # La funcion trabaja bajo /mnt y dentro de un chroot: se ejecuta una copia con
+    # /mnt apuntando al directorio de prueba y un arch-chroot que traduce /home.
+    local fn
+    fn="$(declare -f apply_rb3dx_config_profile)"
+    fn="${fn//\/mnt\//$dest/}"
+    fn="${fn//\"\/mnt\$zip\"/\"$dest\$zip\"}"
+    eval "$fn"
+    arch-chroot() {
+        shift
+        local -a args=()
+        local a
+        for a in "$@"; do args+=("${a/#\/home\//$dest/home/}"); done
+        "${args[@]}"
+    }
+    chown() { :; }
+    run_quiet() { "$@"; }
+    log() { :; }
+
+    RB3DX_CONFIG_PROFILE=minimum KIOSK_USER=kiosk apply_rb3dx_config_profile
+
+    [ -f "$dest/home/kiosk/.config/rpcs3/custom_configs/config_BLUS30463.yml" ]
+    [ -f "$dest/home/kiosk/.config/rpcs3/dev_hdd0/game/BLUS30463/USRDIR/dx_high_memory.dta" ]
+    grep -q "Debug Console Mode: true" "$dest/home/kiosk/.config/rpcs3/custom_configs/config_BLUS30463.yml"
+}
