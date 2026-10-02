@@ -239,7 +239,7 @@ download_rb3dx_config_profiles() {
         return 0
     fi
 
-    local profile target mic_arg="" buffer_arg="" overlay_arg=""
+    local profile target mic_arg="" buffer_arg="" overlay_arg="" scale_arg=""
 
     # Con un adaptador de dos microfonos el perfil usa las fuentes que crea el wrapper.
     [[ -n "${RPCS3_MIC_SPLIT_MATCH:-}${RPCS3_MIC_SINGLE_MATCH:-}" ]] && mic_arg="--mics"
@@ -247,6 +247,8 @@ download_rb3dx_config_profiles() {
     # de recommended (32 ms) para no sumar latencia en un juego de ritmo.
     [[ -n "${RPCS3_AUDIO_BUFFER_MS:-}" ]] && buffer_arg="--audio-buffer=$RPCS3_AUDIO_BUFFER_MS"
     [[ "${RPCS3_PERF_OVERLAY:-false}" == "true" ]] && overlay_arg="--overlay"
+    # Escala de resolucion: recommended trae 150 %, demasiado para graficos integrados.
+    [[ -n "${RB3DX_RESOLUTION_SCALE:-}" ]] && scale_arg="--resolution-scale=$RB3DX_RESOLUTION_SCALE"
 
     mkdir -p "/mnt/home/$KIOSK_USER"
 
@@ -264,7 +266,7 @@ download_rb3dx_config_profiles() {
         # Shader Mode que RPCS3 ya no acepta). Se adaptan a Linux; si falla se
         # deja el zip original.
         if ! printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" | \
-            run_quiet arch-chroot /mnt python3 - "/home/$KIOSK_USER/RB3DX-config-$profile.zip" ${mic_arg:+"$mic_arg"} ${buffer_arg:+"$buffer_arg"} ${overlay_arg:+"$overlay_arg"}; then
+            run_quiet arch-chroot /mnt python3 - "/home/$KIOSK_USER/RB3DX-config-$profile.zip" ${mic_arg:+"$mic_arg"} ${buffer_arg:+"$buffer_arg"} ${overlay_arg:+"$overlay_arg"} ${scale_arg:+"$scale_arg"}; then
             warn "No se pudo adaptar el perfil $profile a Linux; queda el zip original (revise Shader Mode y Audio > Renderer en el yml)."
         fi
 
@@ -655,13 +657,14 @@ TEMPLATE
 
 read -r -d '' RPCS3_PROFILE_FIX_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env python3
-"""Adapta un zip de perfil de RB3DX (MiloHax) a Linux. Uso: fixprofile.py ZIP [--mics] [--audio-buffer=MS] [--overlay]
+"""Adapta un zip de perfil de RB3DX (MiloHax) a Linux. Uso: fixprofile.py ZIP [--mics] [--audio-buffer=MS] [--overlay] [--resolution-scale=N]
 
 - Quita la carpeta del perfil y el prefijo config/ (ruta de Windows): el zip
   queda relativo a ~/.config/rpcs3 (custom_configs/..., dev_hdd0/...).
 - Shader Mode: el valor del perfil ya no es valido en RPCS3; se usa el
   vigente, Async Recompiler with Shader Interpreter.
 - Audio Renderer XAudio2 (solo Windows) pasa a Cubeb.
+- Con --resolution-scale=N: Resolution Scale en % (100 = nativa).
 - Con --overlay: activa el overlay de rendimiento (FPS y grafica de frametime).
 - Con --audio-buffer=MS: Desired Audio Buffer Duration (latencia del buffer de
   audio en ms).
@@ -676,6 +679,7 @@ import zipfile
 src = sys.argv[1]
 mics = "--mics" in sys.argv[2:]
 overlay = "--overlay" in sys.argv[2:]
+scale = next((a.split("=", 1)[1] for a in sys.argv[2:] if a.startswith("--resolution-scale=")), "")
 buffer_ms = next((a.split("=", 1)[1] for a in sys.argv[2:] if a.startswith("--audio-buffer=")), "")
 tmp = src + ".new"
 
@@ -694,6 +698,8 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED
             text = re.sub(r"^(\s*Renderer:) XAudio2", r"\1 Cubeb", text, flags=re.M)
             if buffer_ms.isdigit():
                 text = re.sub(r"^(\s*Desired Audio Buffer Duration:)[^\r\n]*", r"\1 " + buffer_ms, text, flags=re.M)
+            if scale.isdigit():
+                text = re.sub(r"^(\s*Resolution Scale:)[^\r\n]*", r"\1 " + scale, text, flags=re.M)
             if overlay:
                 text = re.sub(
                     r"(^  Performance Overlay:\r?\n    Enabled:)[^\r\n]*(\r?\n    Enable Framerate Graph:)[^\r\n]*(\r?\n    Enable Frametime Graph:)[^\r\n]*",

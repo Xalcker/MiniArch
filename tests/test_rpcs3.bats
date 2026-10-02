@@ -721,3 +721,43 @@ PY
         [ "$status" -eq 0 ] || { echo "$f no escribe cpupower-service.conf" >&2; return 1; }
     done
 }
+
+# --- escala de resolucion y override MIDI desde el instalador ---------------------------------
+
+@test "el adaptador de perfiles con --resolution-scale fija Resolution Scale y sin el la deja" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+
+    local fix="$BATS_TEST_TMPDIR/fix.py" zip="$BATS_TEST_TMPDIR/perfil.zip"
+    printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" > "$fix"
+
+    python3 - "$zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("p/config/custom_configs/config_BLUS30463.yml", "Video:\n  Resolution Scale: 150\n  Otro: 150\n")
+PY
+
+    cp "$zip" "$BATS_TEST_TMPDIR/copia.zip"
+    run python3 "$fix" "$zip" --resolution-scale=100
+    [ "$status" -eq 0 ]
+    run python3 "$fix" "$BATS_TEST_TMPDIR/copia.zip"
+    [ "$status" -eq 0 ]
+
+    run python3 - "$zip" "$BATS_TEST_TMPDIR/copia.zip" <<'PY'
+import sys, zipfile
+a = zipfile.ZipFile(sys.argv[1]).read("custom_configs/config_BLUS30463.yml").decode()
+b = zipfile.ZipFile(sys.argv[2]).read("custom_configs/config_BLUS30463.yml").decode()
+assert "  Resolution Scale: 100" in a and "  Otro: 150" in a
+assert "  Resolution Scale: 150" in b
+PY
+    [ "$status" -eq 0 ]
+}
+
+@test "el instalador valida RB3DX_RESOLUTION_SCALE y RPCS3_MIDI_NOTE_OVERRIDE y los pregunta" {
+    run grep -n 'RB3DX_RESOLUTION_SCALE invalido' install-cage-rpcs3.sh
+    [ "$status" -eq 0 ]
+    run grep -n 'RPCS3_MIDI_NOTE_OVERRIDE invalido' install-cage-rpcs3.sh
+    [ "$status" -eq 0 ]
+    grep -q 'Correccion de notas MIDI' install-cage-rpcs3.sh
+    grep -q 'Escala \[numero/perfil\]' install-cage-rpcs3.sh
+    grep -q '^RB3DX_RESOLUTION_SCALE=' .env.example
+}
