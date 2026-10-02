@@ -123,6 +123,18 @@ rpcs3_unsquash_appimage() {
     [[ -x "$dest/AppRun" ]]
 }
 
+# RPCS3 abre los instrumentos por USB directo (libusb), no por hidraw, y eso
+# necesita permiso sobre /dev/bus/usb/*. Sin esto el log dice "Unable to open
+# <dispositivo> device". uaccess da acceso al usuario con sesion activa (el
+# kiosko) igual que 69-hid.rules lo hace para hidraw.
+configure_rpcs3_usb_access() {
+    log "Configurando acceso udev a dispositivos USB para los instrumentos"
+
+    mkdir -p /mnt/etc/udev/rules.d
+    echo 'SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", TAG+="uaccess"' > /mnt/etc/udev/rules.d/70-rpcs3-usb.rules
+    chmod 644 /mnt/etc/udev/rules.d/70-rpcs3-usb.rules
+}
+
 install_rpcs3() {
     log "Descargando e instalando RPCS3 en /opt/RPCS3"
 
