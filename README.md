@@ -714,6 +714,10 @@ Variables de Cage/RPCS3:
   OpenGL) o `none`. Vacio = el instalador pregunta (por defecto `recommended`). Se
   descomprime en `~/.config/rpcs3`; los otros dos quedan como zips y se cambia de
   perfil con `unzip -o ~/RB3DX-config-minimum.zip -d ~/.config/rpcs3`.
+- `RB3DX_RESOLUTION_SCALE`: escala de resolucion de RPCS3 en %, aplicada al perfil
+  elegido (`100` = nativa, el valor que conviene con graficos integrados; el perfil
+  `recommended` trae `150`). `perfil` deja el valor que trae cada perfil. Vacio = el
+  instalador pregunta (por defecto `100`). Rango valido: 25 a 400.
 - `RB3DX_CONFIG_BASE_URL`: carpeta donde estan los zips de los perfiles.
 - `RPCS3_GAMES_DIR`: carpeta de juegos y share Samba. Por defecto
   `/home/${KIOSK_USER}/Games`.
@@ -787,7 +791,9 @@ Variables de Cage/RPCS3:
   `~/.config/rpcs3/rb3drums.yml`. Ejemplo: `49=Ride,51=Crash` si crash y ride
   llegan invertidos (el Alesis Nitro). Piezas validas: `Kick`, `HihatPedal`,
   `Snare`, `SnareRim`, `HiTom`, `LowTom`, `FloorTom`, `HihatWithPedalUp`, `Hihat`,
-  `Ride`, `Crash`. Vacio no toca el archivo.
+  `Ride`, `Crash`. Vacio no toca el archivo. Si no esta definida, el instalador la
+  **pregunta** en el modo asistido (con un `.env` cargado no pregunta) y valida el
+  formato `NOTA=Pieza` separado por comas.
 - `RPCS3_PAD_CONFIG` y `RPCS3_PAD_DEVICE`: `true` (por defecto) instala
   `~/.config/rpcs3/input_configs/global/Default.yml` con el jugador 1 en el handler
   **SDL** y el control `RPCS3_PAD_DEVICE` (por defecto `Xbox Series X Controller 1`,
