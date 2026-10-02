@@ -612,6 +612,9 @@ sudo update-rpcs3
 
 El updater extrae el AppImage nuevo aparte y solo reemplaza `/opt/RPCS3` si
 la extraccion salio bien.
+Si ya tienes la ultima version (compara la URL del AppImage con la que guardo la
+instalacion en `/opt/RPCS3/.rpcs3-url`), no descarga nada y avisa; `sudo update-rpcs3 --force`
+la reinstala igual. Una instalacion anterior sin esa marca descarga una vez.
 
 ## Uso Despues De Instalar Cage/foot
 
