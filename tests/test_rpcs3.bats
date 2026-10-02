@@ -308,11 +308,62 @@ PY
 
 # --- adaptador de dos microfonos -----------------------------------------------
 
-@test "el wrapper parte el adaptador USB de dos microfonos antes de cada arranque" {
+@test "el wrapper asigna los microfonos USB por jugador antes de cada arranque" {
     run render_wrapper "$BATS_TEST_TMPDIR/games"
-    [[ "$output" == *"setup_dual_mics"* ]]
+    [[ "$output" == *"setup_mics"* ]]
     [[ "$output" == *"module-remap-source"* ]]
-    [[ "$output" == *"singstar_mic1"* && "$output" == *"singstar_mic2"* ]]
+    [[ "$output" == *"source_name=mic_p"* && "$output" == *"device.description=Mic_P"* ]]
+}
+
+# Ejecuta setup_mics() del wrapper con un pactl simulado; devuelve en $output
+# los comandos pactl que habria ejecutado.
+run_setup_mics() {
+    local sources="$1" log="$BATS_TEST_TMPDIR/pactl.log"
+    : > "$log"
+    render_wrapper "$BATS_TEST_TMPDIR/games" > "$BATS_TEST_TMPDIR/wrapper.sh"
+    run bash -c '
+        SOURCES="$1"; LOG="$2"
+        RPCS3_MIC_SINGLE_MATCH=Logitech; RPCS3_MIC_SPLIT_MATCH="USBMIC|SingStar"
+        RPCS3_MIC_VOLUME=35%; RPCS3_MIC_SINGLE_VOLUME=75%; XDG_RUNTIME_DIR="$3"
+        pactl() {
+            if [[ "$1 $2" == "list short" ]]; then
+                [[ "$3" == sources ]] && printf "%s\n" "$SOURCES"
+                return 0
+            fi
+            echo "pactl $*" >> "$LOG"
+        }
+        eval "$(sed -n "/^setup_mics() {/,/^}/p" "$4")"
+        setup_mics
+        cat "$LOG"
+    ' _ "$sources" "$log" "$BATS_TEST_TMPDIR" "$BATS_TEST_TMPDIR/wrapper.sh"
+}
+
+HD_SRC=$'54\talsa_input.pci-0000_0b_00.6.analog-stereo\tPipeWire\ts32le 2ch 48000Hz\tSUSPENDED'
+SS_SRC=$'51\talsa_input.usb-Nam_Tai_E_E_Products_Ltd._USBMIC_Serial__1-00.analog-stereo\tPipeWire\ts16le 2ch 48000Hz\tSUSPENDED'
+LG_SRC=$'123\talsa_input.usb-Logitech_Logitech_USB_Microphone-00.mono-fallback\tPipeWire\ts16le 1ch 48000Hz\tSUSPENDED'
+
+@test "setup_mics: Logitech = P1 y el SingStar azul/rojo = P2/P3" {
+    run_setup_mics "$HD_SRC"$'\n'"$SS_SRC"$'\n'"$LG_SRC"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"set-source-volume alsa_input.usb-Logitech"*" 75%"* ]]
+    [[ "$output" == *"set-source-volume alsa_input.usb-Nam_Tai"*" 35%"* ]]
+    [[ "$output" == *"master=alsa_input.usb-Logitech"*"source_name=mic_p1"*"master_channel_map=mono"*"description=Mic_P1"* ]]
+    [[ "$output" == *"source_name=mic_p2"*"master_channel_map=front-left"*"description=Mic_P2"* ]]
+    [[ "$output" == *"source_name=mic_p3"*"master_channel_map=front-right"*"description=Mic_P3"* ]]
+}
+
+@test "setup_mics: solo el SingStar queda como P1 (izquierdo) y P2 (derecho)" {
+    run_setup_mics "$HD_SRC"$'\n'"$SS_SRC"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"source_name=mic_p1"*"master_channel_map=front-left"* ]]
+    [[ "$output" == *"source_name=mic_p2"*"master_channel_map=front-right"* ]]
+    [[ "$output" != *"mic_p3"* ]]
+}
+
+@test "setup_mics: sin microfonos USB no hace nada" {
+    run_setup_mics "$HD_SRC"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
 }
 
 @test "el adaptador de perfiles con --mics fija Microphone Type Standard y las dos fuentes" {
@@ -335,7 +386,7 @@ PY
 import sys, zipfile
 yml = zipfile.ZipFile(sys.argv[1]).read("custom_configs/config_BLUS30463.yml").decode()
 assert "Microphone Type: Standard" in yml
-assert 'Microphone Devices: "SingStar_Mic_1@@@SingStar_Mic_2@@@@@@@@@"' in yml
+assert 'Microphone Devices: "Mic_P1@@@Mic_P2@@@Mic_P3@@@@@@"' in yml
 PY
     [ "$status" -eq 0 ]
 }
