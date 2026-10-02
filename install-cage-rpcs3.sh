@@ -74,6 +74,10 @@ RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 RPCS3_AUDIO_OUTPUT="${RPCS3_AUDIO_OUTPUT:-hdmi}"
 # Volumen de la salida al arrancar (1.0 = 100 %); vacio no lo toca.
 RPCS3_AUDIO_VOLUME="${RPCS3_AUDIO_VOLUME-1.0}"
+# Buffer de audio de RPCS3 en ms para los perfiles RB3DX descargados: 32 es el de
+# recommended; minimum y potato traen 100, que suma latencia en un juego de
+# ritmo. Vacio deja el valor de cada perfil.
+RPCS3_AUDIO_BUFFER_MS="${RPCS3_AUDIO_BUFFER_MS-32}"
 # Microfonos USB para hasta 3 cantantes (jugadores en este orden): primero los
 # individuales (RPCS3_MIC_SINGLE_MATCH, el Logitech oficial de Rock Band), luego
 # los adaptadores estereo de dos microfonos (RPCS3_MIC_SPLIT_MATCH, el SingStar

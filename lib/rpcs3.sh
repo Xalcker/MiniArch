@@ -239,10 +239,13 @@ download_rb3dx_config_profiles() {
         return 0
     fi
 
-    local profile target mic_arg=""
+    local profile target mic_arg="" buffer_arg=""
 
     # Con un adaptador de dos microfonos el perfil usa las fuentes que crea el wrapper.
     [[ -n "${RPCS3_MIC_SPLIT_MATCH:-}${RPCS3_MIC_SINGLE_MATCH:-}" ]] && mic_arg="--mics"
+    # Los perfiles minimum y potato traen 100 ms de buffer de audio; se unifica al
+    # de recommended (32 ms) para no sumar latencia en un juego de ritmo.
+    [[ -n "${RPCS3_AUDIO_BUFFER_MS:-}" ]] && buffer_arg="--audio-buffer=$RPCS3_AUDIO_BUFFER_MS"
 
     mkdir -p "/mnt/home/$KIOSK_USER"
 
@@ -260,7 +263,7 @@ download_rb3dx_config_profiles() {
         # Shader Mode que RPCS3 ya no acepta). Se adaptan a Linux; si falla se
         # deja el zip original.
         if ! printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" | \
-            run_quiet arch-chroot /mnt python3 - "/home/$KIOSK_USER/RB3DX-config-$profile.zip" ${mic_arg:+"$mic_arg"}; then
+            run_quiet arch-chroot /mnt python3 - "/home/$KIOSK_USER/RB3DX-config-$profile.zip" ${mic_arg:+"$mic_arg"} ${buffer_arg:+"$buffer_arg"}; then
             warn "No se pudo adaptar el perfil $profile a Linux; queda el zip original (revise Shader Mode y Audio > Renderer en el yml)."
         fi
 
@@ -629,13 +632,15 @@ TEMPLATE
 
 read -r -d '' RPCS3_PROFILE_FIX_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env python3
-"""Adapta un zip de perfil de RB3DX (MiloHax) a Linux. Uso: fixprofile.py ZIP [--mics]
+"""Adapta un zip de perfil de RB3DX (MiloHax) a Linux. Uso: fixprofile.py ZIP [--mics] [--audio-buffer=MS]
 
 - Quita la carpeta del perfil y el prefijo config/ (ruta de Windows): el zip
   queda relativo a ~/.config/rpcs3 (custom_configs/..., dev_hdd0/...).
 - Shader Mode: el valor del perfil ya no es valido en RPCS3; se usa el
   vigente, Async Recompiler with Shader Interpreter.
 - Audio Renderer XAudio2 (solo Windows) pasa a Cubeb.
+- Con --audio-buffer=MS: Desired Audio Buffer Duration (latencia del buffer de
+  audio en ms).
 - Con --mics: Microphone Type Standard y las tres fuentes por jugador (Mic_P1,
   Mic_P2, Mic_P3) que crea el wrapper con los microfonos USB conectados.
 """
@@ -646,6 +651,7 @@ import zipfile
 
 src = sys.argv[1]
 mics = "--mics" in sys.argv[2:]
+buffer_ms = next((a.split("=", 1)[1] for a in sys.argv[2:] if a.startswith("--audio-buffer=")), "")
 tmp = src + ".new"
 
 with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -661,6 +667,8 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED
             text = data.decode("utf-8")
             text = re.sub(r"^(\s*Shader Mode:)[^\r\n]*", r"\1 Async Recompiler with Shader Interpreter", text, flags=re.M)
             text = re.sub(r"^(\s*Renderer:) XAudio2", r"\1 Cubeb", text, flags=re.M)
+            if buffer_ms.isdigit():
+                text = re.sub(r"^(\s*Desired Audio Buffer Duration:)[^\r\n]*", r"\1 " + buffer_ms, text, flags=re.M)
             if mics:
                 text = re.sub(r"^(\s*Microphone Type:)[^\r\n]*", r"\1 Standard", text, flags=re.M)
                 text = re.sub(r"^(\s*Microphone Devices:)[^\r\n]*", r'\1 "Mic_P1@@@Mic_P2@@@Mic_P3@@@@@@"', text, flags=re.M)
