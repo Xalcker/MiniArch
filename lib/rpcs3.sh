@@ -161,7 +161,7 @@ install_rpcs3() {
     # por falta de /dev, /proc o espacio), se reintenta desde el sistema live,
     # que tiene un entorno completo, extrayendo directo sobre /mnt/opt.
     if ! run_quiet arch-chroot /mnt bash -c \
-        'set -e; mkdir -p /opt/RPCS3.new; cd /opt/RPCS3.new; "$1" --appimage-extract >/dev/null; mv squashfs-root /opt/RPCS3; cd /; rmdir /opt/RPCS3.new' \
+        'set -e; mkdir -p /opt/RPCS3.new; cd /opt/RPCS3.new; "$1" --appimage-extract >/dev/null; mv "$(readlink -f squashfs-root)" /opt/RPCS3; cd /; rm -rf /opt/RPCS3.new' \
         _ "$chroot_appimage"; then
         # Los AppImage con runtime nuevo (uruntime) intentan FUSE incluso con
         # --appimage-extract y fallan en el chroot. Se lee el squashfs directo.
@@ -467,15 +467,28 @@ if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
         unsquashfs -f -q -o "$((shoff + shentsize * shnum))" -d "$WORK_DIR/squashfs-root" "$img" || true
     fi
 fi
-if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
+# El runtime nuevo (uruntime) extrae a ./AppDir y deja squashfs-root como un
+# enlace simbolico relativo a el. Mover ese enlace deja /opt/RPCS3 apuntando a un
+# destino inexistente, asi que se resuelve al directorio real.
+NEW_DIR="$(readlink -f "$WORK_DIR/squashfs-root")"
+if [[ ! -d "$NEW_DIR" || ! -x "$NEW_DIR/AppRun" ]]; then
     echo "El AppImage descargado no contiene AppRun; no se modifica $INSTALL_DIR." >&2
     exit 1
 fi
 
+# La instalacion anterior solo se borra cuando la nueva se comprobo: si algo
+# falla se restaura.
 rm -rf "$INSTALL_DIR.old"
-[[ -d "$INSTALL_DIR" ]] && mv "$INSTALL_DIR" "$INSTALL_DIR.old"
-mv "$WORK_DIR/squashfs-root" "$INSTALL_DIR"
+[[ -e "$INSTALL_DIR" || -L "$INSTALL_DIR" ]] && mv "$INSTALL_DIR" "$INSTALL_DIR.old"
+mv "$NEW_DIR" "$INSTALL_DIR"
 chown -R "$OWNER:$OWNER" "$INSTALL_DIR"
+
+if [[ ! -x "$INSTALL_DIR/AppRun" ]]; then
+    echo "La instalacion nueva no es valida; se restaura la anterior." >&2
+    rm -rf "$INSTALL_DIR"
+    [[ -e "$INSTALL_DIR.old" || -L "$INSTALL_DIR.old" ]] && mv "$INSTALL_DIR.old" "$INSTALL_DIR"
+    exit 1
+fi
 rm -rf "$INSTALL_DIR.old"
 
 echo "RPCS3 actualizado en $INSTALL_DIR"
