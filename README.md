@@ -824,6 +824,20 @@ Variables de Cage/RPCS3:
   otro control, pon su nombre en `RPCS3_PAD_DEVICE` (lo ves en la GUI, en
   `Pads > Device`) o configúralo en la GUI. No se pisa una configuracion
   existente. Con el control mapeado ya no hay teclado como jugador 1.
+- `RPCS3_PAD_AUTO`: `true` (por defecto) instala `/usr/local/bin/rpcs3-pads.py`, que
+  el wrapper ejecuta **antes de cada arranque del juego**. Le pregunta a SDL (la
+  biblioteca que trae RPCS3) que controles hay conectados y en que orden se
+  detectaron, y reescribe solo el handler y el dispositivo de los jugadores 1 y 2 en
+  `input_configs/global/Default.yml`: con un control, ese es el jugador 1; con dos,
+  el primero detectado es el 1 y el segundo el 2, con el mismo mapeo de botones. Sin
+  controles no toca nada. Asi no hace falta saber el nombre SDL de cada modelo ni
+  elegirlo en la GUI. Limites: un control conectado **despues** de arrancar no se
+  asigna hasta reiniciar el juego, y el orden "primero/segundo" sigue el de deteccion
+  de SDL, que tras un arranque con los dos ya conectados depende de como los enumere
+  el kernel. Si un control esta en modo X-input (p. ej. un 8BitDo, `Start+X` segun el
+  modelo) SDL lo nombra "Xbox 360 Controller". Se puede probar sin escribir nada con
+  `python3 /usr/local/bin/rpcs3-pads.py --dry-run`. `false` deja la configuracion
+  fija.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`

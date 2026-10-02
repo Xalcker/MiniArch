@@ -803,3 +803,77 @@ PY
     [[ "$output" != *"forzando SIGKILL"* ]]
     [[ "$output" == *"vivo=False"* ]]
 }
+
+# --- asignacion automatica de controles (rpcs3-pads.py) --------------------------------
+
+# Ejecuta la logica pura del script (sin SDL) sobre la plantilla real de entrada.
+run_pads_logic() {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+    local script="$BATS_TEST_TMPDIR/rpcs3-pads.py"
+    printf '%s\n' "$RPCS3_PADS_TEMPLATE" > "$script"
+
+    run python3 - "$script" assets/rpcs3-input-Default.yml <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("pads", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+tpl = open(sys.argv[2], encoding="utf-8").read()
+
+def devs(text):
+    _, b = m.split_players(text.splitlines(True))
+    out = {}
+    for n, blk in b.items():
+        h = next((l.split(":", 1)[1].strip() for l in blk if l.startswith("  Handler:")), None)
+        d = next((l.split(":", 1)[1].strip() for l in blk if l.startswith("  Device:")), None)
+        out[n] = (h, d)
+    return out
+
+def mapping(text, n):
+    _, b = m.split_players(text.splitlines(True))
+    return [l for l in b[n][1:] if not l.startswith("  Handler:") and not l.startswith("  Device:")]
+
+assert m.rpcs3_names(["A", "B", "A"]) == ["A 1", "B 1", "A 2"]
+
+two = m.apply_assignment(tpl, ["Xbox 360 Controller 1", "Xbox Series X Controller 1"])
+d = devs(two)
+assert d[1] == ("SDL", "Xbox 360 Controller 1")
+assert d[2] == ("SDL", "Xbox Series X Controller 1")
+assert d[3] == ('"Null"', '"Null"') and d[7] == ('"Null"', '"Null"')
+assert mapping(two, 1) == mapping(two, 2)
+assert two.count("Input:") == 7
+
+one = m.apply_assignment(two, ["Xbox Series X Controller 1"])
+d = devs(one)
+assert d[1] == ("SDL", "Xbox Series X Controller 1")
+assert d[2] == ('"Null"', '"Null"')
+assert mapping(one, 2) == mapping(tpl, 3)
+
+assert m.apply_assignment(tpl, []) == tpl
+assert m.apply_assignment(two, ["Xbox 360 Controller 1", "Xbox Series X Controller 1"]) == two
+PY
+}
+
+@test "rpcs3-pads: con dos controles el primero es el jugador 1 y el segundo el 2 con el mismo mapeo" {
+    run_pads_logic
+    [ "$status" -eq 0 ]
+}
+
+@test "el wrapper asigna los controles antes de cada arranque y el instalador lo documenta" {
+    run render_wrapper "$BATS_TEST_TMPDIR/games"
+    [[ "$output" == *"setup_pads"* ]]
+    [[ "$output" == *"/usr/local/bin/rpcs3-pads.py"* ]]
+    grep -q '^RPCS3_PAD_AUTO=' .env.example
+    grep -q 'RPCS3_PAD_AUTO' README.md
+}
+
+@test "install_rpcs3_pads_script no hace nada con RPCS3_PAD_AUTO=false ni sin RPCS3_PAD_CONFIG" {
+    RPCS3_PAD_AUTO=false
+    run install_rpcs3_pads_script
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"omitida"* ]]
+
+    RPCS3_PAD_AUTO=true RPCS3_PAD_CONFIG=false
+    run install_rpcs3_pads_script
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"omitida"* ]]
+}

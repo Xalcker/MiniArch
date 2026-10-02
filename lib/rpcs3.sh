@@ -713,6 +713,158 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED
 os.replace(tmp, src)
 TEMPLATE
 
+read -r -d '' RPCS3_PADS_TEMPLATE <<'TEMPLATE' || true
+#!/usr/bin/env python3
+"""Asigna los controles conectados a los jugadores 1 y 2 de RPCS3 (handler SDL).
+
+RPCS3 guarda en input_configs/global/Default.yml un dispositivo por jugador, por
+nombre ("Xbox Series X Controller 1"), y no tiene una opcion de "el primero que
+se conecte". Este script le pregunta a SDL (la libreria que trae RPCS3) que
+controles hay y en que orden se detectaron, y reescribe solo el handler y el
+dispositivo de los jugadores 1 y 2:
+
+  - 1 control:   jugador 1 = ese control, jugador 2 = nada.
+  - 2 controles: jugador 1 = el primero detectado, jugador 2 = el segundo.
+  - Sin controles: no toca el archivo.
+
+El jugador 2 usa el mismo mapeo de botones que el 1. Lo ejecuta el wrapper antes
+de cada arranque del juego; un control conectado despues no se asigna hasta el
+siguiente arranque.
+
+Uso: rpcs3-pads.py [--dry-run] [--config RUTA] [--sdl RUTA]
+"""
+import ctypes
+import os
+import sys
+
+DEFAULT_CONFIG = os.path.expanduser("~/.config/rpcs3/input_configs/global/Default.yml")
+DEFAULT_SDL = "/opt/RPCS3/usr/lib/libSDL3.so.0"
+SDL_INIT_JOYSTICK, SDL_INIT_GAMEPAD = 0x00000200, 0x00002000
+
+
+def list_gamepads(sdl_path):
+    """Nombres SDL de los controles, en el orden en que SDL los detecto."""
+    sdl = ctypes.CDLL(sdl_path)
+    sdl.SDL_Init.argtypes = [ctypes.c_uint32]
+    sdl.SDL_Init.restype = ctypes.c_bool
+    sdl.SDL_GetGamepads.argtypes = [ctypes.POINTER(ctypes.c_int)]
+    sdl.SDL_GetGamepads.restype = ctypes.POINTER(ctypes.c_uint32)
+    sdl.SDL_GetGamepadNameForID.argtypes = [ctypes.c_uint32]
+    sdl.SDL_GetGamepadNameForID.restype = ctypes.c_char_p
+    if not sdl.SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD):
+        return []
+    count = ctypes.c_int(0)
+    ids = sdl.SDL_GetGamepads(ctypes.byref(count))
+    pads = []
+    for i in range(count.value):
+        raw = sdl.SDL_GetGamepadNameForID(ids[i])
+        pads.append((ids[i], raw.decode("utf-8", "replace") if raw else ""))
+    sdl.SDL_Quit()
+    return [name for _, name in sorted(pads) if name]
+
+
+def rpcs3_names(sdl_names):
+    """Nombre con el que RPCS3 identifica cada control: el de SDL mas un numero
+    por cada repeticion del mismo nombre ("Xbox 360 Controller 1", "... 2")."""
+    seen = {}
+    out = []
+    for name in sdl_names:
+        seen[name] = seen.get(name, 0) + 1
+        out.append("%s %d" % (name, seen[name]))
+    return out
+
+
+def split_players(lines):
+    """(lineas previas, {n: lineas del bloque 'Player n Input:'})."""
+    starts = [i for i, l in enumerate(lines) if l.startswith("Player ") and l.rstrip().endswith("Input:")]
+    blocks = {}
+    for k, s in enumerate(starts):
+        e = starts[k + 1] if k + 1 < len(starts) else len(lines)
+        blocks[int(lines[s].split()[1])] = lines[s:e]
+    return (lines[: starts[0]] if starts else lines), blocks
+
+
+def set_device(block, handler, device):
+    out = []
+    for line in block:
+        if line.startswith("  Handler:"):
+            line = "  Handler: %s\n" % handler
+        elif line.startswith("  Device:"):
+            line = "  Device: %s\n" % device
+        out.append(line)
+    return out
+
+
+def apply_assignment(text, names):
+    """Devuelve el yml con los jugadores 1 y 2 asignados a `names`."""
+    if not names:
+        return text
+    lines = text.splitlines(True)
+    head, blocks = split_players(lines)
+    if 1 not in blocks or 3 not in blocks:
+        return text
+
+    p1 = set_device(blocks[1], "SDL", names[0])
+    if len(names) >= 2:
+        # el jugador 2 usa el mismo mapeo de botones que el 1
+        p2 = ["Player 2 Input:\n"] + set_device(p1[1:], "SDL", names[1])
+    else:
+        # sin segundo control: bloque vacio, copiado del jugador 3 (siempre Null)
+        p2 = ["Player 2 Input:\n"] + blocks[3][1:]
+    blocks[1], blocks[2] = p1, p2
+
+    result = list(head)
+    for n in sorted(blocks):
+        result.extend(blocks[n])
+    return "".join(result)
+
+
+def main(argv):
+    dry = "--dry-run" in argv
+    config = DEFAULT_CONFIG
+    sdl_path = DEFAULT_SDL
+    if "--config" in argv:
+        config = argv[argv.index("--config") + 1]
+    if "--sdl" in argv:
+        sdl_path = argv[argv.index("--sdl") + 1]
+
+    if not os.path.isfile(config):
+        print("rpcs3-pads: no existe %s; no se asigna nada" % config)
+        return 0
+    try:
+        names = rpcs3_names(list_gamepads(sdl_path))
+    except OSError as e:
+        print("rpcs3-pads: no se pudo cargar SDL (%s); no se asigna nada" % e)
+        return 0
+    if not names:
+        print("rpcs3-pads: no hay controles conectados; la configuracion no cambia")
+        return 0
+
+    with open(config, encoding="utf-8") as f:
+        old = f.read()
+    new = apply_assignment(old, names)
+    second = "; jugador 2 = %s" % names[1] if len(names) > 1 else "; jugador 2 = nada"
+    print("rpcs3-pads: jugador 1 = %s%s" % (names[0], second))
+    if len(names) > 2:
+        print("rpcs3-pads: hay %d controles; solo se asignan los dos primeros" % len(names))
+    if new == old:
+        print("rpcs3-pads: ya estaba asignado")
+        return 0
+    if dry:
+        print("rpcs3-pads: (--dry-run) no se escribe %s" % config)
+        return 0
+    tmp = config + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(new)
+    os.replace(tmp, config)
+    print("rpcs3-pads: configuracion actualizada")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
+TEMPLATE
+
 read -r -d '' RPCS3_EXIT_HOTKEY_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env python3
 """Cierra RPCS3 con un atajo, sin depender del compositor ni de la ventana.
@@ -902,6 +1054,7 @@ RPCS3_GAME_PATH="__RPCS3_GAME_PATH__"
 RPCS3_GAME_MATCH="__RPCS3_GAME_MATCH__"
 RPCS3_EXIT_MENU="__RPCS3_EXIT_MENU__"
 RPCS3_MIDI_DRUMS="__RPCS3_MIDI_DRUMS__"
+RPCS3_PAD_AUTO="__RPCS3_PAD_AUTO__"
 RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
 RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
 RPCS3_PIPEWIRE_QUANTUM="__RPCS3_PIPEWIRE_QUANTUM__"
@@ -1162,6 +1315,19 @@ setup_mics() {
     printf '%s\n' "$plan" > "$plan_file"
 }
 
+# Controles: asigna los conectados a los jugadores 1 y 2 de RPCS3 antes de cada
+# arranque. RPCS3 guarda un dispositivo por jugador, por nombre, sin "el primero
+# que se conecte"; el script le pregunta a SDL que hay y en que orden. Un control
+# conectado despues de arrancar no se asigna hasta el siguiente arranque.
+setup_pads() {
+    local script=/usr/local/bin/rpcs3-pads.py
+
+    [[ "$RPCS3_PAD_AUTO" == "true" ]] || return 0
+    [[ -f "$script" ]] && command -v python3 >/dev/null 2>&1 || return 0
+
+    SDL_VIDEODRIVER=dummy python3 "$script" 2>&1 | sed -u 's/^/[pads] /' >&2 || true
+}
+
 # Atajo para cerrar RPCS3 desde el teclado (Ctrl+Alt+Q).
 start_exit_hotkey() {
     local script=/usr/local/bin/rpcs3-exit-hotkey.py
@@ -1237,6 +1403,7 @@ while true; do
     else
         GAME="$(find_game)"
         setup_midi_drums
+        setup_pads
 
         if [[ -f "$GUI_FLAG" ]]; then
             rm -f "$GUI_FLAG"
@@ -1300,6 +1467,22 @@ install_rpcs3_exit_hotkey() {
     mkdir -p /mnt/usr/local/bin
     printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > /mnt/usr/local/bin/rpcs3-exit-hotkey.py
     chmod 755 /mnt/usr/local/bin/rpcs3-exit-hotkey.py
+}
+
+# Instala el script que asigna los controles conectados a los jugadores 1 y 2
+# (rpcs3-pads.py); lo ejecuta el wrapper antes de cada arranque. Solo tiene
+# sentido con la configuracion de entrada SDL (RPCS3_PAD_CONFIG=true).
+install_rpcs3_pads_script() {
+    if [[ "${RPCS3_PAD_AUTO:-true}" != "true" || "${RPCS3_PAD_CONFIG:-true}" != "true" ]]; then
+        log "Asignacion automatica de controles omitida (RPCS3_PAD_AUTO / RPCS3_PAD_CONFIG)"
+        return 0
+    fi
+
+    log "Instalando la asignacion automatica de controles (jugadores 1 y 2)"
+    mkdir -p /mnt/usr/local/bin
+    printf '%s
+' "$RPCS3_PADS_TEMPLATE" > /mnt/usr/local/bin/rpcs3-pads.py
+    chmod 755 /mnt/usr/local/bin/rpcs3-pads.py
 }
 
 # Aplica el perfil de configuracion de RB3DX elegido (RB3DX_CONFIG_PROFILE:
@@ -1421,6 +1604,12 @@ install_rpcs3_input_config() {
 install_rpcs3_cage_wrapper() {
     log "Creando menu de mantenimiento y wrapper /usr/local/bin/run-rpcs3.sh"
 
+    # La asignacion automatica de controles solo aplica con la entrada SDL instalada.
+    local pad_auto=false
+    if [[ "${RPCS3_PAD_AUTO:-true}" == "true" && "${RPCS3_PAD_CONFIG:-true}" == "true" ]]; then
+        pad_auto=true
+    fi
+
     mkdir -p /mnt/usr/local/bin
 
     printf '%s\n' "$RPCS3_MENU_TEMPLATE" > /mnt/usr/local/bin/kiosk-menu.sh
@@ -1432,6 +1621,7 @@ install_rpcs3_cage_wrapper() {
         "RPCS3_GAME_MATCH=$RPCS3_GAME_MATCH" \
         "RPCS3_EXIT_MENU=${RPCS3_EXIT_MENU:-always}" \
         "RPCS3_MIDI_DRUMS=${RPCS3_MIDI_DRUMS:-}" \
+        "RPCS3_PAD_AUTO=$pad_auto" \
         "RPCS3_QT_PLATFORM=${RPCS3_QT_PLATFORM:-}" \
         "RPCS3_AUDIO_VOLUME=${RPCS3_AUDIO_VOLUME:-}" \
         "RPCS3_PIPEWIRE_QUANTUM=${RPCS3_PIPEWIRE_QUANTUM:-}" \

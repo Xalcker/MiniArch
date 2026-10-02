@@ -79,6 +79,10 @@ RPCS3_MIDI_NOTE_OVERRIDE="${RPCS3_MIDI_NOTE_OVERRIDE:-}"
 # RPCS3_PAD_DEVICE es el nombre que SDL da al control, con su numero.
 RPCS3_PAD_CONFIG="${RPCS3_PAD_CONFIG:-true}"
 RPCS3_PAD_DEVICE="${RPCS3_PAD_DEVICE:-Xbox Series X Controller 1}"
+# true asigna, antes de cada arranque del juego, los controles conectados a los
+# jugadores 1 y 2 (el primero que SDL detecta es el 1) y sobreescribe el
+# dispositivo de RPCS3_PAD_DEVICE. false deja la configuracion fija.
+RPCS3_PAD_AUTO="${RPCS3_PAD_AUTO:-true}"
 # true instala el atajo para cerrar RPCS3 con Ctrl+Alt+Q (teclado).
 RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 # hdmi (HDMI/DP, por defecto), analog o auto: salida de audio preferida.
@@ -472,6 +476,7 @@ main() {
 
     install_rpcs3_midi_config
     install_rpcs3_input_config
+    install_rpcs3_pads_script
 
     if ! install_rpcs3_cage_wrapper; then
         log_error "Fallo en creacion del wrapper de Cage/RPCS3"
