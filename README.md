@@ -226,10 +226,19 @@ Casos que se salen de lo normal:
 | Redes empresariales (WPA Enterprise) | No se configuran con `connect`; necesitan un archivo de perfil de `iwd`. Usa cable o un hotspot del telefono. |
 | El nombre de la interfaz no es `wlan0` | Usa el que muestre `iwctl device list` (por ejemplo `wlp2s0`) |
 
-Esta conexion solo vale para el entorno live y **no se copia al sistema
-instalado**. En el kiosko ya instalado, el WiFi se configura desde el menu de
-mantenimiento con la opcion **2) Configurar WiFi**, o por consola con `nmtui` /
-`nmcli` (ver "Uso despues de instalar").
+El live usa `iwd` y el sistema instalado NetworkManager, que no comparten perfiles.
+Por eso el instalador **copia las redes que `iwd` guardo en el live
+(`/var/lib/iwd`) al sistema instalado** como perfiles de NetworkManager
+(`/etc/NetworkManager/system-connections/`, permisos 600), y el kiosko arranca ya
+conectado. Con cable no hay nada que copiar. Se desactiva con `COPY_LIVE_WIFI=false`
+(la contrasena queda guardada en el sistema instalado, como hace NetworkManager). Si
+la red no se pudo copiar (por ejemplo, un nombre con `;` o `\`, o redes
+empresariales), el WiFi se configura en el kiosko desde el menu de mantenimiento
+con la opcion **2) Configurar WiFi**, o por consola con `nmtui` / `nmcli`.
+
+Sin red en el primer arranque, los servicios que esperan `network-online.target`
+(como `nmb`, el servicio de nombres de Samba) agotan su tiempo y quedan fallidos
+hasta el siguiente arranque.
 
 ### Instalacion Manual
 
@@ -629,6 +638,9 @@ Variables comunes:
 - `KIOSK_PASSWORD`: password del usuario kiosko.
 - `TIMEZONE`: zona horaria.
 - `ENABLE_SSH`: habilita OpenSSH si esta en `true`.
+- `COPY_LIVE_WIFI`: `true` (por defecto) copia al sistema instalado las redes WiFi
+  que `iwd` guardo en el live, como perfiles de NetworkManager, para que el kiosko
+  arranque ya conectado (ver "Conectarse a WiFi en el live"). `false` no las copia.
 - `ALLOW_INSECURE_DEFAULT_PASSWORD`: permite passwords de ejemplo solo para
   laboratorio.
 - `ENABLE_PLYMOUTH`: habilita/deshabilita Plymouth.

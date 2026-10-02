@@ -1002,3 +1002,103 @@ setup() {
     [ "$status" -eq 0 ]
     [[ "$output" == "/dev/nvme0n1p3" ]]
 }
+
+################################################################################
+# Pruebas para copy_live_wifi_profiles()
+################################################################################
+
+# Prepara un directorio de iwd y un destino de prueba.
+wifi_setup() {
+    IWD_DIR="$BATS_TEST_TMPDIR/iwd"
+    ROOT_DIR="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$IWD_DIR" "$ROOT_DIR"
+    export IWD_STATE_DIR="$IWD_DIR" INSTALL_ROOT="$ROOT_DIR"
+    OUT_DIR="$ROOT_DIR/etc/NetworkManager/system-connections"
+}
+
+@test "copy_live_wifi_profiles: convierte una red WPA en un perfil de NetworkManager" {
+    wifi_setup
+    printf '[Security]\nPassphrase=clave-123456\n' > "$IWD_DIR/Mi Casa 5G.psk"
+
+    run copy_live_wifi_profiles
+    [ "$status" -eq 0 ]
+
+    local f="$OUT_DIR/miniarch-wifi-1.nmconnection"
+    [ -f "$f" ]
+    grep -qx 'id=Mi Casa 5G' "$f"
+    grep -qx 'ssid=Mi Casa 5G' "$f"
+    grep -qx 'key-mgmt=wpa-psk' "$f"
+    grep -qx 'psk=clave-123456' "$f"
+    grep -qx 'type=wifi' "$f"
+    [ "$(stat -c %a "$f")" = "600" ]
+}
+
+@test "copy_live_wifi_profiles: decodifica el nombre que iwd guarda en hexadecimal" {
+    wifi_setup
+    local hex
+    hex="$(printf 'Cafe_WiFi 2.4' | od -An -tx1 | tr -d ' \n')"
+    printf '[Security]\nPassphrase=otra-clave-123\n' > "$IWD_DIR/=$hex.psk"
+
+    run copy_live_wifi_profiles
+    [ "$status" -eq 0 ]
+    grep -qx 'ssid=Cafe_WiFi 2.4' "$OUT_DIR/miniarch-wifi-1.nmconnection"
+}
+
+@test "copy_live_wifi_profiles: escapa la barra invertida de la contrasena (formato de NetworkManager)" {
+    wifi_setup
+    local bs
+    bs="$(printf '\134')"
+    printf '[Security]\nPassphrase=ab%scd\n' "$bs" > "$IWD_DIR/ConBarra.psk"
+
+    run copy_live_wifi_profiles
+    [ "$status" -eq 0 ]
+    # una barra en la clave original = dos en el perfil
+    grep -qxF "psk=ab${bs}${bs}cd" "$OUT_DIR/miniarch-wifi-1.nmconnection"
+}
+
+@test "copy_live_wifi_profiles: una red abierta no lleva seccion de seguridad" {
+    wifi_setup
+    printf '[Settings]\nAutoConnect=true\n' > "$IWD_DIR/Cafeteria.open"
+
+    run copy_live_wifi_profiles
+    [ "$status" -eq 0 ]
+    grep -qx 'ssid=Cafeteria' "$OUT_DIR/miniarch-wifi-1.nmconnection"
+    ! grep -q 'wifi-security' "$OUT_DIR/miniarch-wifi-1.nmconnection"
+}
+
+@test "copy_live_wifi_profiles: omite con aviso las redes sin clave o con nombre no soportado" {
+    wifi_setup
+    printf '[Settings]\nAutoConnect=true\n' > "$IWD_DIR/SinClave.psk"
+    printf '[Security]\nPassphrase=x12345678\n' > "$IWD_DIR/Mala;Red.psk"
+
+    run copy_live_wifi_profiles
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"iwd no guardo su clave"* ]]
+    [[ "$output" == *"caracteres no soportados"* ]]
+    [ ! -e "$OUT_DIR/miniarch-wifi-1.nmconnection" ]
+}
+
+@test "copy_live_wifi_profiles: con COPY_LIVE_WIFI=false o sin directorio de iwd no hace nada" {
+    wifi_setup
+    printf '[Security]\nPassphrase=clave-123456\n' > "$IWD_DIR/Red.psk"
+
+    COPY_LIVE_WIFI=false run copy_live_wifi_profiles
+    [ "$status" -eq 0 ]
+    [ ! -e "$OUT_DIR" ]
+
+    IWD_STATE_DIR="$BATS_TEST_TMPDIR/no-existe" run copy_live_wifi_profiles
+    [ "$status" -eq 0 ]
+    [ ! -e "$OUT_DIR" ]
+}
+
+@test "configure_network: copia las redes WiFi del live antes de habilitar NetworkManager" {
+    # El orden importa: el perfil debe existir antes de que NetworkManager arranque.
+    local body copy_line enable_line
+    body="$(declare -f configure_network)"
+    copy_line="$(grep -n 'copy_live_wifi_profiles' <<< "$body" | head -1 | cut -d: -f1)"
+    enable_line="$(grep -n 'enable NetworkManager.service' <<< "$body" | head -1 | cut -d: -f1)"
+
+    [ -n "$copy_line" ]
+    [ -n "$enable_line" ]
+    [ "$copy_line" -lt "$enable_line" ]
+}
