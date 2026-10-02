@@ -745,6 +745,7 @@ EXCLUDED_NAMES = ("santroller", "guitar", "drum", "harmonix", "rock band", "keyt
 TARGETS = ("AppRun.wrapped", "rpcs3")
 RESCAN_SECONDS = 5
 COOLDOWN_SECONDS = 3
+GRACE_SECONDS = 3
 
 
 def read_sysfs(event, name):
@@ -808,10 +809,36 @@ def close_device(devices, opened, fd):
     del devices[fd]
 
 
-def terminate_rpcs3(source):
+def running(targets):
+    """True si queda algun proceso vivo con esos nombres (un zombi no cuenta)."""
+    for target in targets:
+        out = subprocess.run(["pgrep", "-x", target], capture_output=True, text=True).stdout.split()
+        for pid in out:
+            try:
+                with open("/proc/%s/stat" % pid) as f:
+                    state = f.read().rsplit(")", 1)[1].split()[0]
+            except (OSError, IndexError):
+                continue
+            if state != "Z":
+                return True
+    return False
+
+
+def terminate_rpcs3(source, targets=TARGETS, grace=GRACE_SECONDS):
     print("rpcs3-exit-hotkey: combinacion de %s; cerrando RPCS3" % source, flush=True)
-    for target in TARGETS:
+    for target in targets:
         subprocess.run(["pkill", "-x", target], check=False)
+
+    # La GUI de RPCS3 atrapa SIGTERM y no siempre sale (el juego con --no-gui si):
+    # si pasado el plazo sigue vivo, se escala a SIGKILL.
+    deadline = time.monotonic() + grace
+    while time.monotonic() < deadline:
+        if not running(targets):
+            return
+        time.sleep(0.25)
+    print("rpcs3-exit-hotkey: RPCS3 no salio con SIGTERM; forzando SIGKILL", flush=True)
+    for target in targets:
+        subprocess.run(["pkill", "-9", "-x", target], check=False)
 
 
 def main():

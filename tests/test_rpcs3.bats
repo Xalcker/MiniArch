@@ -761,3 +761,45 @@ PY
     grep -q 'Escala \[numero/perfil\]' install-cage-rpcs3.sh
     grep -q '^RB3DX_RESOLUTION_SCALE=' .env.example
 }
+
+# --- atajo de salida: escalar a SIGKILL cuando la GUI atrapa SIGTERM -----------------------
+
+# Ejecuta terminate_rpcs3() del script del atajo contra un proceso ficticio (una
+# copia de python3 con otro nombre, para que pkill -x no toque nada real).
+run_terminate_dummy() {
+    local ignore_term="$1" grace="$2" name="dummyrpcs3$$"
+    local script="$BATS_TEST_TMPDIR/hotkey.py"
+    printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > "$script"
+    cp "$(command -v python3)" "$BATS_TEST_TMPDIR/$name"
+
+    run python3 - "$script" "$BATS_TEST_TMPDIR/$name" "$name" "$ignore_term" "$grace" <<'PY'
+import subprocess, sys, time
+script, binary, name, ignore, grace = sys.argv[1:6]
+exec(compile(open(script).read().split("if __name__")[0], "hotkey", "exec"))
+code = "import signal,time\n" + ("signal.signal(signal.SIGTERM, signal.SIG_IGN)\n" if ignore == "1" else "") + "time.sleep(120)"
+proc = subprocess.Popen([binary, "-c", code])
+time.sleep(0.5)
+t0 = time.monotonic()
+terminate_rpcs3("prueba", targets=(name,), grace=float(grace))
+elapsed = time.monotonic() - t0
+alive = running((name,))
+proc.kill(); proc.wait()
+print("vivo=%s tiempo=%.1f" % (alive, elapsed))
+PY
+}
+
+@test "el atajo de salida fuerza SIGKILL si el proceso ignora SIGTERM (como la GUI de RPCS3)" {
+    command -v python3 >/dev/null && command -v pgrep >/dev/null || skip "faltan python3 o pgrep"
+    run_terminate_dummy 1 1
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"forzando SIGKILL"* ]]
+    [[ "$output" == *"vivo=False"* ]]
+}
+
+@test "el atajo de salida no escala a SIGKILL si el proceso obedece SIGTERM" {
+    command -v python3 >/dev/null && command -v pgrep >/dev/null || skip "faltan python3 o pgrep"
+    run_terminate_dummy 0 5
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"forzando SIGKILL"* ]]
+    [[ "$output" == *"vivo=False"* ]]
+}
