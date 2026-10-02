@@ -535,3 +535,51 @@ PY
 
     [ "$(cat "$dest/home/kiosk/.config/rpcs3/input_configs/global/Default.yml")" = "mio" ]
 }
+
+# --- updater de RPCS3: el runtime nuevo extrae a ./AppDir ----------------------
+
+# Ejecuta el tramo final del updater (desde NEW_DIR=) con un arbol de prueba. $1 =
+# codigo que prepara $T/work y $T/opt (T es un directorio temporal).
+run_updater_tail() {
+    local T="$BATS_TEST_TMPDIR/upd"
+    rm -rf "$T"; mkdir -p "$T/work" "$T/opt"
+    eval "$1"
+
+    rpcs3_render "$RPCS3_UPDATE_TEMPLATE" "RPCS3_URL=u" "RPCS3_API_URL=a" "RPCS3_ASSET_REGEX=r" "OWNER=$(id -un)" \
+        | sed -n '/^NEW_DIR=/,$p' > "$BATS_TEST_TMPDIR/tail.sh"
+
+    run bash -c 'set -e; WORK_DIR="$1/work"; INSTALL_DIR="$1/opt/RPCS3"; OWNER="$2"; source "$3"' \
+        _ "$T" "$(id -un)" "$BATS_TEST_TMPDIR/tail.sh"
+}
+
+@test "el updater instala el directorio real cuando squashfs-root es un enlace a ./AppDir" {
+    run_updater_tail 'mkdir -p "$T/work/AppDir" "$T/opt/RPCS3"
+        printf "#!/bin/sh\n" > "$T/work/AppDir/AppRun"; chmod +x "$T/work/AppDir/AppRun"
+        ln -s ./AppDir "$T/work/squashfs-root"; touch "$T/opt/RPCS3/vieja"'
+    [ "$status" -eq 0 ]
+    [ ! -L "$BATS_TEST_TMPDIR/upd/opt/RPCS3" ]
+    [ -x "$BATS_TEST_TMPDIR/upd/opt/RPCS3/AppRun" ]
+    [ ! -e "$BATS_TEST_TMPDIR/upd/opt/RPCS3.old" ]
+}
+
+@test "el updater repara un /opt/RPCS3 que es un enlace colgante" {
+    run_updater_tail 'mkdir -p "$T/work/AppDir"
+        printf "#!/bin/sh\n" > "$T/work/AppDir/AppRun"; chmod +x "$T/work/AppDir/AppRun"
+        ln -s ./AppDir "$T/work/squashfs-root"; ln -s ./AppDir "$T/opt/RPCS3"'
+    [ "$status" -eq 0 ]
+    [ ! -L "$BATS_TEST_TMPDIR/upd/opt/RPCS3" ]
+    [ -x "$BATS_TEST_TMPDIR/upd/opt/RPCS3/AppRun" ]
+}
+
+@test "el updater conserva la instalacion previa si la extraccion no trae AppRun" {
+    run_updater_tail 'mkdir -p "$T/work/AppDir" "$T/opt/RPCS3"
+        ln -s ./AppDir "$T/work/squashfs-root"
+        printf "#!/bin/sh\n" > "$T/opt/RPCS3/AppRun"; chmod +x "$T/opt/RPCS3/AppRun"; touch "$T/opt/RPCS3/vieja"'
+    [ "$status" -eq 1 ]
+    [ -e "$BATS_TEST_TMPDIR/upd/opt/RPCS3/vieja" ]
+}
+
+@test "install_rpcs3 resuelve el enlace squashfs-root antes de mover la extraccion" {
+    run grep -n 'mv "$(readlink -f squashfs-root)" /opt/RPCS3' lib/rpcs3.sh
+    [ "$status" -eq 0 ]
+}
