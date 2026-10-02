@@ -142,7 +142,8 @@ make_update_script() {
         'RPCS3_ASSET_REGEX=linux64.*\.AppImage$' \
         "OWNER=$(id -un)" > "$dir/update-rpcs3"
     sed -i -e "s#/opt/RPCS3#$dir/opt#g" -e 's#if \[\[ \${EUID} -ne 0 \]\]#if false#' \
-        -e "s#/var/tmp/update-rpcs3#$dir/work#" -e 's#^chown -R .*#true#' "$dir/update-rpcs3"
+        -e "s#/var/tmp/update-rpcs3#$dir/work#" -e 's#^chown -R .*#true#' \
+        -e "s#^SHARE_LINK=.*#SHARE_LINK=$dir/share#" "$dir/update-rpcs3"
     # curl de prueba: la API devuelve un release y la descarga copia un AppImage falso.
     cat > "$dir/bin/curl" <<'SH'
 #!/usr/bin/env bash
@@ -205,6 +206,15 @@ fake_appimage() {
     [ "$status" -eq 0 ]
     [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/version")" = "nuevo" ]
     [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/.rpcs3-url")" = "https://h/nuevo_linux64.AppImage" ]
+}
+
+@test "update-rpcs3 deja /usr/share/rpcs3 apuntando a los recursos del AppImage extraido" {
+    make_update_script
+    mkdir -p "$BATS_TEST_TMPDIR/upd/opt"
+    fake_appimage 'mkdir -p squashfs-root; printf "#!/bin/sh\n" > squashfs-root/AppRun; chmod +x squashfs-root/AppRun'
+    PATH="$BATS_TEST_TMPDIR/upd/bin:$PATH" run bash "$BATS_TEST_TMPDIR/upd/update-rpcs3"
+    [ "$status" -eq 0 ]
+    [ "$(readlink "$BATS_TEST_TMPDIR/upd/share")" = "$BATS_TEST_TMPDIR/upd/opt/usr/share/rpcs3" ]
 }
 
 @test "update-rpcs3 con otra version instalada descarga y deja la marca de la nueva" {

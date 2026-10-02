@@ -615,6 +615,8 @@ la extraccion salio bien.
 Si ya tienes la ultima version (compara la URL del AppImage con la que guardo la
 instalacion en `/opt/RPCS3/.rpcs3-url`), no descarga nada y avisa; `sudo update-rpcs3 --force`
 la reinstala igual. Una instalacion anterior sin esa marca descarga una vez.
+El enlace `/usr/share/rpcs3` -> `/opt/RPCS3/usr/share/rpcs3` (lo crean el instalador y el updater) deja
+que RPCS3 encuentre sus iconos y recursos, que viven dentro del AppImage extraido.
 
 ## Uso Despues De Instalar Cage/foot
 
