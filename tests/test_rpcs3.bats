@@ -710,3 +710,14 @@ assert "    Enabled: false" in yml
 PY
     [ "$status" -eq 0 ]
 }
+
+# --- cpupower: archivo de configuracion de la unidad ----------------------------------
+
+@test "cada camino escribe la configuracion de cpupower tambien en cpupower-service.conf" {
+    # La unidad cpupower de los paquetes recientes lee /etc/default/cpupower-service.conf;
+    # sin ese archivo termina con exito pero el gobernador queda en schedutil.
+    for f in lib/rpcs3.sh lib/yarg.sh lib/clonehero.sh; do
+        run grep -c "/mnt/etc/default/cpupower-service.conf" "$f"
+        [ "$status" -eq 0 ] || { echo "$f no escribe cpupower-service.conf" >&2; return 1; }
+    done
+}

@@ -234,14 +234,23 @@ EOF
     echo 'vm.swappiness=10' > /mnt/etc/sysctl.d/99-yarg.conf
 
     cat > /mnt/etc/default/cpupower << 'EOF'
-# El servicio cpupower actual lee las variables en mayusculas; las versiones
-# antiguas, en minusculas. Se escriben ambas.
+# Versiones antiguas del servicio cpupower leen este archivo (en minusculas o
+# mayusculas). Se escriben ambas formas.
 GOVERNOR='performance'
 MIN_FREQ=''
 MAX_FREQ=''
 governor='performance'
 min_freq=''
 max_freq=''
+EOF
+
+    # Los paquetes recientes de cpupower leen su configuracion de este otro
+    # archivo (EnvironmentFile de la unidad), no de /etc/default/cpupower: sin ese
+    # archivo el servicio termina con exito pero el gobernador queda en schedutil.
+    cat > /mnt/etc/default/cpupower-service.conf << 'EOF'
+GOVERNOR='performance'
+MIN_FREQ=''
+MAX_FREQ=''
 EOF
 
     if ! run_quiet arch-chroot /mnt systemctl enable cpupower.service; then
