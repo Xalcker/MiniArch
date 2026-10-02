@@ -189,6 +189,36 @@ fake_appimage() {
     [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/version")" = "viejo" ]
 }
 
+@test "update-rpcs3 no descarga ni reemplaza si ya esta la ultima version, y --force reinstala" {
+    make_update_script
+    mkdir -p "$BATS_TEST_TMPDIR/upd/opt"
+    echo viejo > "$BATS_TEST_TMPDIR/upd/opt/version"
+    echo "https://h/nuevo_linux64.AppImage" > "$BATS_TEST_TMPDIR/upd/opt/.rpcs3-url"
+    fake_appimage 'mkdir -p squashfs-root; printf "#!/bin/sh\n" > squashfs-root/AppRun; chmod +x squashfs-root/AppRun; echo nuevo > squashfs-root/version'
+
+    PATH="$BATS_TEST_TMPDIR/upd/bin:$PATH" run bash "$BATS_TEST_TMPDIR/upd/update-rpcs3"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ya esta en la ultima version"* ]]
+    [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/version")" = "viejo" ]
+
+    PATH="$BATS_TEST_TMPDIR/upd/bin:$PATH" run bash "$BATS_TEST_TMPDIR/upd/update-rpcs3" --force
+    [ "$status" -eq 0 ]
+    [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/version")" = "nuevo" ]
+    [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/.rpcs3-url")" = "https://h/nuevo_linux64.AppImage" ]
+}
+
+@test "update-rpcs3 con otra version instalada descarga y deja la marca de la nueva" {
+    make_update_script
+    mkdir -p "$BATS_TEST_TMPDIR/upd/opt"
+    echo viejo > "$BATS_TEST_TMPDIR/upd/opt/version"
+    echo "https://h/viejo_linux64.AppImage" > "$BATS_TEST_TMPDIR/upd/opt/.rpcs3-url"
+    fake_appimage 'mkdir -p squashfs-root; printf "#!/bin/sh\n" > squashfs-root/AppRun; chmod +x squashfs-root/AppRun; echo nuevo > squashfs-root/version'
+    PATH="$BATS_TEST_TMPDIR/upd/bin:$PATH" run bash "$BATS_TEST_TMPDIR/upd/update-rpcs3"
+    [ "$status" -eq 0 ]
+    [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/version")" = "nuevo" ]
+    [ "$(cat "$BATS_TEST_TMPDIR/upd/opt/.rpcs3-url")" = "https://h/nuevo_linux64.AppImage" ]
+}
+
 # --- wrapper y menu ----------------------------------------------------------
 
 @test "el wrapper y el menu generados son Bash valido y sin marcadores sin sustituir" {

@@ -178,6 +178,8 @@ install_rpcs3() {
         return 1
     fi
 
+    # Marca de version para que update-rpcs3 sepa si ya esta la ultima.
+    printf '%s\n' "$RPCS3_URL" > /mnt/opt/RPCS3/.rpcs3-url
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/RPCS3
     rm -f "$appimage"
 }
@@ -429,6 +431,10 @@ RPCS3_API_URL="__RPCS3_API_URL__"
 RPCS3_ASSET_REGEX='__RPCS3_ASSET_REGEX__'
 INSTALL_DIR="/opt/RPCS3"
 OWNER="__OWNER__"
+# URL del AppImage instalado; el nombre lleva la version. --force reinstala igual.
+URL_MARK="$INSTALL_DIR/.rpcs3-url"
+FORCE=false
+[[ "${1:-}" == "--force" ]] && FORCE=true
 
 if [[ ${EUID} -ne 0 ]]; then
     echo "Este script debe ejecutarse como root." >&2
@@ -449,6 +455,12 @@ LATEST_URL="$(printf '%s\n' "$RELEASE_JSON" \
 if [[ -z "$LATEST_URL" ]]; then
     echo "No se encontro un AppImage de Linux en el ultimo release; se usa $RPCS3_URL" >&2
     LATEST_URL="$RPCS3_URL"
+fi
+
+if [[ "$FORCE" != "true" && -r "$URL_MARK" && "$(cat "$URL_MARK")" == "$LATEST_URL" ]]; then
+    echo "RPCS3 ya esta en la ultima version ($(basename "$LATEST_URL")); no se descarga nada."
+    echo "Usa update-rpcs3 --force para reinstalarla igual."
+    exit 0
 fi
 
 echo "Descargando RPCS3 desde: $LATEST_URL"
@@ -487,6 +499,9 @@ if [[ ! -d "$NEW_DIR" || ! -x "$NEW_DIR/AppRun" ]]; then
     echo "El AppImage descargado no contiene AppRun; no se modifica $INSTALL_DIR." >&2
     exit 1
 fi
+
+# La marca viaja dentro de la instalacion nueva, asi solo existe si se completo.
+printf '%s\n' "$LATEST_URL" > "$NEW_DIR/.rpcs3-url"
 
 # La instalacion anterior solo se borra cuando la nueva se comprobo: si algo
 # falla se restaura.
@@ -574,7 +589,7 @@ update_rpcs3() {
 
     if sudo /usr/local/bin/update-rpcs3; then
         echo ""
-        echo "Actualizacion completada."
+        echo "Listo."
     else
         echo ""
         echo "La actualizacion fallo. Revisa journalctl -u cage-kiosk.service -b."
