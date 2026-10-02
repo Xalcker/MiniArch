@@ -390,3 +390,67 @@ assert 'Microphone Devices: "Mic_P1@@@Mic_P2@@@Mic_P3@@@@@@"' in yml
 PY
     [ "$status" -eq 0 ]
 }
+
+# --- bateria electronica MIDI ---------------------------------------------------
+
+@test "el wrapper detecta la bateria MIDI antes de cada arranque" {
+    run render_wrapper "$BATS_TEST_TMPDIR/games"
+    [[ "$output" == *"setup_midi_drums"* ]]
+}
+
+# Ejecuta setup_midi_drums() del wrapper con un aconnect simulado ($1 = salida de
+# "aconnect -l") sobre una configuracion de juego de prueba.
+run_setup_midi_drums() {
+    local cfg_dir="$BATS_TEST_TMPDIR/rpcs3" ac="$BATS_TEST_TMPDIR/aconnect.out"
+    mkdir -p "$cfg_dir/custom_configs"
+    printf '%s\n' "$1" > "$ac"
+    if [[ ! -f "$cfg_dir/custom_configs/config_BLUS30463.yml" ]]; then
+        printf 'Input/Output:\n  Emulated Midi devices: Keyboardßßß@@@Keyboardßßß@@@Keyboardßßß@@@\n  Otro: 1\n' \
+            > "$cfg_dir/custom_configs/config_BLUS30463.yml"
+    fi
+    render_wrapper "$BATS_TEST_TMPDIR/games" > "$BATS_TEST_TMPDIR/wrapper.sh"
+    run bash -c '
+        RPCS3_MIDI_DRUMS=true; RPCS3_CONFIG_DIR="$1"; AC="$2"
+        aconnect() { cat "$AC"; }
+        eval "$(sed -n "/^setup_midi_drums() {/,/^}/p" "$3")"
+        setup_midi_drums
+        grep "Emulated Midi" "$1/custom_configs/config_BLUS30463.yml"
+    ' _ "$cfg_dir" "$ac" "$BATS_TEST_TMPDIR/wrapper.sh"
+}
+
+ACONNECT_NITRO="client 0: 'System' [type=kernel]
+    0 'Timer           '
+client 14: 'Midi Through' [type=kernel]
+    0 'Midi Through Port-0'
+client 32: 'Alesis Nitro' [type=kernel,card=4]
+    0 'Alesis Nitro MIDI 1'
+client 142: 'PipeWire-System' [type=user,pid=638]
+    0 'input           '"
+
+@test "setup_midi_drums escribe el puerto del e-kit como Drums con su numero de cliente" {
+    run_setup_midi_drums "$ACONNECT_NITRO"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Emulated Midi devices: Drumsßßß"* ]]
+    [[ "$output" == *"Drumsßßß""Alesis Nitro:Alesis Nitro MIDI 1 32:0@@@Keyboardßßß@@@Keyboardßßß@@@"* ]]
+}
+
+@test "setup_midi_drums sigue al e-kit si cambia su numero de cliente" {
+    run_setup_midi_drums "$ACONNECT_NITRO"
+    run_setup_midi_drums "${ACONNECT_NITRO//client 32:/client 36:}"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Alesis Nitro MIDI 1 36:0@@@"* ]]
+}
+
+@test "setup_midi_drums no toca la configuracion si no hay dispositivo MIDI de tarjeta" {
+    run_setup_midi_drums "client 14: 'Midi Through' [type=kernel]
+    0 'Midi Through Port-0'"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Emulated Midi devices: Keyboardßßß@@@Keyboardßßß@@@Keyboardßßß@@@"* ]]
+}
+
+@test "install_rpcs3_midi_config no hace nada sin RPCS3_MIDI_NOTE_OVERRIDE" {
+    RPCS3_MIDI_NOTE_OVERRIDE=""
+    run install_rpcs3_midi_config
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}

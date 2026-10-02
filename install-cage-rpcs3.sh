@@ -61,6 +61,13 @@ RPCS3_GAME_PATH="${RPCS3_GAME_PATH:-}"
 RPCS3_GAME_MATCH="${RPCS3_GAME_MATCH:-Rock Band 3}"
 RPCS3_QT_PLATFORM="${RPCS3_QT_PLATFORM:-}"
 RPCS3_EXIT_MENU="${RPCS3_EXIT_MENU:-always}"
+# Bateria electronica MIDI por USB: true hace que el wrapper detecte el puerto
+# antes de cada arranque y lo asigne como "Drums" en la configuracion del juego.
+RPCS3_MIDI_DRUMS="${RPCS3_MIDI_DRUMS:-true}"
+# Notas MIDI que el kit manda distintas a lo esperado, "NOTA=Pieza,NOTA=Pieza"
+# (p. ej. "49=Ride,51=Crash" si crash y ride llegan invertidos). Vacio no toca
+# rb3drums.yml.
+RPCS3_MIDI_NOTE_OVERRIDE="${RPCS3_MIDI_NOTE_OVERRIDE:-}"
 # true instala el atajo para cerrar RPCS3: Ctrl+Alt+Q (teclado) o Guide+Start (control).
 RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 # hdmi (HDMI/DP, por defecto), analog o auto: salida de audio preferida.
@@ -366,6 +373,8 @@ main() {
     fi
 
     install_rpcs3_exit_hotkey
+
+    install_rpcs3_midi_config
 
     if ! install_rpcs3_cage_wrapper; then
         log_error "Fallo en creacion del wrapper de Cage/RPCS3"
