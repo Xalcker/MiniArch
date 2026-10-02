@@ -735,11 +735,20 @@ Uso: rpcs3-pads.py [--dry-run] [--config RUTA] [--sdl RUTA]
 """
 import ctypes
 import os
+import re
 import sys
 
 DEFAULT_CONFIG = os.path.expanduser("~/.config/rpcs3/input_configs/global/Default.yml")
 DEFAULT_SDL = "/opt/RPCS3/usr/lib/libSDL3.so.0"
 SDL_INIT_JOYSTICK, SDL_INIT_GAMEPAD = 0x00000200, 0x00002000
+# Los instrumentos (guitarras, baterias...) aparecen en SDL como controles genericos
+# y se quedarian con el jugador 1. Se descartan por nombre; RPCS3_PAD_EXCLUDE (una
+# expresion regular, sin distinguir mayusculas) sustituye esta lista.
+DEFAULT_EXCLUDE = r"Santroller|Guitar|Drum|Keytar|Rock ?Band|Harmonix|Mustang|Stratocaster"
+
+
+def is_instrument(name):
+    return re.search(os.environ.get("RPCS3_PAD_EXCLUDE") or DEFAULT_EXCLUDE, name, re.I) is not None
 
 
 def list_gamepads(sdl_path):
@@ -760,7 +769,7 @@ def list_gamepads(sdl_path):
         raw = sdl.SDL_GetGamepadNameForID(ids[i])
         pads.append((ids[i], raw.decode("utf-8", "replace") if raw else ""))
     sdl.SDL_Quit()
-    return [name for _, name in sorted(pads) if name]
+    return [name for _, name in sorted(pads) if name and not is_instrument(name)]
 
 
 def rpcs3_names(sdl_names):
@@ -837,7 +846,7 @@ def main(argv):
         print("rpcs3-pads: no se pudo cargar SDL (%s); no se asigna nada" % e)
         return 0
     if not names:
-        print("rpcs3-pads: no hay controles conectados; la configuracion no cambia")
+        print("rpcs3-pads: no hay controles (se ignoran los instrumentos); la configuracion no cambia")
         return 0
 
     with open(config, encoding="utf-8") as f:

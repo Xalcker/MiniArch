@@ -831,7 +831,10 @@ Variables de Cage/RPCS3:
   `input_configs/global/Default.yml`: con un control, ese es el jugador 1; con dos,
   el primero detectado es el 1 y el segundo el 2, con el mismo mapeo de botones. Sin
   controles no toca nada. Asi no hace falta saber el nombre SDL de cada modelo ni
-  elegirlo en la GUI. Limites: un control conectado **despues** de arrancar no se
+  elegirlo en la GUI. Las guitarras y baterias, que SDL tambien lista como controles,
+  se ignoran por nombre (Santroller, Guitar, Drum, Rock Band, Harmonix...); la
+  variable de entorno `RPCS3_PAD_EXCLUDE` (expresion regular) sustituye esa lista.
+  Limites: un control conectado **despues** de arrancar no se
   asigna hasta reiniciar el juego, y el orden "primero/segundo" sigue el de deteccion
   de SDL, que tras un arranque con los dos ya conectados depende de como los enumere
   el kernel. Si un control esta en modo X-input (p. ej. un 8BitDo, `Start+X` segun el
