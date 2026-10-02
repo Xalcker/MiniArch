@@ -855,6 +855,7 @@ RPCS3_EXIT_MENU="__RPCS3_EXIT_MENU__"
 RPCS3_MIDI_DRUMS="__RPCS3_MIDI_DRUMS__"
 RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
 RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
+RPCS3_PIPEWIRE_QUANTUM="__RPCS3_PIPEWIRE_QUANTUM__"
 RPCS3_MIC_SPLIT_MATCH="__RPCS3_MIC_SPLIT_MATCH__"
 RPCS3_MIC_VOLUME="__RPCS3_MIC_VOLUME__"
 RPCS3_MIC_SINGLE_MATCH="__RPCS3_MIC_SINGLE_MATCH__"
@@ -981,6 +982,14 @@ start_audio() {
     if [[ -n "$RPCS3_AUDIO_VOLUME" ]] && command -v wpctl >/dev/null 2>&1; then
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
         wpctl set-volume @DEFAULT_AUDIO_SINK@ "$RPCS3_AUDIO_VOLUME" >/dev/null 2>&1 || true
+    fi
+
+    # PipeWire trabaja por defecto con ciclos de 1024 muestras (21 ms a 48 kHz) y
+    # cada etapa de un microfono (dispositivo, fuente mono, lectura de RPCS3) puede
+    # sumar uno. Se fuerza un cuantum menor para bajar la latencia de los
+    # microfonos y del audio. Es de ejecucion, asi que se aplica en cada arranque.
+    if [[ -n "$RPCS3_PIPEWIRE_QUANTUM" ]] && command -v pw-metadata >/dev/null 2>&1; then
+        pw-metadata -n settings 0 clock.force-quantum "$RPCS3_PIPEWIRE_QUANTUM" >/dev/null 2>&1 || true
     fi
 }
 
@@ -1337,6 +1346,7 @@ install_rpcs3_cage_wrapper() {
         "RPCS3_MIDI_DRUMS=${RPCS3_MIDI_DRUMS:-}" \
         "RPCS3_QT_PLATFORM=${RPCS3_QT_PLATFORM:-}" \
         "RPCS3_AUDIO_VOLUME=${RPCS3_AUDIO_VOLUME:-}" \
+        "RPCS3_PIPEWIRE_QUANTUM=${RPCS3_PIPEWIRE_QUANTUM:-}" \
         "RPCS3_MIC_SPLIT_MATCH=${RPCS3_MIC_SPLIT_MATCH:-}" \
         "RPCS3_MIC_VOLUME=${RPCS3_MIC_VOLUME:-}" \
         "RPCS3_MIC_SINGLE_MATCH=${RPCS3_MIC_SINGLE_MATCH:-}" \

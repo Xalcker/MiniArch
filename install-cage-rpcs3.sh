@@ -79,6 +79,11 @@ RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 RPCS3_AUDIO_OUTPUT="${RPCS3_AUDIO_OUTPUT:-hdmi}"
 # Volumen de la salida al arrancar (1.0 = 100 %); vacio no lo toca.
 RPCS3_AUDIO_VOLUME="${RPCS3_AUDIO_VOLUME-1.0}"
+# Tamano de ciclo de PipeWire en muestras (48 kHz): 128 = 2.7 ms, 256 = 5.3 ms,
+# 1024 = 21 ms (el valor por defecto de PipeWire). Menos = menos latencia en los
+# microfonos y el audio, pero mas carga de CPU y riesgo de chasquidos si el juego
+# da caidas de FPS. Vacio no lo toca.
+RPCS3_PIPEWIRE_QUANTUM="${RPCS3_PIPEWIRE_QUANTUM-128}"
 # Buffer de audio de RPCS3 en ms para los perfiles RB3DX descargados: 32 es el de
 # recommended; minimum y potato traen 100, que suma latencia en un juego de
 # ritmo. Vacio deja el valor de cada perfil.
@@ -153,6 +158,12 @@ ask_guided_configuration() {
             return 1
             ;;
     esac
+
+    if [[ -n "$RPCS3_PIPEWIRE_QUANTUM" ]] && \
+       { [[ ! "$RPCS3_PIPEWIRE_QUANTUM" =~ ^[0-9]+$ ]] || (( RPCS3_PIPEWIRE_QUANTUM < 32 || RPCS3_PIPEWIRE_QUANTUM > 2048 )); }; then
+        log_error "RPCS3_PIPEWIRE_QUANTUM invalido: $RPCS3_PIPEWIRE_QUANTUM. Use un numero entre 32 y 2048 (por ejemplo 128) o vacio."
+        return 1
+    fi
 
     if [[ -n "$RPCS3_AUDIO_VOLUME" && ! "$RPCS3_AUDIO_VOLUME" =~ ^(0(\.[0-9]+)?|1(\.0+)?)$ ]]; then
         log_error "RPCS3_AUDIO_VOLUME invalido: $RPCS3_AUDIO_VOLUME. Use un numero entre 0 y 1 (por ejemplo 1.0) o vacio."
