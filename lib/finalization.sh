@@ -28,6 +28,13 @@ configure_network() {
         return 1
     fi
 
+    # Nombre <hostname>.local por mDNS: avahi (dependencia de pipewire-pulse, ya
+    # instalada) responde a esa consulta, asi que el kiosko se encuentra por nombre
+    # aunque el router no registre el hostname del DHCP. Si no esta, solo se avisa.
+    if ! run_quiet arch-chroot /mnt systemctl enable avahi-daemon.service; then
+        log "Aviso: no se pudo habilitar avahi-daemon; el kiosko no respondera a <hostname>.local"
+    fi
+
     if [[ "${ENABLE_SSH:-true}" == "true" ]]; then
         log "Instalando y configurando SSH..."
 

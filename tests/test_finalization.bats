@@ -162,6 +162,37 @@ setup() {
     rm -f /tmp/chroot_commands.log
 }
 
+@test "configure_network: habilita avahi-daemon para responder a <hostname>.local" {
+    arch-chroot() {
+        echo "arch-chroot $*" >> /tmp/chroot_commands.log
+        return 0
+    }
+    export -f arch-chroot
+
+    rm -f /tmp/chroot_commands.log
+
+    run configure_network
+    [ "$status" -eq 0 ]
+
+    grep -q "arch-chroot /mnt systemctl enable avahi-daemon.service" /tmp/chroot_commands.log
+
+    rm -f /tmp/chroot_commands.log
+}
+
+@test "configure_network: si falla avahi-daemon solo avisa y la instalacion sigue" {
+    arch-chroot() {
+        if [[ "$*" == *"enable avahi-daemon.service"* ]]; then
+            return 1
+        fi
+        return 0
+    }
+    export -f arch-chroot
+
+    run configure_network
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"no respondera a <hostname>.local"* ]]
+}
+
 @test "configure_network: fallo al instalar NetworkManager retorna 1" {
     # Mock de arch-chroot que falla en NetworkManager
     arch-chroot() {
