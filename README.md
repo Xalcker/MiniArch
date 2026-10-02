@@ -688,6 +688,14 @@ Variables de Cage/RPCS3:
   USB lo que limita: un microfono USB anade solo unos pocos ms. Cuesta algo de CPU y
   puede provocar chasquidos cuando el juego da caidas de FPS; si pasa, sube a `256`.
   Medido en un Ryzen 5 3400GE de 35 W: 128 sin errores de audio. Vacio no lo toca.
+- `RPCS3_PERF_OVERLAY`: `true` activa el overlay de rendimiento de RPCS3 (FPS y
+  grafica de frametime) en los perfiles RB3DX descargados; los perfiles de
+  MiloHax lo traen apagado. Util para validar el rendimiento de una instalacion
+  nueva; en uso normal conviene `false`. Vacio = el instalador pregunta (por
+  defecto no). Para cambiarlo despues, en
+  `~/.config/rpcs3/custom_configs/config_BLUS30463.yml`, seccion `Video >
+  Performance Overlay`: `Enabled`, `Enable Framerate Graph` y `Enable Frametime
+  Graph`.
 - `RPCS3_AUDIO_BUFFER_MS`: buffer de audio de RPCS3 (`Desired Audio Buffer
   Duration`, en ms) que llevan los perfiles RB3DX descargados. Por defecto `32`,
   el de `recommended`; `minimum` y `potato` traen `100`, que suma latencia en un

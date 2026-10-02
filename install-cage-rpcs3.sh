@@ -91,6 +91,9 @@ RPCS3_PIPEWIRE_QUANTUM="${RPCS3_PIPEWIRE_QUANTUM-128}"
 # recommended; minimum y potato traen 100, que suma latencia en un juego de
 # ritmo. Vacio deja el valor de cada perfil.
 RPCS3_AUDIO_BUFFER_MS="${RPCS3_AUDIO_BUFFER_MS-32}"
+# true activa el overlay de rendimiento de RPCS3 (FPS y grafica de frametime) en
+# los perfiles descargados; util para validar el rendimiento. Vacio = preguntar.
+RPCS3_PERF_OVERLAY="${RPCS3_PERF_OVERLAY:-}"
 # Microfonos USB para hasta 3 cantantes (jugadores en este orden): primero los
 # individuales (RPCS3_MIC_SINGLE_MATCH, el Logitech oficial de Rock Band), luego
 # los adaptadores estereo de dos microfonos (RPCS3_MIC_SPLIT_MATCH, el SingStar
@@ -145,6 +148,7 @@ ask_guided_configuration() {
     prompt_value TIMEZONE "Zona horaria" "America/Phoenix" || return 1
     prompt_bool ENABLE_SSH "Habilitar SSH para mantenimiento remoto" "false" || return 1
     prompt_bool ENABLE_PLYMOUTH "Habilitar Plymouth" "true" || return 1
+    prompt_bool RPCS3_PERF_OVERLAY "Mostrar el overlay de rendimiento (FPS) en RPCS3" "false" || return 1
     prompt_value RPCS3_GAME_MATCH "Titulo del juego a arrancar (busca en PARAM.SFO)" "Rock Band 3" || return 1
 
     if [[ -z "${RPCS3_EXIT_MENU:-}" || "$ENV_FILE_LOADED" != "true" ]]; then
