@@ -154,7 +154,8 @@ de shaders no caben en el `/home` de un disco de 16 GB.
   resto. En un disco de 16 GB `/home` queda de ~5.5 GB, en 32 GB de ~21.5 GB y
   en 128 GB de ~117.5 GB. Ajustable con `ESP_SIZE`, `ROOT_SIZE` y `SWAP_SIZE`.
 - 2 GB de RAM o mas.
-- Conexion a internet durante la instalacion.
+- Conexion a internet durante la instalacion (cable, o WiFi con `iwctl`; ver
+  "Conectarse a WiFi en el live").
 - ImageMagick en el entorno live si vas a usar imagen personalizada de
   Plymouth.
 
@@ -174,6 +175,61 @@ Arranca desde el ISO de Arch Linux y verifica red:
 ```bash
 ping -c 3 archlinux.org
 ```
+
+Si no tienes cable de red, conectate por WiFi como se explica a continuacion.
+
+### Conectarse A WiFi En El Live (iwctl)
+
+El ISO de Arch Linux trae `iwd` y su cliente `iwctl`. Con cable de red no hace
+falta nada de esto: DHCP funciona solo.
+
+1. Abre la consola interactiva y localiza tu tarjeta WiFi (normalmente `wlan0`):
+
+   ```bash
+   iwctl
+   ```
+
+   ```text
+   [iwd]# device list
+   [iwd]# station wlan0 scan
+   [iwd]# station wlan0 get-networks
+   [iwd]# station wlan0 connect "NombreDeTuRed"
+   ```
+
+   `connect` te pide la contrasena (no se muestra al escribirla). Sal con `exit`.
+   Si el nombre de la red tiene espacios, ponlo entre comillas.
+
+2. Comprueba que hay conexion antes de seguir:
+
+   ```bash
+   ping -c 3 archlinux.org
+   ```
+
+   Si tarda unos segundos en responder, espera: la direccion IP se asigna despues
+   de asociarte a la red.
+
+Forma corta, sin entrar a la consola (la contrasena queda en el historial de la
+sesion live, que es temporal):
+
+```bash
+iwctl --passphrase "TuContrasena" station wlan0 connect "NombreDeTuRed"
+```
+
+Casos que se salen de lo normal:
+
+| Situacion | Que hacer |
+|---|---|
+| `device list` no muestra nada | `rfkill list`; si dice `Soft blocked: yes`, `rfkill unblock wifi` |
+| El dispositivo aparece apagado | `iwctl device wlan0 set-property Powered on` y, si hace falta, `iwctl adapter phy0 set-property Powered on` |
+| Red oculta (sin SSID visible) | `iwctl station wlan0 connect-hidden "NombreDeTuRed"` |
+| Ver el estado de la conexion | `iwctl station wlan0 show` |
+| Redes empresariales (WPA Enterprise) | No se configuran con `connect`; necesitan un archivo de perfil de `iwd`. Usa cable o un hotspot del telefono. |
+| El nombre de la interfaz no es `wlan0` | Usa el que muestre `iwctl device list` (por ejemplo `wlp2s0`) |
+
+Esta conexion solo vale para el entorno live y **no se copia al sistema
+instalado**. En el kiosko ya instalado, el WiFi se configura desde el menu de
+mantenimiento con la opcion **2) Configurar WiFi**, o por consola con `nmtui` /
+`nmcli` (ver "Uso despues de instalar").
 
 ### Instalacion Manual
 
@@ -860,6 +916,8 @@ Ejecuta los instaladores desde el live ISO de Arch Linux. Deben existir
 `/etc/arch-release` y `pacstrap`.
 
 ### No hay red
+
+Si usas WiFi, conectate primero con `iwctl` (ver "Conectarse a WiFi en el live").
 
 ```bash
 ip link
