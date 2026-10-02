@@ -67,6 +67,13 @@ RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 RPCS3_AUDIO_OUTPUT="${RPCS3_AUDIO_OUTPUT:-hdmi}"
 # Volumen de la salida al arrancar (1.0 = 100 %); vacio no lo toca.
 RPCS3_AUDIO_VOLUME="${RPCS3_AUDIO_VOLUME-1.0}"
+# Adaptadores USB de dos microfonos en un dispositivo estereo (SingStar USBMIC):
+# el wrapper parte el estereo en dos fuentes mono (una por jugador). Es una
+# expresion regular sobre el nombre de la fuente ALSA; vacio lo desactiva.
+RPCS3_MIC_SPLIT_MATCH="${RPCS3_MIC_SPLIT_MATCH-USBMIC|SingStar}"
+# Volumen de captura de ese adaptador (35 % = -4 dB en el SingStar USBMIC; al
+# maximo cada microfono mueve la flecha del otro jugador).
+RPCS3_MIC_VOLUME="${RPCS3_MIC_VOLUME-35%}"
 # RB3 mas la cache de shaders de RPCS3 no caben en el /home de un disco de 16 GB.
 RPCS3_MIN_DISK_GB="${RPCS3_MIN_DISK_GB:-32}"
 
