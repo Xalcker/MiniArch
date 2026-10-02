@@ -239,7 +239,10 @@ download_rb3dx_config_profiles() {
         return 0
     fi
 
-    local profile target
+    local profile target mic_arg=""
+
+    # Con un adaptador de dos microfonos el perfil usa las fuentes que crea el wrapper.
+    [[ -n "${RPCS3_MIC_SPLIT_MATCH:-}" ]] && mic_arg="--mics"
 
     mkdir -p "/mnt/home/$KIOSK_USER"
 
@@ -256,8 +259,8 @@ download_rb3dx_config_profiles() {
         # Los perfiles de MiloHax son para Windows (ruta config/, XAudio2, un
         # Shader Mode que RPCS3 ya no acepta). Se adaptan a Linux; si falla se
         # deja el zip original.
-        if ! printf '%s
-' "$RPCS3_PROFILE_FIX_TEMPLATE" |             run_quiet arch-chroot /mnt python3 - "/home/$KIOSK_USER/RB3DX-config-$profile.zip"; then
+        if ! printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" | \
+            run_quiet arch-chroot /mnt python3 - "/home/$KIOSK_USER/RB3DX-config-$profile.zip" ${mic_arg:+"$mic_arg"}; then
             warn "No se pudo adaptar el perfil $profile a Linux; queda el zip original (revise Shader Mode y Audio > Renderer en el yml)."
         fi
 
@@ -626,13 +629,15 @@ TEMPLATE
 
 read -r -d '' RPCS3_PROFILE_FIX_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env python3
-"""Adapta un zip de perfil de RB3DX (MiloHax) a Linux. Uso: fixprofile.py ZIP
+"""Adapta un zip de perfil de RB3DX (MiloHax) a Linux. Uso: fixprofile.py ZIP [--mics]
 
 - Quita la carpeta del perfil y el prefijo config/ (ruta de Windows): el zip
   queda relativo a ~/.config/rpcs3 (custom_configs/..., dev_hdd0/...).
 - Shader Mode: el valor del perfil ya no es valido en RPCS3; se usa el
   vigente, Async Recompiler with Shader Interpreter.
 - Audio Renderer XAudio2 (solo Windows) pasa a Cubeb.
+- Con --mics: Microphone Type Standard y las dos fuentes SingStar_Mic_1/2 que
+  crea el wrapper para un adaptador USB de dos microfonos.
 """
 import os
 import re
@@ -640,6 +645,7 @@ import sys
 import zipfile
 
 src = sys.argv[1]
+mics = "--mics" in sys.argv[2:]
 tmp = src + ".new"
 
 with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -655,6 +661,9 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED
             text = data.decode("utf-8")
             text = re.sub(r"^(\s*Shader Mode:)[^\r\n]*", r"\1 Async Recompiler with Shader Interpreter", text, flags=re.M)
             text = re.sub(r"^(\s*Renderer:) XAudio2", r"\1 Cubeb", text, flags=re.M)
+            if mics:
+                text = re.sub(r"^(\s*Microphone Type:)[^\r\n]*", r"\1 Standard", text, flags=re.M)
+                text = re.sub(r"^(\s*Microphone Devices:)[^\r\n]*", r'\1 "SingStar_Mic_1@@@SingStar_Mic_2@@@@@@@@@"', text, flags=re.M)
             data = text.encode("utf-8")
         zout.writestr(name, data)
 
@@ -829,6 +838,8 @@ RPCS3_GAME_MATCH="__RPCS3_GAME_MATCH__"
 RPCS3_EXIT_MENU="__RPCS3_EXIT_MENU__"
 RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
 RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
+RPCS3_MIC_SPLIT_MATCH="__RPCS3_MIC_SPLIT_MATCH__"
+RPCS3_MIC_VOLUME="__RPCS3_MIC_VOLUME__"
 
 export HOME="${HOME:-__RPCS3_HOME__}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -1009,6 +1020,39 @@ find_game() {
     return 0
 }
 
+# Adaptadores USB con dos microfonos en un dispositivo estereo (p. ej. el
+# SingStar USBMIC: azul = jugador 1 = canal izquierdo, rojo = jugador 2 = canal
+# derecho). RPCS3 abre un dispositivo por jugador, asi que se parte el estereo
+# en dos fuentes mono (singstar_mic1/2) y se baja la ganancia: el adaptador sale
+# al maximo (+24 dB) y cada microfono mueve la flecha del otro jugador.
+# Se ejecuta antes de cada arranque para tomar adaptadores conectados despues.
+setup_dual_mics() {
+    [[ -n "$RPCS3_MIC_SPLIT_MATCH" ]] || return 0
+    command -v pactl >/dev/null 2>&1 || return 0
+
+    local sources src
+
+    sources="$(pactl list short sources 2>/dev/null || true)"
+    src="$(printf '%s\n' "$sources" | awk -v re="$RPCS3_MIC_SPLIT_MATCH" '$2 ~ /^alsa_input\./ && $2 ~ re {print $2; exit}')"
+    [[ -n "$src" ]] || return 0
+
+    if [[ -n "$RPCS3_MIC_VOLUME" ]]; then
+        pactl set-source-volume "$src" "$RPCS3_MIC_VOLUME" >/dev/null 2>&1 || true
+    fi
+
+    if [[ "$sources" == *singstar_mic1* ]]; then
+        return 0
+    fi
+
+    echo "run-rpcs3: separando $src en dos microfonos mono" >&2
+    pactl load-module module-remap-source "master=$src" source_name=singstar_mic1 channels=1 \
+        master_channel_map=front-left channel_map=mono \
+        source_properties=device.description=SingStar_Mic_1 >/dev/null 2>&1 || true
+    pactl load-module module-remap-source "master=$src" source_name=singstar_mic2 channels=1 \
+        master_channel_map=front-right channel_map=mono \
+        source_properties=device.description=SingStar_Mic_2 >/dev/null 2>&1 || true
+}
+
 # Atajo para cerrar RPCS3 desde el teclado (Ctrl+Alt+Q) o el control (Guide+Start).
 start_exit_hotkey() {
     local script=/usr/local/bin/rpcs3-exit-hotkey.py
@@ -1023,6 +1067,7 @@ start_exit_hotkey
 start_audio
 
 while true; do
+    setup_dual_mics
     RPCS3_BIN="$(find_rpcs3_bin)"
     open_gui=false
 
@@ -1110,6 +1155,8 @@ install_rpcs3_cage_wrapper() {
         "RPCS3_EXIT_MENU=${RPCS3_EXIT_MENU:-always}" \
         "RPCS3_QT_PLATFORM=${RPCS3_QT_PLATFORM:-}" \
         "RPCS3_AUDIO_VOLUME=${RPCS3_AUDIO_VOLUME:-}" \
+        "RPCS3_MIC_SPLIT_MATCH=${RPCS3_MIC_SPLIT_MATCH:-}" \
+        "RPCS3_MIC_VOLUME=${RPCS3_MIC_VOLUME:-}" \
         "RPCS3_HOME=/home/$KIOSK_USER" > /mnt/usr/local/bin/run-rpcs3.sh
     chmod +x /mnt/usr/local/bin/run-rpcs3.sh
 }

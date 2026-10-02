@@ -672,6 +672,17 @@ Variables de Cage/RPCS3:
   **Guide+Start** (control Xbox); el wrapper vuelve entonces al menu de
   mantenimiento. Cage no procesa Alt+F4 y RPCS3 sin GUI no tiene atajo para
   cerrarse. Ignora guitarras y baterias. `false` no lo instala.
+- `RPCS3_MIC_SPLIT_MATCH`: expresion regular (por defecto `USBMIC|SingStar`) sobre
+  el nombre de una fuente de audio USB; si el wrapper encuentra una, la parte en
+  dos fuentes mono (`SingStar_Mic_1` = canal izquierdo = azul = jugador 1,
+  `SingStar_Mic_2` = derecho = rojo = jugador 2), porque RPCS3 abre un dispositivo
+  por jugador. Se ejecuta antes de cada arranque del juego, asi que toma
+  adaptadores conectados despues. Con esta opcion los perfiles RB3DX descargados
+  llevan `Microphone Type: Standard` y esas dos fuentes. Vacio la desactiva. El
+  tipo `Real SingStar` no funciona con Rock Band 3 (el juego pide "connect a mic").
+- `RPCS3_MIC_VOLUME`: volumen de captura de ese adaptador (por defecto `35%`).
+  Sale al maximo de fabrica (+24 dB) y cada microfono mueve la flecha del otro
+  jugador; 35 % equivale a -4 dB en el SingStar USBMIC. Vacio no lo toca.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`
