@@ -234,6 +234,11 @@ EOF
     echo 'vm.swappiness=10' > /mnt/etc/sysctl.d/99-yarg.conf
 
     cat > /mnt/etc/default/cpupower << 'EOF'
+# El servicio cpupower actual lee las variables en mayusculas; las versiones
+# antiguas, en minusculas. Se escriben ambas.
+GOVERNOR='performance'
+MIN_FREQ=''
+MAX_FREQ=''
 governor='performance'
 min_freq=''
 max_freq=''

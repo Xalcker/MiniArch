@@ -269,3 +269,39 @@ PY
     [ "$status" -eq 0 ]
     [[ "$output" == *"omitido"* ]]
 }
+
+# --- perfiles RB3DX -----------------------------------------------------------
+
+@test "el adaptador de perfiles RB3DX reescribe rutas, Shader Mode y XAudio2 para Linux" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+
+    local fix="$BATS_TEST_TMPDIR/fix.py" zip="$BATS_TEST_TMPDIR/perfil.zip"
+    printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" > "$fix"
+
+    python3 - "$zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("minimum/", "")
+    z.writestr("minimum/config/custom_configs/config_BLUS30463.yml",
+               "Video:\n  Renderer: Vulkan\n  Shader Mode: Async Shader Recompiler\nAudio:\n  Renderer: XAudio2\n")
+    z.writestr("minimum/dev_hdd0/game/BLUS30463/USRDIR/dx_high_memory.dta", "(dx_high_memory 190000000)\n")
+PY
+
+    run python3 "$fix" "$zip"
+    [ "$status" -eq 0 ]
+
+    run python3 - "$zip" <<'PY'
+import sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+assert sorted(z.namelist()) == ["custom_configs/config_BLUS30463.yml", "dev_hdd0/game/BLUS30463/USRDIR/dx_high_memory.dta"], z.namelist()
+yml = z.read("custom_configs/config_BLUS30463.yml").decode()
+assert "Shader Mode: Async Recompiler with Shader Interpreter" in yml
+assert "Renderer: Vulkan" in yml and "Renderer: Cubeb" in yml and "XAudio2" not in yml
+PY
+    [ "$status" -eq 0 ]
+}
+
+@test "install_rpcs3_dependencies instala python para el adaptador y el atajo de salida" {
+    run grep -n "pulsemixer python" lib/rpcs3.sh
+    [ "$status" -eq 0 ]
+}
