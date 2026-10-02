@@ -682,11 +682,11 @@ read -r -d '' RPCS3_EXIT_HOTKEY_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env python3
 """Cierra RPCS3 con un atajo, sin depender del compositor ni de la ventana.
 
-Lee los dispositivos de entrada directamente (como evmapy/hotkeygen en Batocera):
-  - Teclado: Ctrl + Alt + Q
-  - Control: boton Guide (Xbox) + Start
+Lee los teclados directamente (como evmapy/hotkeygen en Batocera): Ctrl + Alt + Q.
 Al detectar la combinacion termina RPCS3; el wrapper del kiosko vuelve entonces
-al menu de mantenimiento. Los instrumentos (guitarras, baterias) se ignoran.
+al menu de mantenimiento. Con un control no hace falta: su boton Guide abre el
+menu de RPCS3, que trae la opcion de salir del juego. Los instrumentos
+(guitarras, baterias) se ignoran.
 
 Uso: rpcs3-exit-hotkey.py [--list]   (--list muestra que dispositivos detecta)
 """
@@ -703,7 +703,6 @@ EV_KEY = 1
 EVENT = struct.Struct("llHHi")
 
 KEY_Q, KEY_LEFTCTRL, KEY_LEFTALT, KEY_RIGHTCTRL, KEY_RIGHTALT = 16, 29, 56, 97, 100
-BTN_START, BTN_MODE = 315, 316
 
 CTRL = {KEY_LEFTCTRL, KEY_RIGHTCTRL}
 ALT = {KEY_LEFTALT, KEY_RIGHTALT}
@@ -731,23 +730,19 @@ def key_capabilities(event):
 
 
 def classify(mask, name):
-    """Tipos de atajo que admite un dispositivo: 'kbd' y/o 'pad'."""
+    """Tipos de atajo que admite un dispositivo: 'kbd' si es un teclado."""
     if any(excluded in name.lower() for excluded in EXCLUDED_NAMES):
         return set()
     has = lambda code: (mask >> code) & 1
     kinds = set()
     if has(KEY_Q) and has(KEY_LEFTCTRL) and has(KEY_LEFTALT):
         kinds.add("kbd")
-    if has(BTN_MODE) and has(BTN_START):
-        kinds.add("pad")
     return kinds
 
 
 def combo_pressed(kinds, held):
     if "kbd" in kinds and held & CTRL and held & ALT and KEY_Q in held:
         return "teclado"
-    if "pad" in kinds and BTN_MODE in held and BTN_START in held:
-        return "control"
     return None
 
 
@@ -1096,7 +1091,7 @@ setup_mics() {
     printf '%s\n' "$plan" > "$plan_file"
 }
 
-# Atajo para cerrar RPCS3 desde el teclado (Ctrl+Alt+Q) o el control (Guide+Start).
+# Atajo para cerrar RPCS3 desde el teclado (Ctrl+Alt+Q).
 start_exit_hotkey() {
     local script=/usr/local/bin/rpcs3-exit-hotkey.py
 
@@ -1221,7 +1216,7 @@ install_rpcs3_update_script() {
     chmod +x /mnt/usr/local/bin/update-rpcs3
 }
 
-# Instala el atajo de salida (teclado Ctrl+Alt+Q, control Guide+Start). Cage no
+# Instala el atajo de salida (teclado Ctrl+Alt+Q). Cage no
 # procesa Alt+F4 y RPCS3 sin GUI no tiene atajos para cerrarse, asi que un
 # proceso aparte lee los dispositivos de entrada, como hace evmapy en Batocera.
 install_rpcs3_exit_hotkey() {
@@ -1230,7 +1225,7 @@ install_rpcs3_exit_hotkey() {
         return 0
     fi
 
-    log "Instalando atajo de salida de RPCS3 (Ctrl+Alt+Q / Guide+Start)"
+    log "Instalando atajo de salida de RPCS3 (Ctrl+Alt+Q)"
     mkdir -p /mnt/usr/local/bin
     printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > /mnt/usr/local/bin/rpcs3-exit-hotkey.py
     chmod 755 /mnt/usr/local/bin/rpcs3-exit-hotkey.py
