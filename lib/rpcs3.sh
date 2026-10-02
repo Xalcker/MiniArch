@@ -1268,6 +1268,51 @@ EOF_CONF
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
 }
 
+# Configuracion de entrada por defecto: jugador 1 = control con el handler SDL.
+# Sin este archivo RPCS3 asigna el teclado al jugador 1 y un control no navega
+# por los menus (imprescindible con un e-kit, que no navega). La plantilla es el
+# Default.yml que RPCS3 guarda desde Pad Settings con un control Xbox Series;
+# SDL identifica el dispositivo por nombre mas un numero ("Xbox Series X
+# Controller 1"), asi que RPCS3_PAD_DEVICE permite cambiarlo. No se pisa una
+# configuracion existente.
+install_rpcs3_input_config() {
+    if [[ "${RPCS3_PAD_CONFIG:-true}" != "true" ]]; then
+        log "Configuracion de control omitida (RPCS3_PAD_CONFIG=false)"
+        return 0
+    fi
+
+    local template="${SCRIPT_DIR:-.}/assets/rpcs3-input-Default.yml"
+    local dir="/mnt/home/$KIOSK_USER/.config/rpcs3/input_configs"
+    local device="${RPCS3_PAD_DEVICE:-Xbox Series X Controller 1}"
+    local line
+
+    if [[ ! -f "$template" ]]; then
+        warn "No se encontro $template; el jugador 1 queda con el teclado hasta configurarlo en RPCS3."
+        return 0
+    fi
+
+    if [[ -e "$dir/global/Default.yml" ]]; then
+        log "Ya existe la configuracion de entrada de RPCS3; no se sobreescribe"
+        return 0
+    fi
+
+    log "Configurando el control del jugador 1 en RPCS3 (SDL: $device)"
+    mkdir -p "$dir/global"
+
+    # Se sustituye solo el dispositivo del jugador 1, sin interpretar caracteres
+    # especiales del nombre (sed los trataria como patron).
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "  Device: Xbox Series X Controller 1" ]]; then
+            printf '  Device: %s\n' "$device"
+        else
+            printf '%s\n' "$line"
+        fi
+    done < "$template" > "$dir/global/Default.yml"
+
+    printf 'Active Configurations:\n  global: Default\n' > "$dir/active_input_configurations.yml"
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
+}
+
 install_rpcs3_cage_wrapper() {
     log "Creando menu de mantenimiento y wrapper /usr/local/bin/run-rpcs3.sh"
 
