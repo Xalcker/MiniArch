@@ -877,3 +877,25 @@ PY
     [ "$status" -eq 0 ]
     [[ "$output" == *"omitida"* ]]
 }
+
+@test "rpcs3-pads: las guitarras y baterias no cuentan como controles" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+    local script="$BATS_TEST_TMPDIR/rpcs3-pads.py"
+    printf '%s\n' "$RPCS3_PADS_TEMPLATE" > "$script"
+
+    run python3 - "$script" <<'PY'
+import importlib.util, os, sys
+spec = importlib.util.spec_from_file_location("pads", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+
+for nombre in ("sanjay900 Santroller", "Harmonix Guitar for PlayStation 3", "Rock Band Drums"):
+    assert m.is_instrument(nombre), nombre
+for nombre in ("Xbox Series X Controller", "Xbox 360 Controller", "8BitDo SN30 Pro"):
+    assert not m.is_instrument(nombre), nombre
+
+os.environ["RPCS3_PAD_EXCLUDE"] = "SN30"
+assert m.is_instrument("8BitDo SN30 Pro") and not m.is_instrument("sanjay900 Santroller")
+PY
+    [ "$status" -eq 0 ]
+}
