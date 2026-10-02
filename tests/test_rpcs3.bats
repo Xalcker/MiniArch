@@ -255,10 +255,12 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 assert m.combo_pressed({"kbd"}, {29, 56, 16}) == "teclado"
 assert m.combo_pressed({"kbd"}, {29, 16}) is None
-assert m.combo_pressed({"pad"}, {316, 315}) == "control"
-assert m.combo_pressed({"pad"}, {315}) is None
-assert m.classify((1 << 316) | (1 << 315), "Xbox Controller") == {"pad"}
-assert m.classify((1 << 316) | (1 << 315), "sanjay900 Santroller") == set()
+assert m.combo_pressed({"kbd"}, {56, 16}) is None
+assert m.classify((1 << 16) | (1 << 29) | (1 << 56), "Teclado") == {"kbd"}
+assert m.classify((1 << 16) | (1 << 29) | (1 << 56), "sanjay900 Santroller") == set()
+# un control con Guide + Start ya no cierra el juego (lo hace el menu de RPCS3)
+assert m.classify((1 << 316) | (1 << 315), "Xbox Controller") == set()
+assert m.combo_pressed(set(), {316, 315}) is None
 PY
     [ "$status" -eq 0 ]
 }

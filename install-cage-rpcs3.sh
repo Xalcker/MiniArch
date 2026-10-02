@@ -73,7 +73,7 @@ RPCS3_MIDI_NOTE_OVERRIDE="${RPCS3_MIDI_NOTE_OVERRIDE:-}"
 # RPCS3_PAD_DEVICE es el nombre que SDL da al control, con su numero.
 RPCS3_PAD_CONFIG="${RPCS3_PAD_CONFIG:-true}"
 RPCS3_PAD_DEVICE="${RPCS3_PAD_DEVICE:-Xbox Series X Controller 1}"
-# true instala el atajo para cerrar RPCS3: Ctrl+Alt+Q (teclado) o Guide+Start (control).
+# true instala el atajo para cerrar RPCS3 con Ctrl+Alt+Q (teclado).
 RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 # hdmi (HDMI/DP, por defecto), analog o auto: salida de audio preferida.
 RPCS3_AUDIO_OUTPUT="${RPCS3_AUDIO_OUTPUT:-hdmi}"

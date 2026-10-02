@@ -668,10 +668,11 @@ Variables de Cage/RPCS3:
   quita el silencio; vacio no lo toca. Util porque WirePlumber puede dejar un
   sink HDMI en 40 %.
 - `RPCS3_EXIT_HOTKEY`: `true` (por defecto) instala `/usr/local/bin/rpcs3-exit-hotkey.py`,
-  que el wrapper arranca para cerrar RPCS3 con **Ctrl+Alt+Q** (teclado) o
-  **Guide+Start** (control Xbox); el wrapper vuelve entonces al menu de
-  mantenimiento. Cage no procesa Alt+F4 y RPCS3 sin GUI no tiene atajo para
-  cerrarse. Ignora guitarras y baterias. `false` no lo instala.
+  que el wrapper arranca para cerrar RPCS3 con **Ctrl+Alt+Q** en el teclado; el
+  wrapper vuelve entonces al menu de mantenimiento. Cage no procesa Alt+F4 y
+  RPCS3 sin GUI no tiene atajo de teclado para cerrarse. Con un control no hace
+  falta: su boton **Guide** abre el menu de RPCS3, que trae la opcion de salir
+  del juego. Ignora guitarras y baterias. `false` no lo instala.
 - `RPCS3_AUDIO_BUFFER_MS`: buffer de audio de RPCS3 (`Desired Audio Buffer
   Duration`, en ms) que llevan los perfiles RB3DX descargados. Por defecto `32`,
   el de `recommended`; `minimum` y `potato` traen `100`, que suma latencia en un
