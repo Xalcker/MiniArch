@@ -680,6 +680,14 @@ Variables de Cage/RPCS3:
   RPCS3 sin GUI no tiene atajo de teclado para cerrarse. Con un control no hace
   falta: su boton **Guide** abre el menu de RPCS3, que trae la opcion de salir
   del juego. Ignora guitarras y baterias. `false` no lo instala.
+- `RPCS3_PIPEWIRE_QUANTUM`: tamano de ciclo de PipeWire en muestras a 48 kHz (por
+  defecto `128` = 2.7 ms; el de PipeWire es `1024` = 21 ms). El wrapper lo aplica en
+  cada arranque con `pw-metadata -n settings 0 clock.force-quantum`. Cada etapa de
+  un microfono USB (dispositivo, fuente mono, lectura de RPCS3) puede sumar un
+  ciclo, asi que bajarlo reduce la latencia de los microfonos y del audio. No es el
+  USB lo que limita: un microfono USB anade solo unos pocos ms. Cuesta algo de CPU y
+  puede provocar chasquidos cuando el juego da caidas de FPS; si pasa, sube a `256`.
+  Medido en un Ryzen 5 3400GE de 35 W: 128 sin errores de audio. Vacio no lo toca.
 - `RPCS3_AUDIO_BUFFER_MS`: buffer de audio de RPCS3 (`Desired Audio Buffer
   Duration`, en ms) que llevan los perfiles RB3DX descargados. Por defecto `32`,
   el de `recommended`; `minimum` y `potato` traen `100`, que suma latencia en un

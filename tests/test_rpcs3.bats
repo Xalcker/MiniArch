@@ -584,6 +584,21 @@ run_updater_tail() {
     [ "$status" -eq 0 ]
 }
 
+# --- latencia de audio: cuantum de PipeWire -------------------------------------------
+
+@test "el wrapper fuerza el cuantum de PipeWire con pw-metadata cuando RPCS3_PIPEWIRE_QUANTUM tiene valor" {
+    run render_wrapper "$BATS_TEST_TMPDIR/games"
+    [[ "$output" == *'pw-metadata -n settings 0 clock.force-quantum "$RPCS3_PIPEWIRE_QUANTUM"'* ]]
+    [[ "$output" == *'[[ -n "$RPCS3_PIPEWIRE_QUANTUM" ]]'* ]]
+}
+
+@test "el instalador valida RPCS3_PIPEWIRE_QUANTUM (32 a 2048) y lo documenta" {
+    run grep -n 'RPCS3_PIPEWIRE_QUANTUM invalido' install-cage-rpcs3.sh
+    [ "$status" -eq 0 ]
+    grep -q '^RPCS3_PIPEWIRE_QUANTUM=' .env.example
+    grep -q 'RPCS3_PIPEWIRE_QUANTUM' README.md
+}
+
 # --- perfil de RB3DX elegido en el instalador -------------------------------------
 
 @test "apply_rb3dx_config_profile no aplica nada con none" {
