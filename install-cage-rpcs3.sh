@@ -56,6 +56,9 @@ RB3DX_DOWNLOAD_CONFIGS="${RB3DX_DOWNLOAD_CONFIGS:-true}"
 # Perfil que se aplica: recommended, minimum, potato o none. Vacio = preguntar
 # durante la instalacion (los tres zips se descargan siempre).
 RB3DX_CONFIG_PROFILE="${RB3DX_CONFIG_PROFILE:-}"
+# Escala de resolucion (%) que se fuerza en el perfil aplicado: 100 = nativa; el
+# perfil recommended trae 150. "perfil" deja el valor del perfil. Vacio = preguntar.
+RB3DX_RESOLUTION_SCALE="${RB3DX_RESOLUTION_SCALE:-}"
 RB3DX_DISCLAIMERS_URL="https://guides.milohax.org/en/rb3pc/intro/disclaimers/"
 # Las rutas que dependen de KIOSK_USER se resuelven en resolve_user_paths(),
 # despues de preguntar el usuario kiosko.
@@ -198,6 +201,49 @@ ask_guided_configuration() {
             return 1
             ;;
     esac
+
+    # Escala de resolucion: el perfil recommended trae 150 %, demasiado para unos
+    # graficos integrados. "perfil" deja el valor que trae cada perfil.
+    if [[ "$RB3DX_CONFIG_PROFILE" != "none" && -z "${RB3DX_RESOLUTION_SCALE:-}" ]]; then
+        local scale_answer="100"
+        echo ""
+        echo "Escala de resolucion de RPCS3 en % (100 = nativa; recommended trae 150;"
+        echo "con graficos integrados usa 100; 'perfil' = el valor que trae el perfil)."
+        read -rp "$(echo -e "${BLUE}Escala [numero/perfil] (${scale_answer}): ${NC}")" scale_answer
+        RB3DX_RESOLUTION_SCALE="${scale_answer:-100}"
+    fi
+
+    case "${RB3DX_RESOLUTION_SCALE,,}" in
+        ""|perfil|profile)
+            RB3DX_RESOLUTION_SCALE=""
+            ;;
+        *)
+            if [[ ! "$RB3DX_RESOLUTION_SCALE" =~ ^[0-9]+$ ]] || (( RB3DX_RESOLUTION_SCALE < 25 || RB3DX_RESOLUTION_SCALE > 400 )); then
+                log_error "RB3DX_RESOLUTION_SCALE invalido: $RB3DX_RESOLUTION_SCALE. Use un numero entre 25 y 400 (100 = nativa) o 'perfil'."
+                return 1
+            fi
+            ;;
+    esac
+
+    # Bateria electronica MIDI: algunos kits mandan notas distintas a las que RPCS3
+    # espera (p. ej. crash y ride invertidos en el Alesis Nitro). Se corrigen con un
+    # "NOTA=Pieza,NOTA=Pieza" en rb3drums.yml. Vacio = ninguna correccion.
+    if [[ -z "${RPCS3_MIDI_NOTE_OVERRIDE:-}" && "$ENV_FILE_LOADED" != "true" ]]; then
+        echo ""
+        echo "Bateria electronica MIDI: notas que el kit manda distintas a lo esperado."
+        echo "  Alesis Nitro (crash y ride invertidos): 49=Ride,51=Crash"
+        echo "  Piezas: Kick, HihatPedal, Snare, SnareRim, HiTom, LowTom, FloorTom,"
+        echo "          HihatWithPedalUp, Hihat, Ride, Crash. Vacio = ninguna correccion."
+        read -rp "$(echo -e "${BLUE}Correccion de notas MIDI (vacio = ninguna): ${NC}")" RPCS3_MIDI_NOTE_OVERRIDE
+    fi
+
+    if [[ -n "${RPCS3_MIDI_NOTE_OVERRIDE:-}" ]]; then
+        local midi_piece='(Kick|HihatPedal|Snare|SnareRim|HiTom|LowTom|FloorTom|HihatWithPedalUp|Hihat|Ride|Crash)'
+        if [[ ! "$RPCS3_MIDI_NOTE_OVERRIDE" =~ ^[0-9]+=${midi_piece}(,[0-9]+=${midi_piece})*$ ]]; then
+            log_error "RPCS3_MIDI_NOTE_OVERRIDE invalido: $RPCS3_MIDI_NOTE_OVERRIDE. Use NOTA=Pieza separadas por comas (p. ej. 49=Ride,51=Crash)."
+            return 1
+        fi
+    fi
 
     case "${RPCS3_QT_PLATFORM,,}" in
         ""|wayland|xcb)
