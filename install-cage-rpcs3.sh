@@ -68,6 +68,11 @@ RPCS3_MIDI_DRUMS="${RPCS3_MIDI_DRUMS:-true}"
 # (p. ej. "49=Ride,51=Crash" si crash y ride llegan invertidos). Vacio no toca
 # rb3drums.yml.
 RPCS3_MIDI_NOTE_OVERRIDE="${RPCS3_MIDI_NOTE_OVERRIDE:-}"
+# Control del jugador 1: true instala la configuracion de entrada con el handler
+# SDL (sin ella RPCS3 asigna el teclado y un control no navega por los menus).
+# RPCS3_PAD_DEVICE es el nombre que SDL da al control, con su numero.
+RPCS3_PAD_CONFIG="${RPCS3_PAD_CONFIG:-true}"
+RPCS3_PAD_DEVICE="${RPCS3_PAD_DEVICE:-Xbox Series X Controller 1}"
 # true instala el atajo para cerrar RPCS3: Ctrl+Alt+Q (teclado) o Guide+Start (control).
 RPCS3_EXIT_HOTKEY="${RPCS3_EXIT_HOTKEY:-true}"
 # hdmi (HDMI/DP, por defecto), analog o auto: salida de audio preferida.
@@ -379,6 +384,7 @@ main() {
     install_rpcs3_exit_hotkey
 
     install_rpcs3_midi_config
+    install_rpcs3_input_config
 
     if ! install_rpcs3_cage_wrapper; then
         log_error "Fallo en creacion del wrapper de Cage/RPCS3"

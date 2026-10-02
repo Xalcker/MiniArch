@@ -479,3 +479,57 @@ assert "Enable Buffering: true" in yml
 PY
     [ "$status" -eq 0 ]
 }
+
+# --- control del jugador 1 --------------------------------------------------------
+
+@test "la plantilla de entrada deja el jugador 1 en SDL y los demas en Null" {
+    [ -f assets/rpcs3-input-Default.yml ]
+    run grep -nE '^  (Handler|Device):' assets/rpcs3-input-Default.yml
+    [ "${lines[0]}" = "2:  Handler: SDL" ]
+    [ "${lines[1]}" = "3:  Device: Xbox Series X Controller 1" ]
+    [[ "${lines[2]}" == *'Handler: "Null"'* ]]
+}
+
+@test "install_rpcs3_input_config no hace nada con RPCS3_PAD_CONFIG=false" {
+    RPCS3_PAD_CONFIG=false
+    run install_rpcs3_input_config
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"omitida"* ]]
+}
+
+@test "install_rpcs3_input_config escribe el dispositivo indicado sin interpretar caracteres especiales" {
+    local dest="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$dest"
+
+    # La funcion escribe bajo /mnt; se ejecuta una copia apuntando a un directorio de prueba.
+    local fn
+    fn="$(declare -f install_rpcs3_input_config)"
+    fn="${fn//\/mnt\//$dest/}"
+    fn="${fn//arch-chroot \/mnt/true}"
+    eval "$fn"
+    run_quiet() { :; }
+
+    SCRIPT_DIR="$PWD" KIOSK_USER=kiosk RPCS3_PAD_DEVICE="Xbox Series S|X Controller & Co/1" \
+        install_rpcs3_input_config
+
+    local yml="$dest/home/kiosk/.config/rpcs3/input_configs/global/Default.yml"
+    grep -qxF '  Device: Xbox Series S|X Controller & Co/1' "$yml"
+    grep -qxF 'Active Configurations:' "$dest/home/kiosk/.config/rpcs3/input_configs/active_input_configurations.yml"
+}
+
+@test "install_rpcs3_input_config no pisa una configuracion existente" {
+    local dest="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$dest/home/kiosk/.config/rpcs3/input_configs/global"
+    echo "mio" > "$dest/home/kiosk/.config/rpcs3/input_configs/global/Default.yml"
+
+    local fn
+    fn="$(declare -f install_rpcs3_input_config)"
+    fn="${fn//\/mnt\//$dest/}"
+    fn="${fn//arch-chroot \/mnt/true}"
+    eval "$fn"
+    run_quiet() { :; }
+
+    SCRIPT_DIR="$PWD" KIOSK_USER=kiosk install_rpcs3_input_config
+
+    [ "$(cat "$dest/home/kiosk/.config/rpcs3/input_configs/global/Default.yml")" = "mio" ]
+}

@@ -708,6 +708,17 @@ Variables de Cage/RPCS3:
   llegan invertidos (el Alesis Nitro). Piezas validas: `Kick`, `HihatPedal`,
   `Snare`, `SnareRim`, `HiTom`, `LowTom`, `FloorTom`, `HihatWithPedalUp`, `Hihat`,
   `Ride`, `Crash`. Vacio no toca el archivo.
+- `RPCS3_PAD_CONFIG` y `RPCS3_PAD_DEVICE`: `true` (por defecto) instala
+  `~/.config/rpcs3/input_configs/global/Default.yml` con el jugador 1 en el handler
+  **SDL** y el control `RPCS3_PAD_DEVICE` (por defecto `Xbox Series X Controller 1`,
+  el nombre que SDL da a un control Xbox Series con su numero). Sin ese archivo
+  RPCS3 asigna el teclado al jugador 1 y un control no navega por los menus, lo
+  que con un e-kit (que no navega) deja el juego inutilizable. La plantilla es
+  `assets/rpcs3-input-Default.yml`, tal como la guarda RPCS3 desde Pad Settings,
+  y se presenta al juego como un control de PS3 (VID/PID de DualShock 3). Si usas
+  otro control, pon su nombre en `RPCS3_PAD_DEVICE` (lo ves en la GUI, en
+  `Pads > Device`) o configúralo en la GUI. No se pisa una configuracion
+  existente. Con el control mapeado ya no hay teclado como jugador 1.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`

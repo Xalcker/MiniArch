@@ -16,6 +16,7 @@ assets/
 ├── plymouth-image_720p.png  # Imagen genérica de respaldo
 ├── plymouth-image_1080p.png
 ├── plymouth-image.png.example   # Nota sobre cómo usar tu propia imagen
+├── rpcs3-input-Default.yml      # Entrada de RPCS3: jugador 1 = control Xbox por SDL
 ├── create-example-assets.sh     # Genera una imagen de ejemplo con ImageMagick
 └── cursor/                  # Cursor del kiosko (ver cursor/README.md)
 ```
