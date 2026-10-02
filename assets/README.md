@@ -11,6 +11,8 @@ assets/
 ├── yarg_1080p.png           # Plymouth para el camino Cage/YARG (1920x1080)
 ├── clonehero_720p.png       # Plymouth para el camino Cage/Clone Hero
 ├── clonehero_1080p.png
+├── rpcs3_720p.png           # Plymouth para el camino Cage/RPCS3 (1280x720)
+├── rpcs3_1080p.png          # Plymouth para el camino Cage/RPCS3 (1920x1080)
 ├── plymouth-image_720p.png  # Imagen genérica de respaldo
 ├── plymouth-image_1080p.png
 ├── plymouth-image.png.example   # Nota sobre cómo usar tu propia imagen
@@ -30,9 +32,11 @@ resolución elegidos (`select_plymouth_image`):
 2. `plymouth-image_<resolución>.png`.
 3. `plymouth-image.png`.
 
-El camino RPCS3 no trae imagen propia: usa 1080p y cae en
-`plymouth-image_1080p.png`. Puedes agregar `rpcs3_720p.png` o `rpcs3_1080p.png`
-para personalizarla.
+El camino RPCS3 usa 1080p: elige `rpcs3_1080p.png` (el logotipo de RPCS3 sobre el
+mismo fondo que `yarg_*.png`) y, si no existiera, cae en
+`plymouth-image_1080p.png`. Las dos imagenes `rpcs3_*.png` se generaron a partir
+del fondo `plymouth-image_<resolución>.png` y del logotipo de RPCS3, que es marca
+de ese proyecto y no se distribuye aqui por separado.
 
 Si defines `PLYMOUTH_IMAGE_PATH` con una ruta propia, se respeta tal cual.
 `install-cage-kiosk.sh` (foot) no elige por resolución: usa `PLYMOUTH_IMAGE_PATH` y
