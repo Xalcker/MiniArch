@@ -454,3 +454,28 @@ client 142: 'PipeWire-System' [type=user,pid=638]
     [ "$status" -eq 0 ]
     [ -z "$output" ]
 }
+
+@test "el adaptador de perfiles con --audio-buffer fija Desired Audio Buffer Duration" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+
+    local fix="$BATS_TEST_TMPDIR/fix.py" zip="$BATS_TEST_TMPDIR/perfil.zip"
+    printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" > "$fix"
+
+    python3 - "$zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("p/config/custom_configs/config_BLUS30463.yml",
+               "Audio:\n  Enable Buffering: true\n  Desired Audio Buffer Duration: 100\n")
+PY
+
+    run python3 "$fix" "$zip" --audio-buffer=32
+    [ "$status" -eq 0 ]
+
+    run python3 - "$zip" <<'PY'
+import sys, zipfile
+yml = zipfile.ZipFile(sys.argv[1]).read("custom_configs/config_BLUS30463.yml").decode()
+assert "Desired Audio Buffer Duration: 32" in yml
+assert "Enable Buffering: true" in yml
+PY
+    [ "$status" -eq 0 ]
+}

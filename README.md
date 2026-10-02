@@ -672,6 +672,11 @@ Variables de Cage/RPCS3:
   **Guide+Start** (control Xbox); el wrapper vuelve entonces al menu de
   mantenimiento. Cage no procesa Alt+F4 y RPCS3 sin GUI no tiene atajo para
   cerrarse. Ignora guitarras y baterias. `false` no lo instala.
+- `RPCS3_AUDIO_BUFFER_MS`: buffer de audio de RPCS3 (`Desired Audio Buffer
+  Duration`, en ms) que llevan los perfiles RB3DX descargados. Por defecto `32`,
+  el de `recommended`; `minimum` y `potato` traen `100`, que suma latencia en un
+  juego de ritmo. Un valor mas bajo puede provocar chasquidos cuando el juego da
+  una caida de FPS; si pasa, sube a 48 o 64. Vacio deja el valor de cada perfil.
 - `RPCS3_MIC_SINGLE_MATCH` y `RPCS3_MIC_SPLIT_MATCH`: expresiones regulares sobre
   el nombre de una fuente de audio USB (por defecto `Logitech` y `USBMIC|SingStar`).
   Rock Band 3 admite hasta 3 cantantes y RPCS3 abre un dispositivo por jugador,
