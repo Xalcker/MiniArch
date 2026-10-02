@@ -242,7 +242,7 @@ download_rb3dx_config_profiles() {
     local profile target mic_arg=""
 
     # Con un adaptador de dos microfonos el perfil usa las fuentes que crea el wrapper.
-    [[ -n "${RPCS3_MIC_SPLIT_MATCH:-}" ]] && mic_arg="--mics"
+    [[ -n "${RPCS3_MIC_SPLIT_MATCH:-}${RPCS3_MIC_SINGLE_MATCH:-}" ]] && mic_arg="--mics"
 
     mkdir -p "/mnt/home/$KIOSK_USER"
 
@@ -636,8 +636,8 @@ read -r -d '' RPCS3_PROFILE_FIX_TEMPLATE <<'TEMPLATE' || true
 - Shader Mode: el valor del perfil ya no es valido en RPCS3; se usa el
   vigente, Async Recompiler with Shader Interpreter.
 - Audio Renderer XAudio2 (solo Windows) pasa a Cubeb.
-- Con --mics: Microphone Type Standard y las dos fuentes SingStar_Mic_1/2 que
-  crea el wrapper para un adaptador USB de dos microfonos.
+- Con --mics: Microphone Type Standard y las tres fuentes por jugador (Mic_P1,
+  Mic_P2, Mic_P3) que crea el wrapper con los microfonos USB conectados.
 """
 import os
 import re
@@ -663,7 +663,7 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED
             text = re.sub(r"^(\s*Renderer:) XAudio2", r"\1 Cubeb", text, flags=re.M)
             if mics:
                 text = re.sub(r"^(\s*Microphone Type:)[^\r\n]*", r"\1 Standard", text, flags=re.M)
-                text = re.sub(r"^(\s*Microphone Devices:)[^\r\n]*", r'\1 "SingStar_Mic_1@@@SingStar_Mic_2@@@@@@@@@"', text, flags=re.M)
+                text = re.sub(r"^(\s*Microphone Devices:)[^\r\n]*", r'\1 "Mic_P1@@@Mic_P2@@@Mic_P3@@@@@@"', text, flags=re.M)
             data = text.encode("utf-8")
         zout.writestr(name, data)
 
@@ -840,6 +840,8 @@ RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
 RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
 RPCS3_MIC_SPLIT_MATCH="__RPCS3_MIC_SPLIT_MATCH__"
 RPCS3_MIC_VOLUME="__RPCS3_MIC_VOLUME__"
+RPCS3_MIC_SINGLE_MATCH="__RPCS3_MIC_SINGLE_MATCH__"
+RPCS3_MIC_SINGLE_VOLUME="__RPCS3_MIC_SINGLE_VOLUME__"
 
 export HOME="${HOME:-__RPCS3_HOME__}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
@@ -1020,37 +1022,69 @@ find_game() {
     return 0
 }
 
-# Adaptadores USB con dos microfonos en un dispositivo estereo (p. ej. el
-# SingStar USBMIC: azul = jugador 1 = canal izquierdo, rojo = jugador 2 = canal
-# derecho). RPCS3 abre un dispositivo por jugador, asi que se parte el estereo
-# en dos fuentes mono (singstar_mic1/2) y se baja la ganancia: el adaptador sale
-# al maximo (+24 dB) y cada microfono mueve la flecha del otro jugador.
-# Se ejecuta antes de cada arranque para tomar adaptadores conectados despues.
-setup_dual_mics() {
-    [[ -n "$RPCS3_MIC_SPLIT_MATCH" ]] || return 0
+# Microfonos USB para Rock Band 3 (hasta 3 cantantes). RPCS3 abre un dispositivo
+# por jugador, asi que se exponen tres fuentes mono con nombre por jugador
+# (Mic_P1, Mic_P2, Mic_P3), en este orden:
+#   1. los microfonos individuales (RPCS3_MIC_SINGLE_MATCH, p. ej. el Logitech
+#      oficial de Rock Band), cada uno un jugador;
+#   2. cada adaptador estereo de dos microfonos (RPCS3_MIC_SPLIT_MATCH, p. ej. el
+#      SingStar USBMIC: canal izquierdo = azul, derecho = rojo), dos jugadores.
+# Tambien baja la ganancia de esos dispositivos (salen al maximo y cada microfono
+# mueve la flecha del otro jugador). Se ejecuta antes de cada arranque del juego,
+# asi que toma dispositivos conectados despues; solo recrea las fuentes si el
+# conjunto de dispositivos cambio.
+setup_mics() {
+    [[ -n "$RPCS3_MIC_SPLIT_MATCH$RPCS3_MIC_SINGLE_MATCH" ]] || return 0
     command -v pactl >/dev/null 2>&1 || return 0
 
-    local sources src
+    local sources src mod plan_file plan i entry
+    local -a entries=()
 
     sources="$(pactl list short sources 2>/dev/null || true)"
-    src="$(printf '%s\n' "$sources" | awk -v re="$RPCS3_MIC_SPLIT_MATCH" '$2 ~ /^alsa_input\./ && $2 ~ re {print $2; exit}')"
-    [[ -n "$src" ]] || return 0
 
-    if [[ -n "$RPCS3_MIC_VOLUME" ]]; then
-        pactl set-source-volume "$src" "$RPCS3_MIC_VOLUME" >/dev/null 2>&1 || true
+    if [[ -n "$RPCS3_MIC_SINGLE_MATCH" ]]; then
+        while IFS= read -r src; do
+            [[ -n "$src" ]] || continue
+            entries+=("$src:mono")
+            if [[ -n "$RPCS3_MIC_SINGLE_VOLUME" ]]; then
+                pactl set-source-volume "$src" "$RPCS3_MIC_SINGLE_VOLUME" >/dev/null 2>&1 || true
+            fi
+        done < <(printf '%s\n' "$sources" | awk -v re="$RPCS3_MIC_SINGLE_MATCH" '$2 ~ /^alsa_input\./ && $2 ~ re && $5 == "1ch" {print $2}')
     fi
 
-    if [[ "$sources" == *singstar_mic1* ]]; then
+    if [[ -n "$RPCS3_MIC_SPLIT_MATCH" ]]; then
+        while IFS= read -r src; do
+            [[ -n "$src" ]] || continue
+            entries+=("$src:front-left" "$src:front-right")
+            if [[ -n "$RPCS3_MIC_VOLUME" ]]; then
+                pactl set-source-volume "$src" "$RPCS3_MIC_VOLUME" >/dev/null 2>&1 || true
+            fi
+        done < <(printf '%s\n' "$sources" | awk -v re="$RPCS3_MIC_SPLIT_MATCH" '$2 ~ /^alsa_input\./ && $2 ~ re && $5 == "2ch" {print $2}')
+    fi
+
+    [[ ${#entries[@]} -gt 0 ]] || return 0
+    entries=("${entries[@]:0:3}")
+
+    plan="$(IFS=,; echo "${entries[*]}")"
+    plan_file="${XDG_RUNTIME_DIR:-/tmp}/rpcs3-mics.plan"
+    if [[ -f "$plan_file" && "$(cat "$plan_file")" == "$plan" && "$sources" == *mic_p1* ]]; then
         return 0
     fi
 
-    echo "run-rpcs3: separando $src en dos microfonos mono" >&2
-    pactl load-module module-remap-source "master=$src" source_name=singstar_mic1 channels=1 \
-        master_channel_map=front-left channel_map=mono \
-        source_properties=device.description=SingStar_Mic_1 >/dev/null 2>&1 || true
-    pactl load-module module-remap-source "master=$src" source_name=singstar_mic2 channels=1 \
-        master_channel_map=front-right channel_map=mono \
-        source_properties=device.description=SingStar_Mic_2 >/dev/null 2>&1 || true
+    echo "run-rpcs3: asignando microfonos: $plan" >&2
+    while read -r mod; do
+        [[ -n "$mod" ]] && pactl unload-module "$mod" >/dev/null 2>&1 || true
+    done < <(pactl list short modules 2>/dev/null | awk '/module-remap-source/ && /source_name=mic_p/ {print $1}')
+
+    i=0
+    for entry in "${entries[@]}"; do
+        i=$((i + 1))
+        pactl load-module module-remap-source "master=${entry%:*}" "source_name=mic_p$i" channels=1 \
+            "master_channel_map=${entry##*:}" channel_map=mono \
+            "source_properties=device.description=Mic_P$i" >/dev/null 2>&1 || true
+    done
+
+    printf '%s\n' "$plan" > "$plan_file"
 }
 
 # Atajo para cerrar RPCS3 desde el teclado (Ctrl+Alt+Q) o el control (Guide+Start).
@@ -1067,7 +1101,7 @@ start_exit_hotkey
 start_audio
 
 while true; do
-    setup_dual_mics
+    setup_mics
     RPCS3_BIN="$(find_rpcs3_bin)"
     open_gui=false
 
@@ -1157,6 +1191,8 @@ install_rpcs3_cage_wrapper() {
         "RPCS3_AUDIO_VOLUME=${RPCS3_AUDIO_VOLUME:-}" \
         "RPCS3_MIC_SPLIT_MATCH=${RPCS3_MIC_SPLIT_MATCH:-}" \
         "RPCS3_MIC_VOLUME=${RPCS3_MIC_VOLUME:-}" \
+        "RPCS3_MIC_SINGLE_MATCH=${RPCS3_MIC_SINGLE_MATCH:-}" \
+        "RPCS3_MIC_SINGLE_VOLUME=${RPCS3_MIC_SINGLE_VOLUME:-}" \
         "RPCS3_HOME=/home/$KIOSK_USER" > /mnt/usr/local/bin/run-rpcs3.sh
     chmod +x /mnt/usr/local/bin/run-rpcs3.sh
 }

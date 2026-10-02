@@ -672,17 +672,23 @@ Variables de Cage/RPCS3:
   **Guide+Start** (control Xbox); el wrapper vuelve entonces al menu de
   mantenimiento. Cage no procesa Alt+F4 y RPCS3 sin GUI no tiene atajo para
   cerrarse. Ignora guitarras y baterias. `false` no lo instala.
-- `RPCS3_MIC_SPLIT_MATCH`: expresion regular (por defecto `USBMIC|SingStar`) sobre
-  el nombre de una fuente de audio USB; si el wrapper encuentra una, la parte en
-  dos fuentes mono (`SingStar_Mic_1` = canal izquierdo = azul = jugador 1,
-  `SingStar_Mic_2` = derecho = rojo = jugador 2), porque RPCS3 abre un dispositivo
-  por jugador. Se ejecuta antes de cada arranque del juego, asi que toma
-  adaptadores conectados despues. Con esta opcion los perfiles RB3DX descargados
-  llevan `Microphone Type: Standard` y esas dos fuentes. Vacio la desactiva. El
+- `RPCS3_MIC_SINGLE_MATCH` y `RPCS3_MIC_SPLIT_MATCH`: expresiones regulares sobre
+  el nombre de una fuente de audio USB (por defecto `Logitech` y `USBMIC|SingStar`).
+  Rock Band 3 admite hasta 3 cantantes y RPCS3 abre un dispositivo por jugador,
+  asi que el wrapper expone tres fuentes mono, `Mic_P1`, `Mic_P2` y `Mic_P3`, en
+  este orden: primero cada microfono individual (`SINGLE_MATCH`, el Logitech
+  oficial de Rock Band), luego cada adaptador estereo de dos microfonos
+  (`SPLIT_MATCH`, el SingStar USBMIC: canal izquierdo = azul, derecho = rojo). Con
+  un Logitech y un SingStar quedan Logitech = P1, azul = P2 y rojo = P3. Se
+  ejecuta antes de cada arranque del juego, asi que toma dispositivos conectados
+  despues, y solo recrea las fuentes si cambiaron. No hace falta que esten
+  conectados al instalar. Con esta opcion los perfiles RB3DX descargados llevan
+  `Microphone Type: Standard` y esos tres nombres. Ambas vacias la desactivan. El
   tipo `Real SingStar` no funciona con Rock Band 3 (el juego pide "connect a mic").
-- `RPCS3_MIC_VOLUME`: volumen de captura de ese adaptador (por defecto `35%`).
-  Sale al maximo de fabrica (+24 dB) y cada microfono mueve la flecha del otro
-  jugador; 35 % equivale a -4 dB en el SingStar USBMIC. Vacio no lo toca.
+- `RPCS3_MIC_SINGLE_VOLUME` y `RPCS3_MIC_VOLUME`: volumen de captura de cada tipo
+  (por defecto `75%` y `35%`). Salen al maximo de fabrica (+15 dB el Logitech,
+  +24 dB el SingStar) y cada microfono mueve la flecha de otro jugador; 75 % son
+  +7 dB en el Logitech y 35 % son -4 dB en el SingStar. Vacio no lo toca.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`
