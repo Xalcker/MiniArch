@@ -645,11 +645,12 @@ Variables de Cage/RPCS3:
 - `RB3DX_DOWNLOAD_CONFIGS`: `true` (por defecto) descarga los tres perfiles de
   configuracion de la guia de MiloHax (`recommended`, `minimum`, `potato`) como
   `/home/<usuario>/RB3DX-config-<perfil>.zip`, sin descomprimir; se instala uno
-  al configurar el juego. Cada zip trae `config/custom_configs/config_BLUS30463.yml`
-  y `dev_hdd0/.../dx_high_memory.dta`. En Linux el perfil se copia a
-  `~/.config/rpcs3/custom_configs/config_BLUS30463.yml` (la carpeta `config/` del
-  zip es la ruta de Windows y RPCS3 no la lee). Aplica `Debug Console Mode`, que
-  RB3DX necesita para arrancar.
+  al configurar el juego. El instalador reescribe cada zip para Linux: las rutas
+  quedan relativas a `~/.config/rpcs3` (`custom_configs/config_BLUS30463.yml` y
+  `dev_hdd0/.../dx_high_memory.dta`), se corrige `Shader Mode` (valor que RPCS3 ya
+  no acepta) y el renderer de audio `XAudio2` (solo Windows) pasa a `Cubeb`. Para
+  aplicar uno: `unzip -o ~/RB3DX-config-minimum.zip -d ~/.config/rpcs3`. Aplica
+  `Debug Console Mode`, que RB3DX necesita para arrancar.
 - `RB3DX_CONFIG_BASE_URL`: carpeta donde estan los zips de los perfiles.
 - `RPCS3_GAMES_DIR`: carpeta de juegos y share Samba. Por defecto
   `/home/${KIOSK_USER}/Games`.

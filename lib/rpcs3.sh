@@ -231,7 +231,8 @@ download_rb3dx() {
 # instala uno desde el primer arranque, al configurar el juego. Cada zip trae
 # config/custom_configs/config_BLUS30463.yml y dx_high_memory.dta. En Linux el
 # perfil va en ~/.config/rpcs3/custom_configs/ (no en config/custom_configs/,
-# que es la ruta de Windows y RPCS3 no lee aqui). Es opcional: si falla solo se avisa.
+# que es la ruta de Windows y RPCS3 no lee aqui); por eso el zip se reescribe
+# con rutas relativas a ~/.config/rpcs3 y se corrigen Shader Mode y XAudio2. Es opcional: si falla solo se avisa.
 download_rb3dx_config_profiles() {
     if [[ "${RB3DX_DOWNLOAD_CONFIGS:-true}" != "true" ]]; then
         log "Descarga de perfiles de RB3DX omitida (RB3DX_DOWNLOAD_CONFIGS=false)"
@@ -250,6 +251,14 @@ download_rb3dx_config_profiles() {
             rm -f "$target"
             warn "No se pudo descargar el perfil $profile; descargalo desde https://guides.milohax.org/en/rb3pc/intro/quickconfig/"
             continue
+        fi
+
+        # Los perfiles de MiloHax son para Windows (ruta config/, XAudio2, un
+        # Shader Mode que RPCS3 ya no acepta). Se adaptan a Linux; si falla se
+        # deja el zip original.
+        if ! printf '%s
+' "$RPCS3_PROFILE_FIX_TEMPLATE" |             run_quiet arch-chroot /mnt python3 - "/home/$KIOSK_USER/RB3DX-config-$profile.zip"; then
+            warn "No se pudo adaptar el perfil $profile a Linux; queda el zip original (revise Shader Mode y Audio > Renderer en el yml)."
         fi
 
         run_quiet arch-chroot /mnt chown "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/RB3DX-config-$profile.zip"
@@ -373,6 +382,11 @@ EOF
     echo 'vm.max_map_count=2147483642' >> /mnt/etc/sysctl.d/99-rpcs3.conf
 
     cat > /mnt/etc/default/cpupower << 'EOF'
+# El servicio cpupower actual lee las variables en mayusculas; las versiones
+# antiguas, en minusculas. Se escriben ambas.
+GOVERNOR='performance'
+MIN_FREQ=''
+MAX_FREQ=''
 governor='performance'
 min_freq=''
 max_freq=''
@@ -608,6 +622,43 @@ EOF
             ;;
     esac
 done
+TEMPLATE
+
+read -r -d '' RPCS3_PROFILE_FIX_TEMPLATE <<'TEMPLATE' || true
+#!/usr/bin/env python3
+"""Adapta un zip de perfil de RB3DX (MiloHax) a Linux. Uso: fixprofile.py ZIP
+
+- Quita la carpeta del perfil y el prefijo config/ (ruta de Windows): el zip
+  queda relativo a ~/.config/rpcs3 (custom_configs/..., dev_hdd0/...).
+- Shader Mode: el valor del perfil ya no es valido en RPCS3; se usa el
+  vigente, Async Recompiler with Shader Interpreter.
+- Audio Renderer XAudio2 (solo Windows) pasa a Cubeb.
+"""
+import os
+import re
+import sys
+import zipfile
+
+src = sys.argv[1]
+tmp = src + ".new"
+
+with zipfile.ZipFile(src) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+    for info in zin.infolist():
+        if info.is_dir():
+            continue
+        parts = info.filename.split("/", 1)
+        name = parts[1] if len(parts) == 2 else info.filename
+        if name.startswith("config/"):
+            name = name[len("config/"):]
+        data = zin.read(info)
+        if name.endswith(".yml"):
+            text = data.decode("utf-8")
+            text = re.sub(r"^(\s*Shader Mode:)[^\r\n]*", r"\1 Async Recompiler with Shader Interpreter", text, flags=re.M)
+            text = re.sub(r"^(\s*Renderer:) XAudio2", r"\1 Cubeb", text, flags=re.M)
+            data = text.encode("utf-8")
+        zout.writestr(name, data)
+
+os.replace(tmp, src)
 TEMPLATE
 
 read -r -d '' RPCS3_EXIT_HOTKEY_TEMPLATE <<'TEMPLATE' || true
