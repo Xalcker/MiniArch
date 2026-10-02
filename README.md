@@ -683,6 +683,20 @@ Variables de Cage/RPCS3:
 - `RPCS3_MIC_VOLUME`: volumen de captura de ese adaptador (por defecto `35%`).
   Sale al maximo de fabrica (+24 dB) y cada microfono mueve la flecha del otro
   jugador; 35 % equivale a -4 dB en el SingStar USBMIC. Vacio no lo toca.
+- `RPCS3_MIDI_DRUMS`: `true` (por defecto) detecta, antes de cada arranque del
+  juego, el primer dispositivo MIDI de una tarjeta de sonido (un e-kit por USB) y
+  lo escribe como `Drums` en `Emulated Midi devices` de la configuracion de Rock
+  Band 3. RPCS3 guarda el nombre del puerto ALSA con su numero de cliente (por
+  ejemplo `Alesis Nitro:Alesis Nitro MIDI 1 32:0`), que cambia segun el orden en
+  que se enumera el USB; por eso se actualiza solo. Sin dispositivo MIDI no toca
+  nada. El kit debe estar en el canal MIDI 10 con el mapeo GM estandar. Para
+  navegar por los menus hace falta ademas un control (el e-kit no navega).
+- `RPCS3_MIDI_NOTE_OVERRIDE`: notas que el kit manda distintas a lo esperado,
+  `"NOTA=Pieza,NOTA=Pieza"`; se escribe en `Midi id to note override` de
+  `~/.config/rpcs3/rb3drums.yml`. Ejemplo: `49=Ride,51=Crash` si crash y ride
+  llegan invertidos (el Alesis Nitro). Piezas validas: `Kick`, `HihatPedal`,
+  `Snare`, `SnareRim`, `HiTom`, `LowTom`, `FloorTom`, `HihatWithPedalUp`, `Hihat`,
+  `Ride`, `Crash`. Vacio no toca el archivo.
 - `RPCS3_QT_PLATFORM`: vacio (automatico), `wayland` o `xcb` (XWayland). Util
   si la ventana no aparece o falla el teclado/mando.
 - `RPCS3_EXIT_MENU`: `always` muestra el menu al salir del juego; `restart`

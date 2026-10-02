@@ -71,7 +71,7 @@ install_rpcs3_dependencies() {
 
     # libusb/libevdev: instrumentos y mandos; openal/alsa-plugins: audio.
     if ! run_quiet arch-chroot /mnt pacman -S --needed --noconfirm \
-        libusb libevdev openal alsa-plugins pipewire-alsa pulsemixer python; then
+        libusb libevdev openal alsa-plugins pipewire-alsa pulsemixer python alsa-utils; then
         log_error "Fallo al instalar dependencias de RPCS3"
         return 1
     fi
@@ -836,6 +836,7 @@ RPCS3_GAMES_DIR="__RPCS3_GAMES_DIR__"
 RPCS3_GAME_PATH="__RPCS3_GAME_PATH__"
 RPCS3_GAME_MATCH="__RPCS3_GAME_MATCH__"
 RPCS3_EXIT_MENU="__RPCS3_EXIT_MENU__"
+RPCS3_MIDI_DRUMS="__RPCS3_MIDI_DRUMS__"
 RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
 RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
 RPCS3_MIC_SPLIT_MATCH="__RPCS3_MIC_SPLIT_MATCH__"
@@ -1063,6 +1064,58 @@ start_exit_hotkey() {
     python3 "$script" 2>&1 | sed 's/^/[exit-hotkey] /' >&2 &
 }
 
+# Bateria electronica MIDI por USB (RPCS3 emula la bateria de Rock Band 3 a partir
+# de ella). RPCS3 guarda el dispositivo como "Drums" + nombre del puerto ALSA,
+# que lleva el numero de cliente ("Alesis Nitro:Alesis Nitro MIDI 1 32:0"), y ese
+# numero cambia segun el orden en que se enumera el USB. Antes de cada arranque se
+# busca el primer cliente MIDI de una tarjeta de sonido (los virtuales como
+# "Midi Through" no tienen tarjeta) y se escribe su nombre actual en la
+# configuracion del juego. Sin dispositivo MIDI no toca nada.
+setup_midi_drums() {
+    [[ "$RPCS3_MIDI_DRUMS" == "true" ]] || return 0
+    command -v aconnect >/dev/null 2>&1 || return 0
+
+    local cfg="$RPCS3_CONFIG_DIR/custom_configs/config_BLUS30463.yml"
+    local re_client="^client ([0-9]+): '(.*)' \[type=kernel,card="
+    local re_other="^client "
+    local re_port="^[[:space:]]+([0-9]+) '(.*)'"
+    local sep new_line tmp line client="" cname="" pname name=""
+
+    [[ -f "$cfg" ]] || return 0
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ $re_client ]]; then
+            client="${BASH_REMATCH[1]}"
+            cname="${BASH_REMATCH[2]}"
+        elif [[ "$line" =~ $re_other ]]; then
+            client=""
+        elif [[ -n "$client" && "$line" =~ $re_port ]]; then
+            pname="${BASH_REMATCH[2]}"
+            pname="${pname%"${pname##*[! ]}"}"
+            name="$cname:$pname $client:${BASH_REMATCH[1]}"
+            break
+        fi
+    done < <(aconnect -l 2>/dev/null)
+
+    [[ -n "$name" ]] || return 0
+
+    sep=$'\xc3\x9f\xc3\x9f\xc3\x9f'
+    new_line="  Emulated Midi devices: Drums${sep}${name}@@@Keyboard${sep}@@@Keyboard${sep}@@@"
+    if grep -qxF -- "$new_line" "$cfg" 2>/dev/null; then
+        return 0
+    fi
+
+    echo "run-rpcs3: bateria MIDI detectada: $name" >&2
+    tmp="$cfg.tmp.$$"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "  Emulated Midi devices:"* ]]; then
+            printf '%s\n' "$new_line"
+        else
+            printf '%s\n' "$line"
+        fi
+    done < "$cfg" > "$tmp" && mv "$tmp" "$cfg"
+}
+
 start_exit_hotkey
 start_audio
 
@@ -1075,6 +1128,7 @@ while true; do
         echo "No se encontro RPCS3 en /opt/RPCS3; abriendo menu de mantenimiento." >&2
     else
         GAME="$(find_game)"
+        setup_midi_drums
 
         if [[ -f "$GUI_FLAG" ]]; then
             rm -f "$GUI_FLAG"
@@ -1140,6 +1194,38 @@ install_rpcs3_exit_hotkey() {
     chmod 755 /mnt/usr/local/bin/rpcs3-exit-hotkey.py
 }
 
+# Nota MIDI -> pieza de la bateria cuando el kit las manda distintas a lo que
+# espera RPCS3 (RPCS3_MIDI_NOTE_OVERRIDE, p. ej. "49=Ride,51=Crash" si el crash y
+# el ride llegan invertidos). Vive en rb3drums.yml, que RPCS3 crea con estos
+# valores por defecto; se escribe completo para que el cambio valga desde el
+# primer arranque. Sin valor no se toca el archivo.
+install_rpcs3_midi_config() {
+    local override="${RPCS3_MIDI_NOTE_OVERRIDE:-}"
+    local dir="/mnt/home/$KIOSK_USER/.config/rpcs3"
+
+    [[ -n "$override" ]] || return 0
+
+    log "Configurando la bateria MIDI de RB3 (override de notas: $override)"
+    mkdir -p "$dir"
+
+    cat > "$dir/rb3drums.yml" << EOF_CONF
+Pulse width ms: 30
+Minimum velocity: 10
+Combo window in milliseconds: 2000
+Stagger cymbal hits: true
+Midi id to note override: "$override"
+Combo Start: HihatPedal,HihatPedal,HihatPedal,Snare
+Combo Select: HihatPedal,HihatPedal,HihatPedal,SnareRim
+Combo Toggle Hold Kick: HihatPedal,HihatPedal,HihatPedal,Kick
+Midi CC status: 176
+Midi CC control number: 4
+Midi CC threshold: 64
+Midi CC invert threshold: false
+EOF_CONF
+
+    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
+}
+
 install_rpcs3_cage_wrapper() {
     log "Creando menu de mantenimiento y wrapper /usr/local/bin/run-rpcs3.sh"
 
@@ -1153,6 +1239,7 @@ install_rpcs3_cage_wrapper() {
         "RPCS3_GAME_PATH=${RPCS3_GAME_PATH:-}" \
         "RPCS3_GAME_MATCH=$RPCS3_GAME_MATCH" \
         "RPCS3_EXIT_MENU=${RPCS3_EXIT_MENU:-always}" \
+        "RPCS3_MIDI_DRUMS=${RPCS3_MIDI_DRUMS:-}" \
         "RPCS3_QT_PLATFORM=${RPCS3_QT_PLATFORM:-}" \
         "RPCS3_AUDIO_VOLUME=${RPCS3_AUDIO_VOLUME:-}" \
         "RPCS3_MIC_SPLIT_MATCH=${RPCS3_MIC_SPLIT_MATCH:-}" \
