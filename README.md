@@ -752,6 +752,13 @@ Variables de Cage/RPCS3:
   RPCS3 sin GUI no tiene atajo de teclado para cerrarse. Con un control no hace
   falta: su boton **Guide** abre el menu de RPCS3, que trae la opcion de salir
   del juego. Ignora guitarras y baterias. `false` no lo instala.
+  Manda SIGTERM y, si el proceso sigue vivo a los 3 segundos, SIGKILL: la GUI de
+  RPCS3 atrapa SIGTERM y no se cierra con ella. En la **GUI** (opcion 6 del menu) es
+  mejor cerrar con su propio atajo, **Ctrl+Q**, que cierra con calma y guarda la
+  configuracion; `Ctrl+Alt+Q` la mata de golpe y pierde lo que no hayas guardado, asi
+  que usalo como salida de emergencia (por ejemplo, si la GUI se cuelga). El atajo
+  esta pensado para el juego lanzado con `--no-gui`, que no tiene otra forma de
+  cerrarse desde el teclado.
 - `RPCS3_PIPEWIRE_QUANTUM`: tamano de ciclo de PipeWire en muestras a 48 kHz (por
   defecto `128` = 2.7 ms; el de PipeWire es `1024` = 21 ms). El wrapper lo aplica en
   cada arranque con `pw-metadata -n settings 0 clock.force-quantum`. Cada etapa de
