@@ -658,3 +658,55 @@ PY
     [ -f "$dest/home/kiosk/.config/rpcs3/dev_hdd0/game/BLUS30463/USRDIR/dx_high_memory.dta" ]
     grep -q "Debug Console Mode: true" "$dest/home/kiosk/.config/rpcs3/custom_configs/config_BLUS30463.yml"
 }
+
+# --- overlay de rendimiento ----------------------------------------------------------------
+
+@test "el adaptador de perfiles con --overlay activa el overlay de rendimiento" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+
+    local fix="$BATS_TEST_TMPDIR/fix.py" zip="$BATS_TEST_TMPDIR/perfil.zip"
+    printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" > "$fix"
+
+    python3 - "$zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("p/config/custom_configs/config_BLUS30463.yml",
+               "Video:\n  Performance Overlay:\n    Enabled: false\n    Enable Framerate Graph: false\n    Enable Frametime Graph: false\n    Framerate datapoints: 50\n  Otro: false\n")
+PY
+
+    run python3 "$fix" "$zip" --overlay
+    [ "$status" -eq 0 ]
+
+    run python3 - "$zip" <<'PY'
+import sys, zipfile
+yml = zipfile.ZipFile(sys.argv[1]).read("custom_configs/config_BLUS30463.yml").decode()
+assert "    Enabled: true" in yml
+assert "    Enable Framerate Graph: true" in yml
+assert "    Enable Frametime Graph: true" in yml
+assert "  Otro: false" in yml          # no toca nada fuera del bloque del overlay
+PY
+    [ "$status" -eq 0 ]
+}
+
+@test "el adaptador de perfiles no activa el overlay sin --overlay" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+
+    local fix="$BATS_TEST_TMPDIR/fix.py" zip="$BATS_TEST_TMPDIR/perfil.zip"
+    printf '%s\n' "$RPCS3_PROFILE_FIX_TEMPLATE" > "$fix"
+
+    python3 - "$zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("p/config/custom_configs/config_BLUS30463.yml",
+               "Video:\n  Performance Overlay:\n    Enabled: false\n    Enable Framerate Graph: false\n    Enable Frametime Graph: false\n")
+PY
+
+    run python3 "$fix" "$zip"
+    [ "$status" -eq 0 ]
+    run python3 - "$zip" <<'PY'
+import sys, zipfile
+yml = zipfile.ZipFile(sys.argv[1]).read("custom_configs/config_BLUS30463.yml").decode()
+assert "    Enabled: false" in yml
+PY
+    [ "$status" -eq 0 ]
+}
