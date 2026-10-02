@@ -180,6 +180,10 @@ install_rpcs3() {
 
     # Marca de version para que update-rpcs3 sepa si ya esta la ultima.
     printf '%s\n' "$RPCS3_URL" > /mnt/opt/RPCS3/.rpcs3-url
+    # RPCS3 busca sus iconos y recursos en /usr/share/rpcs3; en el AppImage extraido
+    # estan en /opt/RPCS3/usr/share/rpcs3.
+    mkdir -p /mnt/usr/share
+    ln -sfn /opt/RPCS3/usr/share/rpcs3 /mnt/usr/share/rpcs3
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/RPCS3
     rm -f "$appimage"
 }
@@ -433,6 +437,9 @@ INSTALL_DIR="/opt/RPCS3"
 OWNER="__OWNER__"
 # URL del AppImage instalado; el nombre lleva la version. --force reinstala igual.
 URL_MARK="$INSTALL_DIR/.rpcs3-url"
+# RPCS3 busca iconos y recursos en /usr/share/rpcs3; el enlace sigue valido tras cada
+# actualizacion porque apunta a la ruta, no al contenido.
+SHARE_LINK="/usr/share/rpcs3"
 FORCE=false
 [[ "${1:-}" == "--force" ]] && FORCE=true
 
@@ -443,6 +450,8 @@ fi
 
 WORK_DIR="$(mktemp -d /var/tmp/update-rpcs3.XXXXXX)"
 trap 'rm -rf "$WORK_DIR"' EXIT
+
+ln -sfn "$INSTALL_DIR/usr/share/rpcs3" "$SHARE_LINK"
 
 echo "Resolviendo latest desde $RPCS3_API_URL"
 RELEASE_JSON="$(curl -fsSL "$RPCS3_API_URL")"
