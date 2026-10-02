@@ -597,6 +597,7 @@ run_updater_tail() {
     [ "$status" -eq 0 ]
     grep -q '^RPCS3_PIPEWIRE_QUANTUM=' .env.example
     grep -q 'RPCS3_PIPEWIRE_QUANTUM' README.md
+}
 
 # --- perfil de RB3DX elegido en el instalador -------------------------------------
 
