@@ -40,7 +40,9 @@ compatibilidad con builds de YARG que lo necesiten.
 `install-cage-yarg.sh` es un orquestador modular. Reutiliza los modulos
 compartidos de `lib/` y mueve lo especifico a:
 
-- `lib/cage.sh`: sistema base Cage, usuario, servicio systemd y wrapper
+- `lib/kiosk_runtime.sh`: prologo del wrapper, menu de mantenimiento y servicio
+  systemd `cage-kiosk.service` compartidos por los tres kioscos.
+- `lib/cage.sh`: sistema base Cage, usuario y wrapper
   `/usr/local/bin/run-yarg.sh`.
 - `lib/yarg.sh`: descarga de YARG stable, stable-latest o nightly, settings
   iniciales, Samba, rendimiento y updater.
@@ -875,7 +877,8 @@ MiniArch/
 |   |-- bootloader.sh          # GRUB UEFI y arranque silencioso
 |   |-- plymouth.sh            # Plymouth compartido
 |   |-- drivers.sh             # Drivers, PipeWire, codecs y Bluetooth
-|   |-- cage.sh                # Cage, usuario, servicio y wrapper
+|   |-- cage.sh                # Cage, usuario y wrapper de YARG
+|   |-- kiosk_runtime.sh       # Prologo, menu y servicio comunes de los kioscos
 |   |-- clonehero.sh           # Clone Hero, Samba, updater y CSV
 |   |-- rpcs3.sh               # RPCS3, firmware, Samba, wrapper y updater
 |   |-- yarg.sh                # YARG, settings, Samba, rendimiento y updater
@@ -903,6 +906,7 @@ MiniArch/
 |   |-- test_nvidia.bats
 |   |-- test_partition_sizes.bats
 |   |-- test_song_paths_and_menu.bats
+|   |-- test_kiosk_runtime.bats
 |   |-- test_validation.bats
 |   |-- test_partitioning.bats
 |   |-- test_base_install.bats

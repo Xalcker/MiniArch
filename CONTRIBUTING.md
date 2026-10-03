@@ -47,7 +47,10 @@ Mantener responsabilidades claras:
   instaladores.
 - `plymouth.sh`: Plymouth compartido.
 - `drivers.sh`: audio, codecs, Bluetooth y drivers compartidos.
-- `cage.sh`: Cage, usuario, servicio y wrapper.
+- `cage.sh`: Cage, usuario y wrapper de YARG.
+- `kiosk_runtime.sh`: prologo del wrapper (entorno, DBus, PipeWire), menu de
+  mantenimiento y `cage-kiosk.service` comunes a YARG, Clone Hero y RPCS3. Un
+  arreglo del arranque o del menu se hace aqui y no en cada app.
 - `yarg.sh`: descarga/configuracion de YARG, Samba y updater.
 - `clonehero.sh`: descarga/configuracion de Clone Hero, Samba, updater y CSV.
 - `rpcs3.sh`: descarga/configuracion de RPCS3, firmware, Samba, wrapper y

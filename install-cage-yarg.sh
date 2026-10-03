@@ -62,6 +62,7 @@ source "$SCRIPT_DIR/lib/bootloader.sh" || { log_error "No se pudo importar bootl
 source "$SCRIPT_DIR/lib/plymouth.sh" || { log_error "No se pudo importar plymouth.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/drivers.sh" || { log_error "No se pudo importar drivers.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/cage.sh" || { log_error "No se pudo importar cage.sh"; exit 1; }
+source "$SCRIPT_DIR/lib/kiosk_runtime.sh" || { log_error "No se pudo importar kiosk_runtime.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/yarg.sh" || { log_error "No se pudo importar yarg.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/customization.sh" || { log_error "No se pudo importar customization.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/finalization.sh" || { log_error "No se pudo importar finalization.sh"; exit 1; }
@@ -404,7 +405,7 @@ main() {
         exit 1
     fi
 
-    if ! install_cage_service; then
+    if ! install_cage_service "YARG" /usr/local/bin/run-yarg.sh; then
         log_error "Fallo en configuracion del servicio cage-kiosk"
         exit 1
     fi

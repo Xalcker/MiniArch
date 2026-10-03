@@ -27,34 +27,25 @@
     ! grep -Fq 'CLONEHERO_SONGS_DIR="${CLONEHERO_SONGS_DIR:-/opt/CloneHero' install-cage-clonehero.sh
 }
 
-@test "menus de mantenimiento tienen fallback si hostname no existe" {
+@test "el menu de mantenimiento compartido tiene fallback si hostname no existe" {
     grep -Fq 'inetutils' lib/cage.sh
-    grep -Fq 'show_hostname()' lib/cage.sh
-    grep -Fq 'show_hostname_ips()' lib/cage.sh
-    grep -Fq 'echo "Hostname: $(show_hostname)"' lib/cage.sh
-    grep -Fq 'echo "IPs: $(show_hostname_ips)"' lib/cage.sh
-    ! grep -Fq 'echo "Hostname: $(hostname)"' lib/cage.sh
-    ! grep -Fq 'echo "IPs: $(hostname -I 2>/dev/null || true)"' lib/cage.sh
+    grep -Fq 'show_hostname()' lib/kiosk_runtime.sh
+    grep -Fq 'show_hostname_ips()' lib/kiosk_runtime.sh
+    grep -Fq 'echo "Hostname: $(show_hostname)"' lib/kiosk_runtime.sh
+    grep -Fq 'echo "IPs: $(show_hostname_ips)"' lib/kiosk_runtime.sh
+    ! grep -Fq 'echo "Hostname: $(hostname)"' lib/kiosk_runtime.sh
+    ! grep -Fq 'echo "IPs: $(hostname -I 2>/dev/null || true)"' lib/kiosk_runtime.sh
 
-    grep -Fq 'show_hostname()' lib/clonehero.sh
-    grep -Fq 'show_hostname_ips()' lib/clonehero.sh
-    grep -Fq 'echo "Hostname: $(show_hostname)"' lib/clonehero.sh
-    grep -Fq 'echo "IPs: $(show_hostname_ips)"' lib/clonehero.sh
-    ! grep -Fq 'echo "Hostname: $(hostname)"' lib/clonehero.sh
-    ! grep -Fq 'echo "IPs: $(hostname -I 2>/dev/null || true)"' lib/clonehero.sh
+    # Ya no hay copias del menu en los modulos de cada app.
+    ! grep -Fq 'show_hostname()' lib/cage.sh lib/clonehero.sh lib/rpcs3.sh
 }
 
-@test "menus de mantenimiento incluyen opcion para actualizar la app" {
+@test "los menus de mantenimiento incluyen opcion para actualizar la app" {
     grep -Fq 'yarg_update_label="Actualizar YARG Stable"' lib/cage.sh
     grep -Fq 'yarg_update_label="Actualizar YARG Nightly"' lib/cage.sh
-    grep -Fq 'UPDATE_COMMAND="/usr/local/bin/update-yarg"' lib/cage.sh
-    grep -Fq '6) __KIOSK_UPDATE_LABEL__' lib/cage.sh
-    grep -Fq 'update_kiosk_app' lib/cage.sh
-
-    grep -Fq 'UPDATE_LABEL="Actualizar Clone Hero"' lib/clonehero.sh
-    grep -Fq 'UPDATE_COMMAND="/usr/local/bin/update-clonehero"' lib/clonehero.sh
-    grep -Fq '6) Actualizar Clone Hero' lib/clonehero.sh
-    grep -Fq 'update_kiosk_app' lib/clonehero.sh
+    grep -Fq '/usr/local/bin/update-yarg' lib/cage.sh
+    grep -Fq '/usr/local/bin/update-clonehero' lib/clonehero.sh
+    grep -Fq 'update_kiosk_app' lib/kiosk_runtime.sh
 }
 
 @test "update-clonehero actualiza sobre una instalacion existente con directorios _Data" {
