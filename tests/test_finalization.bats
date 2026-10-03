@@ -303,9 +303,9 @@ setup() {
     run configure_network
     [ "$status" -eq 0 ]
 
-    # Verificar que hay exactamente 6 comandos
+    # Verificar que hay exactamente 7 comandos (NetworkManager x2, avahi, openssh x2, zona horaria, reloj)
     local command_count=$(wc -l < /tmp/chroot_commands.log)
-    [[ $command_count -eq 6 ]]
+    [[ $command_count -eq 7 ]]
 
     # Limpiar
     rm -f /tmp/chroot_commands.log
