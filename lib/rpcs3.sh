@@ -4,6 +4,11 @@ if ! declare -F run_quiet >/dev/null; then
     run_quiet() { "$@"; }
 fi
 
+# Menu, prologo del wrapper y servicio comunes a los kioscos Cage.
+if ! declare -F kiosk_wrapper_prelude >/dev/null; then
+    source "${BASH_SOURCE[0]%/*}/kiosk_runtime.sh"
+fi
+
 # RPCS3: descarga del AppImage, firmware, Samba, wrapper de arranque directo,
 # menu de mantenimiento, servicio systemd y updater para el camino Cage/RPCS3.
 #
@@ -530,154 +535,15 @@ rm -rf "$INSTALL_DIR.old"
 echo "RPCS3 actualizado en $INSTALL_DIR"
 TEMPLATE
 
-read -r -d '' RPCS3_MENU_TEMPLATE <<'TEMPLATE' || true
-#!/usr/bin/env bash
-set -euo pipefail
-
-export TERM="${TERM:-xterm-256color}"
-GUI_FLAG="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rpcs3-open-gui"
-
-pause_menu() {
-    echo ""
-    read -r -p "Presione Enter para volver al menu..."
-}
-
-show_hostname() {
-    if command -v hostname >/dev/null 2>&1; then
-        hostname
-    elif [[ -r /etc/hostname ]]; then
-        cat /etc/hostname
-    else
-        echo "desconocido"
-    fi
-}
-
-show_hostname_ips() {
-    if command -v hostname >/dev/null 2>&1; then
-        hostname -I 2>/dev/null || true
-    elif command -v ip >/dev/null 2>&1; then
-        ip -o -4 addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | tr '\n' ' '
-        echo ""
-    fi
-}
-
-show_ip_addresses() {
-    clear
-    echo "Direcciones IP"
-    echo "=============="
-    echo ""
-    if command -v ip >/dev/null 2>&1; then
-        ip -br addr show scope global || true
-    fi
-    echo ""
-    echo "Hostname: $(show_hostname)"
-    echo "IPs: $(show_hostname_ips)"
-    echo "Juegos por red: \\\\$(show_hostname)\\RPCS3-Games"
-    pause_menu
-}
-
-open_shell() {
-    clear
-    echo "Shell de mantenimiento"
-    echo "Escriba 'exit' para volver al menu."
-    echo ""
-    "${SHELL:-/bin/bash}"
-}
-
-update_rpcs3() {
-    clear
-    echo "Actualizar RPCS3"
-    echo "================"
-    echo ""
-
-    if [[ ! -x /usr/local/bin/update-rpcs3 ]]; then
-        echo "No se encontro /usr/local/bin/update-rpcs3."
-        pause_menu
-        return
-    fi
-
-    if sudo /usr/local/bin/update-rpcs3; then
-        echo ""
-        echo "Listo."
-    else
-        echo ""
-        echo "La actualizacion fallo. Revisa journalctl -u cage-kiosk.service -b."
-    fi
-
-    pause_menu
-}
-
-while true; do
-    clear
-    cat <<'EOF'
-Menu de mantenimiento RPCS3
-===========================
-
-1) Configurar sonido
-2) Configurar WiFi
-3) Ver direccion IP
-4) Salir a Shell
-5) Volver al juego
-6) Abrir RPCS3 (configuracion, firmware, juegos y controles)
-7) Actualizar RPCS3
-8) Reiniciar Kiosko
-9) Apagar Kiosko
-
-EOF
-
-    read -r -p "Seleccione una opcion: " option
-
-    case "$option" in
-        1)
-            if command -v pulsemixer >/dev/null 2>&1; then
-                pulsemixer || true
-            else
-                echo "pulsemixer no esta instalado."
-                pause_menu
-            fi
-            ;;
-        2)
-            if command -v nmtui >/dev/null 2>&1; then
-                nmtui || true
-            else
-                echo "nmtui no esta disponible."
-                pause_menu
-            fi
-            ;;
-        3)
-            show_ip_addresses
-            ;;
-        4)
-            open_shell
-            ;;
-        5)
-            exit 0
-            ;;
-        6)
-            # El wrapper ve este archivo al salir del menu y abre la GUI de RPCS3.
+# Menu de mantenimiento: el comun de los kioscos mas la opcion de abrir la GUI
+# de RPCS3 (configuracion, firmware, juegos y controles).
+RPCS3_MENU_TEMPLATE="$(kiosk_menu_script "RPCS3" "Volver al juego" "Actualizar RPCS3" /usr/local/bin/update-rpcs3 \
+    --setup 'GUI_FLAG="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rpcs3-open-gui"' \
+    --ip-extra '    echo "Juegos por red: \\$(show_hostname)\RPCS3-Games"' \
+    --extra-label "Abrir RPCS3 (configuracion, firmware, juegos y controles)" \
+    --extra-code '            # El wrapper ve este archivo al salir del menu y abre la GUI de RPCS3.
             touch "$GUI_FLAG"
-            exit 0
-            ;;
-        7)
-            update_rpcs3
-            ;;
-        8)
-            echo "Reiniciando servicio cage-kiosk..."
-            sudo systemctl restart cage-kiosk.service
-            exit 0
-            ;;
-        9)
-            echo "Apagando kiosko..."
-            sudo systemctl poweroff
-            exit 0
-            ;;
-        *)
-            echo "Opcion invalida."
-            sleep 1
-            ;;
-    esac
-done
-TEMPLATE
+            exit 0')"
 
 read -r -d '' RPCS3_PROFILE_FIX_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env python3
@@ -1076,12 +942,7 @@ if __name__ == "__main__":
     sys.exit(main())
 TEMPLATE
 
-read -r -d '' RPCS3_WRAPPER_TEMPLATE <<'TEMPLATE' || true
-#!/usr/bin/env bash
-set -euo pipefail
-
-echo "run-rpcs3: iniciado como $(id -un) pid=$$" >&2
-
+read -r -d '' RPCS3_WRAPPER_BODY <<'TEMPLATE' || true
 RPCS3_GAMES_DIR="__RPCS3_GAMES_DIR__"
 RPCS3_GAME_PATH="__RPCS3_GAME_PATH__"
 RPCS3_GAME_MATCH="__RPCS3_GAME_MATCH__"
@@ -1096,12 +957,6 @@ RPCS3_MIC_VOLUME="__RPCS3_MIC_VOLUME__"
 RPCS3_MIC_SINGLE_MATCH="__RPCS3_MIC_SINGLE_MATCH__"
 RPCS3_MIC_SINGLE_VOLUME="__RPCS3_MIC_SINGLE_VOLUME__"
 
-export HOME="${HOME:-__RPCS3_HOME__}"
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-export XDG_SESSION_TYPE=wayland
-export XDG_CURRENT_DESKTOP=cage
-export PIPEWIRE_RUNTIME_DIR="$XDG_RUNTIME_DIR"
-
 RPCS3_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rpcs3"
 GUI_FLAG="$XDG_RUNTIME_DIR/rpcs3-open-gui"
 
@@ -1109,108 +964,8 @@ if [[ -n "$RPCS3_QT_PLATFORM" ]]; then
     export QT_QPA_PLATFORM="$RPCS3_QT_PLATFORM"
 fi
 
-if [[ -d /usr/share/icons/MiniArchPick ]]; then
-    export XCURSOR_THEME=MiniArchPick
-    export XCURSOR_SIZE=64
-fi
-if [[ -x /usr/bin/Xwayland ]]; then
-    export WLR_XWAYLAND=/usr/bin/Xwayland
-else
-    unset WLR_XWAYLAND
-fi
-
-dbus_session_is_usable() {
-    local dbus_path=""
-
-    if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
-        return 1
-    fi
-
-    case "$DBUS_SESSION_BUS_ADDRESS" in
-        unix:path=*)
-            dbus_path="${DBUS_SESSION_BUS_ADDRESS#unix:path=}"
-            dbus_path="${dbus_path%%,*}"
-            [[ -S "$dbus_path" ]] || return 1
-            ;;
-    esac
-
-    if command -v dbus-send >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
-        timeout 1 dbus-send --session --dest=org.freedesktop.DBus \
-            --type=method_call / org.freedesktop.DBus.ListNames >/dev/null 2>&1
-        return $?
-    fi
-
-    return 0
-}
-
-if ! dbus_session_is_usable; then
-    echo "run-rpcs3: DBus de sesion ausente o invalido" >&2
-    unset DBUS_SESSION_BUS_ADDRESS
-fi
-
-if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" && -z "${RPCS3_DBUS_SESSION_STARTED:-}" ]]; then
-    if command -v dbus-run-session >/dev/null 2>&1; then
-        echo "run-rpcs3: iniciando DBus de sesion" >&2
-        export RPCS3_DBUS_SESSION_STARTED=1
-        exec dbus-run-session -- "$0"
-    fi
-fi
-
-wait_for_path() {
-    local path="$1"
-    local attempts="${2:-100}"
-
-    for _ in $(seq 1 "$attempts"); do
-        [[ -e "$path" ]] && return 0
-        sleep 0.1
-    done
-
-    return 1
-}
-
-wait_for_pulse_sink() {
-    local attempts="${1:-50}"
-
-    if ! command -v pactl >/dev/null 2>&1; then
-        return 1
-    fi
-
-    for _ in $(seq 1 "$attempts"); do
-        if command -v timeout >/dev/null 2>&1; then
-            timeout 1 pactl list short sinks 2>/dev/null | grep -q . && return 0
-        elif pactl list short sinks 2>/dev/null | grep -q .; then
-            return 0
-        fi
-        sleep 0.1
-    done
-
-    return 1
-}
-
 start_audio() {
-    if command -v pipewire >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1; then
-        echo "run-rpcs3: iniciando pipewire" >&2
-        pipewire 2>&1 | sed 's/^/[pipewire] /' &
-    fi
-
-    wait_for_path "$XDG_RUNTIME_DIR/pipewire-0" 100 || \
-        echo "Aviso: PipeWire no creo $XDG_RUNTIME_DIR/pipewire-0 a tiempo." >&2
-
-    if command -v wireplumber >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1; then
-        echo "run-rpcs3: iniciando wireplumber" >&2
-        wireplumber 2>&1 | sed 's/^/[wireplumber] /' &
-    fi
-
-    sleep 1
-
-    if command -v pipewire-pulse >/dev/null 2>&1 && ! pgrep -u "$(id -u)" -x pipewire-pulse >/dev/null 2>&1; then
-        echo "run-rpcs3: iniciando pipewire-pulse" >&2
-        pipewire-pulse 2>&1 | sed 's/^/[pipewire-pulse] /' &
-    fi
-
-    echo "run-rpcs3: esperando sink Pulse/PipeWire" >&2
-    wait_for_pulse_sink 50 || \
-        echo "Aviso: no se encontro un sink Pulse/PipeWire antes de iniciar RPCS3." >&2
+    start_kiosk_audio RPCS3
 
     # WirePlumber recuerda un volumen bajo (40 %) en algunos equipos; se fija el
     # volumen de la salida por defecto y se quita el silencio.
@@ -1475,6 +1230,10 @@ while true; do
 done
 TEMPLATE
 
+# El prologo (entorno, DBus, PipeWire) es comun a los tres kioscos.
+RPCS3_WRAPPER_TEMPLATE="$(kiosk_wrapper_prelude run-rpcs3 __RPCS3_HOME__ false)"
+RPCS3_WRAPPER_TEMPLATE+=$'\n\n'"$RPCS3_WRAPPER_BODY"
+
 install_rpcs3_update_script() {
     log "Instalando updater /usr/local/bin/update-rpcs3"
 
@@ -1667,55 +1426,6 @@ install_rpcs3_cage_wrapper() {
 }
 
 install_rpcs3_cage_service() {
-    log "Creando servicio systemd cage-kiosk.service para RPCS3"
-
-    local kiosk_uid
-    if ! kiosk_uid=$(arch-chroot /mnt id -u "$KIOSK_USER"); then
-        log_error "No se pudo resolver UID de $KIOSK_USER para cage-kiosk.service"
-        return 1
-    fi
-
-    cat > /mnt/etc/systemd/system/cage-kiosk.service << EOF
-[Unit]
-Description=Kiosk RPCS3 con Cage
-After=systemd-user-sessions.service network-online.target
-Wants=network-online.target
-Conflicts=getty@tty1.service
-
-[Service]
-User=$KIOSK_USER
-PAMName=login
-TTYPath=/dev/tty1
-StandardInput=tty
-StandardOutput=journal
-StandardError=journal
-TTYReset=yes
-TTYVHangup=yes
-TTYVTDisallocate=yes
-# RPCS3 pide fijar RLIMIT_MEMLOCK a 2 GiB; no depender de pam_limits.
-LimitMEMLOCK=infinity
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
-Environment=XDG_RUNTIME_DIR=/run/user/$kiosk_uid
-ExecStartPre=+/usr/bin/mkdir -p /run/user/$kiosk_uid
-ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x pipewire-pulse
-ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x wireplumber
-ExecStartPre=-/usr/bin/pkill -u $KIOSK_USER -x pipewire
-ExecStartPre=-/usr/bin/rm -f /run/user/$kiosk_uid/pipewire-0 /run/user/$kiosk_uid/pipewire-0.lock /run/user/$kiosk_uid/pulse/native
-ExecStartPre=+/usr/bin/chown $KIOSK_USER:$KIOSK_USER /run/user/$kiosk_uid
-ExecStartPre=+/usr/bin/chmod 700 /run/user/$kiosk_uid
-ExecStart=/usr/bin/dbus-run-session -- /usr/local/bin/run-rpcs3.sh
-ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x pipewire-pulse
-ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x wireplumber
-ExecStopPost=-/usr/bin/pkill -u $KIOSK_USER -x pipewire
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=graphical.target
-EOF
-
-    if ! arch-chroot /mnt systemctl enable cage-kiosk.service; then
-        log_error "Fallo al habilitar cage-kiosk.service"
-        return 1
-    fi
+    # RPCS3 pide fijar RLIMIT_MEMLOCK a 2 GiB; no depender de pam_limits.
+    install_cage_service "RPCS3" /usr/local/bin/run-rpcs3.sh "LimitMEMLOCK=infinity"
 }

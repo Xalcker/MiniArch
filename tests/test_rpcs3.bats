@@ -5,6 +5,7 @@
 setup() {
     export LOG_FILE="$BATS_TEST_TMPDIR/install.log"
     source lib/common.sh
+    source lib/kiosk_runtime.sh
     source lib/rpcs3.sh
 }
 

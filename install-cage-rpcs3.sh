@@ -123,6 +123,7 @@ source "$SCRIPT_DIR/lib/bootloader.sh" || { log_error "No se pudo importar bootl
 source "$SCRIPT_DIR/lib/plymouth.sh" || { log_error "No se pudo importar plymouth.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/drivers.sh" || { log_error "No se pudo importar drivers.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/cage.sh" || { log_error "No se pudo importar cage.sh"; exit 1; }
+source "$SCRIPT_DIR/lib/kiosk_runtime.sh" || { log_error "No se pudo importar kiosk_runtime.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/rpcs3.sh" || { log_error "No se pudo importar rpcs3.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/customization.sh" || { log_error "No se pudo importar customization.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/finalization.sh" || { log_error "No se pudo importar finalization.sh"; exit 1; }

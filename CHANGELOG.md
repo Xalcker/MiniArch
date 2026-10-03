@@ -78,6 +78,11 @@ Infraestructura:
 
 ### Cambiado
 
+- Wrapper, menu de mantenimiento y `cage-kiosk.service` de YARG, Clone Hero y
+  RPCS3 unificados en `lib/kiosk_runtime.sh` (#28): antes eran tres copias casi
+  identicas. El wrapper de YARG ahora tambien fija `HOME`, y el
+  menu de RPCS3 gana el respaldo de `nmcli` para el WiFi; el resto del
+  comportamiento no cambia.
 - Documentacion de `assets/` reescrita para describir el flujo real:
   seleccion de la imagen de Plymouth por camino y resolucion, y generacion del
   tema de cursor `MiniArchPick` a partir de un PNG (`xcursorgen`, punto activo
