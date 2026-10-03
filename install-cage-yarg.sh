@@ -58,6 +58,10 @@ YARG_PIPEWIRE_QUANTUM="${YARG_PIPEWIRE_QUANTUM-128}"
 YARG_EXIT_HOTKEY="${YARG_EXIT_HOTKEY:-true}"
 # Disco minimo en GB: las canciones y el /home no caben en un disco de 16 GB.
 YARG_MIN_DISK_GB="${YARG_MIN_DISK_GB:-32}"
+# true configura zram (swap comprimido en RAM) por delante del swap de disco; el tamano
+# es la mitad de la RAM con tope en ZRAM_MAX_MB (MiB).
+ZRAM_ENABLED="${ZRAM_ENABLED:-true}"
+ZRAM_MAX_MB="${ZRAM_MAX_MB:-4096}"
 YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL:-ask}"
 YARG_STABLE_API_URL="${YARG_STABLE_API_URL:-https://api.github.com/repos/YARC-Official/YARG/releases/latest}"
 YARG_STABLE_ASSET_REGEX="${YARG_STABLE_ASSET_REGEX:-linux.*(x86_64|x64|64).*\\.zip}"
@@ -174,6 +178,7 @@ ask_initial_questions() {
 
     validate_kiosk_audio_volume YARG_AUDIO_VOLUME "$YARG_AUDIO_VOLUME" || return 1
     validate_kiosk_pipewire_quantum YARG_PIPEWIRE_QUANTUM "$YARG_PIPEWIRE_QUANTUM" || return 1
+    validate_kiosk_zram || return 1
 
     resolve_nvidia_choice
 
@@ -403,6 +408,11 @@ main() {
 
     if ! configure_kiosk_performance YARG; then
         log_error "Fallo en optimizaciones de rendimiento para YARG"
+        exit 1
+    fi
+
+    if ! configure_kiosk_zram; then
+        log_error "Fallo en configuracion de zram"
         exit 1
     fi
 

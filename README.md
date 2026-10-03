@@ -68,7 +68,7 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
   `SWAP_SIZE`):
   - ESP FAT32 en `/boot`.
   - Root ext4 en `/`.
-  - Swap.
+  - Swap en disco (respaldo de zram, prioridad 10).
   - Home ext4 en `/home`.
 - GRUB UEFI con arranque silencioso.
 - Plymouth opcional.
@@ -93,7 +93,8 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
 - Usuario Samba para el usuario kiosko.
 - Reglas HID para instrumentos `hidraw`.
 - Dependencias multilib de YARG.
-- Limites de tiempo real, `vm.swappiness=10` y `cpupower` en performance.
+- Limites de tiempo real, `cpupower` en performance y zram (swap comprimido en RAM,
+  `vm.swappiness=100`; con `ZRAM_ENABLED=false` queda en `vm.swappiness=10`).
 - Updater `/usr/local/bin/update-yarg`.
 - Servicio `cage-kiosk.service`.
 
@@ -644,6 +645,12 @@ Variables comunes:
   `M` o `G`; por defecto `512M`, `8G` y `2G`). `/home` ocupa el resto del disco.
   Minimos: ESP 256M, root 4G, swap 512M y 2 GiB libres para `/home`; el
   instalador valida el esquema antes de pedir confirmacion.
+- `ZRAM_ENABLED`, `ZRAM_MAX_MB`: con `true` (por defecto) se configura zram, un swap
+  comprimido en RAM (zstd) con tamano de la mitad de la RAM y tope `ZRAM_MAX_MB`
+  (`4096` MiB). Va por delante del swap de disco, que baja a prioridad 10 y queda
+  como respaldo si zram se llena, y sube `vm.swappiness` a 100 (con `false` queda en
+  10). Aplica a YARG, Clone Hero y RPCS3; el camino Cage/foot no usa zram. En equipos
+  de 8 a 16 GB evita los tirones de un swap en disco y el OOM del juego.
 - `KIOSK_USER`: usuario kiosko.
 - `KIOSK_PASSWORD`: password del usuario kiosko.
 - `TIMEZONE`: zona horaria.

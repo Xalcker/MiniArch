@@ -84,6 +84,9 @@ Infraestructura:
   si ya esta la ultima version (`update-yarg --force`, `update-clonehero --force`).
 - `configure_kiosk_performance`: una sola implementacion de limites de tiempo real,
   swappiness y cpupower para las tres rutas (antes copiada en cada una).
+- zram (`zram-generator`) en YARG, Clone Hero y RPCS3: swap comprimido en RAM por
+  delante del swap de disco (prioridad 10), `vm.swappiness=100` y
+  `ZRAM_ENABLED` / `ZRAM_MAX_MB`.
 
 ### Cambiado
 
