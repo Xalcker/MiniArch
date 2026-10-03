@@ -1,6 +1,6 @@
 # Normaliza finales de linea: los scripts y pruebas deben ser LF aunque se
 # clonen en Windows (un CRLF rompe el shebang y bats).
-* text=auto
+* text=auto eol=lf
 *.sh text eol=lf
 *.bats text eol=lf
 *.md text eol=lf
