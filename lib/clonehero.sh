@@ -26,8 +26,7 @@ resolve_clonehero_download_url() {
     asset_regex="$CLONEHERO_ASSET_REGEX"
 
     log "Resolviendo URL del release mas reciente de Clone Hero"
-    if ! release_json=$(curl -fsSL "$api_url"); then
-        log_error "Fallo al consultar $api_url"
+    if ! release_json=$(github_api_get "$api_url"); then
         return 1
     fi
 
@@ -51,6 +50,7 @@ resolve_clonehero_download_url() {
     fi
 
     CLONEHERO_URL="$release_url"
+    CLONEHERO_SHA256="$(github_asset_sha256 "$release_json" "$release_url")"
     log "Clone Hero seleccionado: $CLONEHERO_URL"
 }
 
@@ -73,6 +73,8 @@ install_clonehero() {
         log_error "La descarga de Clone Hero quedo vacia en $package_file"
         return 1
     fi
+
+    verify_sha256 "$package_file" "${CLONEHERO_SHA256:-}" || return 1
 
     if ! arch-chroot /mnt test -s "$chroot_package_file"; then
         log_error "El paquete de Clone Hero no existe dentro del chroot"
@@ -142,7 +144,6 @@ configure_clonehero_samba_share() {
     normalize_clonehero_songs_dir
 
     local songs_dir="$CLONEHERO_SONGS_DIR"
-    local smb_conf="/mnt/etc/samba/smb.conf"
 
     log "Configurando Samba para compartir canciones de Clone Hero"
 
@@ -150,31 +151,7 @@ configure_clonehero_samba_share() {
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$songs_dir"
     run_quiet arch-chroot /mnt chmod 775 "$songs_dir"
 
-    if [[ ! -f "$smb_conf" ]] || ! grep -q '^\[global\]' "$smb_conf"; then
-        cat > "$smb_conf" << EOF
-[global]
-   workgroup = WORKGROUP
-   server string = Clone Hero Kiosk
-   security = user
-   map to guest = Bad User
-   log file = /var/log/samba/%m.log
-   max log size = 50
-EOF
-    fi
-
-    if ! grep -q '^\[CloneHero-Songs\]' "$smb_conf"; then
-        cat >> "$smb_conf" << EOF
-
-[CloneHero-Songs]
-   path = $songs_dir
-   writable = yes
-   browsable = yes
-   guest ok = yes
-   create mask = 0775
-   directory mask = 0775
-   force user = $KIOSK_USER
-EOF
-    fi
+    write_samba_share "Clone Hero Kiosk" "CloneHero-Songs" "$songs_dir"
 
     if ! run_quiet arch-chroot /mnt systemctl enable smb.service nmb.service; then
         log_error "Fallo al habilitar servicios Samba"
@@ -203,7 +180,11 @@ CLONEHERO_API_URL="$CLONEHERO_API_URL"
 CLONEHERO_ASSET_REGEX="$CLONEHERO_ASSET_REGEX"
 INSTALL_DIR="/opt/CloneHero"
 SONGS_DIR="$CLONEHERO_SONGS_DIR"
-PACKAGE_FILE="/tmp/CloneHero.download"
+PACKAGE_FILE=""
+DIGEST_FILE=""
+# sha256 opcional para la URL fija; en el canal latest se usa el digest que
+# publica la API de GitHub.
+CLONEHERO_SHA256="${CLONEHERO_SHA256:-}"
 OWNER="$KIOSK_USER"
 # URL instalada; el nombre lleva la version. --force reinstala igual.
 URL_MARK="\$INSTALL_DIR/.install-url"
@@ -215,9 +196,57 @@ if [[ \${EUID} -ne 0 ]]; then
     exit 1
 fi
 
+github_api_get() {
+    local url="\$1" body_file code
+    local -a auth=()
+    [[ -n "\${GITHUB_TOKEN:-}" ]] && auth=(-H "Authorization: Bearer \$GITHUB_TOKEN")
+    body_file="\$(mktemp)"
+    code="\$(curl -sSL "\${auth[@]}" -o "\$body_file" -w '%{http_code}' "\$url")" || code="000"
+    if [[ "\$code" == "200" ]]; then
+        cat "\$body_file"
+        rm -f "\$body_file"
+        return 0
+    fi
+    rm -f "\$body_file"
+    case "\$code" in
+        403|429)
+            echo "GitHub rechazo la consulta a \$url (HTTP \$code): probable limite de 60 peticiones/hora por IP." >&2
+            echo "Usa sudo --preserve-env=GITHUB_TOKEN con GITHUB_TOKEN exportado, o el canal fijo." >&2
+            ;;
+        *)
+            echo "Fallo al consultar \$url (HTTP \$code)" >&2
+            ;;
+    esac
+    return 1
+}
+
+github_asset_sha256() {
+    local json="\$1" url="\$2"
+    printf '%s\n' "\$json" | awk -v url="\$url" '
+        /"digest":/ { d = \$0 }
+        /"browser_download_url":/ {
+            if (index(\$0, url) && match(d, /sha256:[0-9a-fA-F]{64}/)) {
+                print substr(d, RSTART + 7, 64)
+                exit
+            }
+            d = ""
+        }'
+}
+
+verify_sha256() {
+    local file="\$1" expected="\${2:-}" actual
+    [[ -z "\$expected" ]] && return 0
+    actual="\$(sha256sum "\$file" | cut -d' ' -f1)"
+    if [[ "\${actual,,}" != "\${expected,,}" ]]; then
+        echo "sha256 no coincide: esperado \$expected, obtenido \$actual" >&2
+        return 1
+    fi
+    echo "sha256 verificado: \$expected"
+}
+
 resolve_latest_release_url() {
     local release_json release_url
-    release_json="\$(curl -fsSL "\$CLONEHERO_API_URL")"
+    release_json="\$(github_api_get "\$CLONEHERO_API_URL")"
     release_url="\$(printf '%s\n' "\$release_json" \
         | grep -E '"browser_download_url":' \
         | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
@@ -237,12 +266,18 @@ resolve_latest_release_url() {
         return 1
     fi
 
+    github_asset_sha256 "\$release_json" "\$release_url" > "\$DIGEST_FILE"
     printf '%s\n' "\$release_url"
 }
+
+PACKAGE_FILE="\$(mktemp /var/tmp/update-clonehero.XXXXXX)"
+DIGEST_FILE="\$(mktemp /var/tmp/update-clonehero.XXXXXX)"
+trap 'rm -f "\$PACKAGE_FILE" "\$DIGEST_FILE"' EXIT
 
 if [[ "\$CLONEHERO_RELEASE_CHANNEL" == "latest" ]]; then
     echo "Resolviendo latest desde \$CLONEHERO_API_URL"
     CLONEHERO_URL="\$(resolve_latest_release_url)"
+    CLONEHERO_SHA256="\$(cat "\$DIGEST_FILE")"
 fi
 
 if [[ "\$FORCE" != "true" && -r "\$URL_MARK" && "\$(cat "\$URL_MARK")" == "\$CLONEHERO_URL" ]]; then
@@ -253,6 +288,7 @@ fi
 
 echo "Descargando Clone Hero desde: \$CLONEHERO_URL"
 curl -fsSL --retry 3 --retry-delay 2 -o "\$PACKAGE_FILE" "\$CLONEHERO_URL"
+verify_sha256 "\$PACKAGE_FILE" "\$CLONEHERO_SHA256"
 rm -rf "\$INSTALL_DIR/.new"
 if [[ "\$SONGS_DIR" == "\$INSTALL_DIR/Songs" ]]; then
     SONGS_DIR="/home/\$OWNER/Songs"

@@ -74,8 +74,7 @@ resolve_yarg_download_url() {
     log "Resolviendo URL del $channel_label mas reciente de YARG"
 
     local release_json
-    if ! release_json=$(curl -fsSL "$api_url"); then
-        log_error "Fallo al consultar $api_url"
+    if ! release_json=$(github_api_get "$api_url"); then
         return 1
     fi
 
@@ -100,6 +99,7 @@ resolve_yarg_download_url() {
     fi
 
     YARG_URL="$release_url"
+    YARG_SHA256="$(github_asset_sha256 "$release_json" "$release_url")"
     log "YARG $channel_label seleccionado: $YARG_URL"
 }
 
@@ -120,6 +120,8 @@ install_yarg() {
         log_error "La descarga de YARG no genero un ZIP valido en $yarg_zip"
         return 1
     fi
+
+    verify_sha256 "$yarg_zip" "${YARG_SHA256:-}" || return 1
 
     if ! arch-chroot /mnt test -s "$chroot_yarg_zip"; then
         log_error "El ZIP de YARG no existe dentro del chroot en $chroot_yarg_zip"
@@ -177,7 +179,6 @@ configure_yarg_samba_share() {
     normalize_yarg_songs_dir
 
     local songs_dir="$YARG_SONGS_DIR"
-    local smb_conf="/mnt/etc/samba/smb.conf"
 
     log "Configurando Samba para compartir canciones de YARG"
 
@@ -185,31 +186,7 @@ configure_yarg_samba_share() {
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$songs_dir"
     run_quiet arch-chroot /mnt chmod 775 "$songs_dir"
 
-    if [[ ! -f "$smb_conf" ]] || ! grep -q '^\[global\]' "$smb_conf"; then
-        cat > "$smb_conf" << EOF
-[global]
-   workgroup = WORKGROUP
-   server string = YARG Kiosk
-   security = user
-   map to guest = Bad User
-   log file = /var/log/samba/%m.log
-   max log size = 50
-EOF
-    fi
-
-    if ! grep -q '^\[YARG-Songs\]' "$smb_conf"; then
-        cat >> "$smb_conf" << EOF
-
-[YARG-Songs]
-   path = $songs_dir
-   writable = yes
-   browsable = yes
-   guest ok = yes
-   create mask = 0775
-   directory mask = 0775
-   force user = $KIOSK_USER
-EOF
-    fi
+    write_samba_share "YARG Kiosk" "YARG-Songs" "$songs_dir"
 
     if ! run_quiet arch-chroot /mnt systemctl enable smb.service nmb.service; then
         log_error "Fallo al habilitar servicios Samba"
@@ -240,7 +217,11 @@ YARG_NIGHTLY_API_URL="$YARG_NIGHTLY_API_URL"
 YARG_NIGHTLY_ASSET_REGEX="$YARG_NIGHTLY_ASSET_REGEX"
 INSTALL_DIR="/opt/YARG"
 SONGS_DIR="$YARG_SONGS_DIR"
-ZIP_FILE="/tmp/YARG_Linux.zip"
+ZIP_FILE=""
+DIGEST_FILE=""
+# sha256 opcional para la URL fija (canal stable); en los demas canales se usa
+# el digest que publica la API de GitHub.
+YARG_SHA256="${YARG_SHA256:-}"
 OWNER="$KIOSK_USER"
 # URL instalada; el nombre lleva la version. --force reinstala igual.
 URL_MARK="\$INSTALL_DIR/.install-url"
@@ -252,13 +233,61 @@ if [[ \${EUID} -ne 0 ]]; then
     exit 1
 fi
 
+github_api_get() {
+    local url="\$1" body_file code
+    local -a auth=()
+    [[ -n "\${GITHUB_TOKEN:-}" ]] && auth=(-H "Authorization: Bearer \$GITHUB_TOKEN")
+    body_file="\$(mktemp)"
+    code="\$(curl -sSL "\${auth[@]}" -o "\$body_file" -w '%{http_code}' "\$url")" || code="000"
+    if [[ "\$code" == "200" ]]; then
+        cat "\$body_file"
+        rm -f "\$body_file"
+        return 0
+    fi
+    rm -f "\$body_file"
+    case "\$code" in
+        403|429)
+            echo "GitHub rechazo la consulta a \$url (HTTP \$code): probable limite de 60 peticiones/hora por IP." >&2
+            echo "Usa sudo --preserve-env=GITHUB_TOKEN con GITHUB_TOKEN exportado, o el canal 'stable'." >&2
+            ;;
+        *)
+            echo "Fallo al consultar \$url (HTTP \$code)" >&2
+            ;;
+    esac
+    return 1
+}
+
+github_asset_sha256() {
+    local json="\$1" url="\$2"
+    printf '%s\n' "\$json" | awk -v url="\$url" '
+        /"digest":/ { d = \$0 }
+        /"browser_download_url":/ {
+            if (index(\$0, url) && match(d, /sha256:[0-9a-fA-F]{64}/)) {
+                print substr(d, RSTART + 7, 64)
+                exit
+            }
+            d = ""
+        }'
+}
+
+verify_sha256() {
+    local file="\$1" expected="\${2:-}" actual
+    [[ -z "\$expected" ]] && return 0
+    actual="\$(sha256sum "\$file" | cut -d' ' -f1)"
+    if [[ "\${actual,,}" != "\${expected,,}" ]]; then
+        echo "sha256 no coincide: esperado \$expected, obtenido \$actual" >&2
+        return 1
+    fi
+    echo "sha256 verificado: \$expected"
+}
+
 resolve_latest_release_url() {
     local api_url="\$1"
     local asset_regex="\$2"
     local channel_label="\$3"
     local release_json release_url
 
-    release_json="\$(curl -fsSL "\$api_url")"
+    release_json="\$(github_api_get "\$api_url")"
 
     release_url="\$(printf '%s\n' "\$release_json" \
         | grep -E '"browser_download_url":' \
@@ -279,6 +308,7 @@ resolve_latest_release_url() {
         return 1
     fi
 
+    github_asset_sha256 "\$release_json" "\$release_url" > "\$DIGEST_FILE"
     printf '%s\n' "\$release_url"
 }
 
@@ -307,16 +337,23 @@ ensure_songs_link() {
     fi
 }
 
+ZIP_FILE="\$(mktemp /var/tmp/update-yarg.XXXXXX)"
+DIGEST_FILE="\$(mktemp /var/tmp/update-yarg.XXXXXX)"
+trap 'rm -f "\$ZIP_FILE" "\$DIGEST_FILE"' EXIT
+
 case "\$YARG_RELEASE_CHANNEL" in
     stable-latest|latest)
         echo "Resolviendo latest stable desde \$YARG_STABLE_API_URL"
         YARG_URL="\$(resolve_latest_release_url "\$YARG_STABLE_API_URL" "\$YARG_STABLE_ASSET_REGEX" "stable")"
+        YARG_SHA256="\$(cat "\$DIGEST_FILE")"
         ;;
     nightly)
         echo "Resolviendo latest nightly desde \$YARG_NIGHTLY_API_URL"
         YARG_URL="\$(resolve_latest_release_url "\$YARG_NIGHTLY_API_URL" "\$YARG_NIGHTLY_ASSET_REGEX" "nightly")"
+        YARG_SHA256="\$(cat "\$DIGEST_FILE")"
         ;;
     stable)
+        echo "Canal stable fijo en \$YARG_URL; usa YARG_RELEASE_CHANNEL=stable-latest para seguir el ultimo release."
         ;;
     *)
         echo "Canal desconocido '\$YARG_RELEASE_CHANNEL'; usando YARG_URL guardado." >&2
@@ -331,6 +368,7 @@ fi
 
 echo "Descargando YARG desde: \$YARG_URL"
 curl -fsSL --retry 3 --retry-delay 2 -o "\$ZIP_FILE" "\$YARG_URL"
+verify_sha256 "\$ZIP_FILE" "\$YARG_SHA256"
 unzip -tq "\$ZIP_FILE" >/dev/null
 unzip -o "\$ZIP_FILE" -d "\$INSTALL_DIR" >/dev/null
 ensure_songs_link

@@ -43,6 +43,104 @@ warn() {
     echo -e "${YELLOW}  ! $1${NC}"
 }
 
+# Consulta la API de GitHub (con GITHUB_TOKEN si existe) e imprime el JSON.
+# Distingue el limite de peticiones (403/429) de otros fallos.
+github_api_get() {
+    local url="$1" body_file code
+    local -a auth=()
+    [[ -n "${GITHUB_TOKEN:-}" ]] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
+
+    body_file="$(mktemp)"
+    code="$(curl -sSL "${auth[@]}" -o "$body_file" -w '%{http_code}' "$url")" || code="000"
+    if [[ "$code" == "200" ]]; then
+        cat "$body_file"
+        rm -f "$body_file"
+        return 0
+    fi
+    rm -f "$body_file"
+
+    case "$code" in
+        403|429)
+            log_error "GitHub rechazo la consulta a $url (HTTP $code): probable limite de 60 peticiones/hora por IP."
+            log_error "Define GITHUB_TOKEN o usa el canal 'stable' con una URL fija."
+            ;;
+        *)
+            log_error "Fallo al consultar $url (HTTP $code)"
+            ;;
+    esac
+    return 1
+}
+
+# Imprime el sha256 que la API de GitHub publica ("digest") para el asset con
+# esa URL; no imprime nada si el release no lo trae.
+github_asset_sha256() {
+    local json="$1" url="$2"
+    printf '%s\n' "$json" | awk -v url="$url" '
+        /"digest":/ { d = $0 }
+        /"browser_download_url":/ {
+            if (index($0, url) && match(d, /sha256:[0-9a-fA-F]{64}/)) {
+                print substr(d, RSTART + 7, 64)
+                exit
+            }
+            d = ""
+        }'
+}
+
+# Verifica el sha256 de un archivo; sin hash esperado no comprueba nada.
+verify_sha256() {
+    local file="$1" expected="${2:-}" actual
+    [[ -z "$expected" ]] && return 0
+
+    actual="$(sha256sum "$file" | cut -d' ' -f1)"
+    if [[ "${actual,,}" != "${expected,,}" ]]; then
+        log_error "sha256 no coincide en $file: esperado $expected, obtenido $actual"
+        return 1
+    fi
+    log "sha256 verificado: $expected"
+}
+
+# Agrega un share a smb.conf (y la seccion [global] si falta).
+# Uso: write_samba_share <server string> <nombre del share> <ruta>
+# Variables: SAMBA_GUEST (true por defecto), SAMBA_HOSTS_ALLOW (vacio = sin
+# restriccion de red), KIOSK_USER. SAMBA_CONF solo cambia la ruta (pruebas).
+write_samba_share() {
+    local server_string="$1" share="$2" path="$3"
+    local smb_conf="${SAMBA_CONF:-/mnt/etc/samba/smb.conf}"
+    local guest="${SAMBA_GUEST:-true}" hosts_allow="${SAMBA_HOSTS_ALLOW:-}"
+
+    if [[ ! -f "$smb_conf" ]] || ! grep -q '^\[global\]' "$smb_conf"; then
+        {
+            echo "[global]"
+            echo "   workgroup = WORKGROUP"
+            echo "   server string = $server_string"
+            echo "   security = user"
+            echo "   server min protocol = SMB2"
+            [[ "$guest" != "false" ]] && echo "   map to guest = Bad User"
+            [[ -n "$hosts_allow" ]] && echo "   hosts allow = $hosts_allow"
+            echo "   log file = /var/log/samba/%m.log"
+            echo "   max log size = 50"
+        } > "$smb_conf"
+    fi
+
+    if ! grep -q "^\[$share\]" "$smb_conf"; then
+        {
+            echo
+            echo "[$share]"
+            echo "   path = $path"
+            echo "   writable = yes"
+            echo "   browsable = yes"
+            if [[ "$guest" == "false" ]]; then
+                echo "   valid users = $KIOSK_USER"
+            else
+                echo "   guest ok = yes"
+            fi
+            echo "   create mask = 0775"
+            echo "   directory mask = 0775"
+            echo "   force user = $KIOSK_USER"
+        } >> "$smb_conf"
+    fi
+}
+
 run_quiet() {
     if [[ "${VERBOSE_INSTALL:-false}" == "true" ]]; then
         "$@"
