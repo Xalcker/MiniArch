@@ -33,6 +33,7 @@ resolve_clonehero_download_url() {
     release_url=$(printf '%s\n' "$release_json" \
         | grep -E '"browser_download_url":' \
         | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+        | grep -Eiv 'aarch64|arm64' \
         | grep -Ei "$asset_regex" \
         | head -n 1 || true)
 
@@ -40,6 +41,7 @@ resolve_clonehero_download_url() {
         release_url=$(printf '%s\n' "$release_json" \
             | grep -E '"browser_download_url":' \
             | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+            | grep -Eiv 'aarch64|arm64' \
             | grep -Ei 'linux.*\.(zip|tar\.xz|tar\.gz|appimage)$' \
             | head -n 1 || true)
     fi
@@ -250,6 +252,7 @@ resolve_latest_release_url() {
     release_url="\$(printf '%s\n' "\$release_json" \
         | grep -E '"browser_download_url":' \
         | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+        | grep -Eiv 'aarch64|arm64' \
         | grep -Ei "\$CLONEHERO_ASSET_REGEX" \
         | head -n 1 || true)"
 
@@ -257,6 +260,7 @@ resolve_latest_release_url() {
         release_url="\$(printf '%s\n' "\$release_json" \
             | grep -E '"browser_download_url":' \
             | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+            | grep -Eiv 'aarch64|arm64' \
             | grep -Ei 'linux.*\.(zip|tar\.xz|tar\.gz|appimage)$' \
             | head -n 1 || true)"
     fi
