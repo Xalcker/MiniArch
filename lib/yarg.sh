@@ -82,6 +82,7 @@ resolve_yarg_download_url() {
     release_url=$(printf '%s\n' "$release_json" \
         | grep -E '"browser_download_url":' \
         | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+        | grep -Eiv 'aarch64|arm64' \
         | grep -Ei "$asset_regex" \
         | head -n 1 || true)
 
@@ -89,6 +90,7 @@ resolve_yarg_download_url() {
         release_url=$(printf '%s\n' "$release_json" \
             | grep -E '"browser_download_url":' \
             | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+            | grep -Eiv 'aarch64|arm64' \
             | grep -Ei 'linux.*\.zip' \
             | head -n 1 || true)
     fi
@@ -292,6 +294,7 @@ resolve_latest_release_url() {
     release_url="\$(printf '%s\n' "\$release_json" \
         | grep -E '"browser_download_url":' \
         | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+        | grep -Eiv 'aarch64|arm64' \
         | grep -Ei "\$asset_regex" \
         | head -n 1 || true)"
 
@@ -299,6 +302,7 @@ resolve_latest_release_url() {
         release_url="\$(printf '%s\n' "\$release_json" \
             | grep -E '"browser_download_url":' \
             | sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/' \
+            | grep -Eiv 'aarch64|arm64' \
             | grep -Ei 'linux.*\.zip' \
             | head -n 1 || true)"
     fi

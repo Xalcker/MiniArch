@@ -82,6 +82,56 @@ EOF
     [ "$YARG_URL" = "https://h/YARG_v1.0.0-Linux-x86_64.zip" ]
 }
 
+@test "resolve_yarg_download_url no elige un asset aarch64 aunque aparezca primero" {
+    FAKE_JSON='{
+  "assets": [
+    {
+      "name": "YARG-Linux-aarch64.zip",
+      "browser_download_url": "https://h/YARG-Linux-aarch64.zip"
+    },
+    {
+      "name": "YARG-Linux-arm64.zip",
+      "browser_download_url": "https://h/YARG-Linux-arm64.zip"
+    },
+    {
+      "name": "YARG-Linux-x86_64.zip",
+      "browser_download_url": "https://h/YARG-Linux-x86_64.zip"
+    }
+  ]
+}'
+    YARG_RELEASE_CHANNEL=stable-latest
+    YARG_STABLE_API_URL=https://api.invalid/yarg YARG_STABLE_ASSET_REGEX="$YARG_REGEX"
+    resolve_yarg_download_url
+    [ "$YARG_URL" = "https://h/YARG-Linux-x86_64.zip" ]
+}
+
+@test "resolve_yarg_download_url falla si solo hay assets ARM" {
+    FAKE_JSON='{"assets":[{"browser_download_url": "https://h/YARG-Linux-aarch64.zip"}]}'
+    YARG_RELEASE_CHANNEL=stable-latest
+    YARG_STABLE_API_URL=https://api.invalid/yarg YARG_STABLE_ASSET_REGEX="$YARG_REGEX"
+    run resolve_yarg_download_url
+    [ "$status" -eq 1 ]
+}
+
+@test "resolve_clonehero_download_url no elige un asset arm64" {
+    FAKE_JSON='{
+  "assets": [
+    {
+      "name": "clonehero-linux-arm64.tar.gz",
+      "browser_download_url": "https://h/clonehero-linux-arm64.tar.gz"
+    },
+    {
+      "name": "clonehero-linux-x64.tar.gz",
+      "browser_download_url": "https://h/clonehero-linux-x64.tar.gz"
+    }
+  ]
+}'
+    CLONEHERO_RELEASE_CHANNEL=latest
+    CLONEHERO_API_URL=https://api.invalid/ch CLONEHERO_ASSET_REGEX="$CH_REGEX"
+    resolve_clonehero_download_url
+    [ "$CLONEHERO_URL" = "https://h/clonehero-linux-x64.tar.gz" ]
+}
+
 @test "resolve_yarg_download_url falla sin asset Linux" {
     FAKE_JSON='{"assets":[{"browser_download_url": "https://h/YARG-Windows.zip"}]}'
     YARG_RELEASE_CHANNEL=stable-latest
