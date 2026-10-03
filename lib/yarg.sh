@@ -137,6 +137,8 @@ install_yarg() {
     fi
 
     run_quiet arch-chroot /mnt find /opt/YARG -maxdepth 1 -type f -name 'YARG*' -exec chmod +x {} +
+    # Marca de la URL instalada: update-yarg no descarga si ya esta la ultima version.
+    printf '%s\n' "$YARG_URL" > /mnt/opt/YARG/.install-url
     ensure_yarg_songs_symlink || return 1
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/YARG
     run_quiet arch-chroot /mnt chown -h "$KIOSK_USER:$KIOSK_USER" /opt/YARG/Songs
@@ -220,45 +222,6 @@ EOF
     fi
 }
 
-configure_yarg_performance() {
-    log "Aplicando optimizaciones de rendimiento para YARG"
-
-    mkdir -p /mnt/etc/security/limits.d /mnt/etc/sysctl.d /mnt/etc/default
-
-    cat > /mnt/etc/security/limits.d/99-yarg.conf << EOF
-$KIOSK_USER - rtprio 99
-$KIOSK_USER - memlock unlimited
-$KIOSK_USER - nice -20
-EOF
-
-    echo 'vm.swappiness=10' > /mnt/etc/sysctl.d/99-yarg.conf
-
-    cat > /mnt/etc/default/cpupower << 'EOF'
-# Versiones antiguas del servicio cpupower leen este archivo (en minusculas o
-# mayusculas). Se escriben ambas formas.
-GOVERNOR='performance'
-MIN_FREQ=''
-MAX_FREQ=''
-governor='performance'
-min_freq=''
-max_freq=''
-EOF
-
-    # Los paquetes recientes de cpupower leen su configuracion de este otro
-    # archivo (EnvironmentFile de la unidad), no de /etc/default/cpupower: sin ese
-    # archivo el servicio termina con exito pero el gobernador queda en schedutil.
-    cat > /mnt/etc/default/cpupower-service.conf << 'EOF'
-GOVERNOR='performance'
-MIN_FREQ=''
-MAX_FREQ=''
-EOF
-
-    if ! run_quiet arch-chroot /mnt systemctl enable cpupower.service; then
-        log_error "Fallo al habilitar cpupower.service"
-        return 1
-    fi
-}
-
 install_yarg_update_script() {
     normalize_yarg_songs_dir
 
@@ -279,6 +242,10 @@ INSTALL_DIR="/opt/YARG"
 SONGS_DIR="$YARG_SONGS_DIR"
 ZIP_FILE="/tmp/YARG_Linux.zip"
 OWNER="$KIOSK_USER"
+# URL instalada; el nombre lleva la version. --force reinstala igual.
+URL_MARK="\$INSTALL_DIR/.install-url"
+FORCE=false
+[[ "\${1:-}" == "--force" ]] && FORCE=true
 
 if [[ \${EUID} -ne 0 ]]; then
     echo "Este script debe ejecutarse como root." >&2
@@ -356,12 +323,19 @@ case "\$YARG_RELEASE_CHANNEL" in
         ;;
 esac
 
+if [[ "\$FORCE" != "true" && -r "\$URL_MARK" && "\$(cat "\$URL_MARK")" == "\$YARG_URL" ]]; then
+    echo "YARG ya esta en la ultima version (\$(basename "\$YARG_URL")); no se descarga nada."
+    echo "Usa update-yarg --force para reinstalarla igual."
+    exit 0
+fi
+
 echo "Descargando YARG desde: \$YARG_URL"
 curl -fsSL --retry 3 --retry-delay 2 -o "\$ZIP_FILE" "\$YARG_URL"
 unzip -tq "\$ZIP_FILE" >/dev/null
 unzip -o "\$ZIP_FILE" -d "\$INSTALL_DIR" >/dev/null
 ensure_songs_link
 find "\$INSTALL_DIR" -maxdepth 1 -type f -name "YARG*" -exec chmod +x {} +
+printf '%s\n' "\$YARG_URL" > "\$URL_MARK"
 chown -R "\$OWNER:\$OWNER" "\$INSTALL_DIR"
 chown -h "\$OWNER:\$OWNER" "\$INSTALL_DIR/Songs"
 chown -R "\$OWNER:\$OWNER" "\$SONGS_DIR"

@@ -341,7 +341,7 @@ install_cage_wrapper() {
     install_kiosk_menu "YARG" "Volver a YARG" "$yarg_update_label" "/usr/local/bin/update-yarg"
 
     {
-        kiosk_wrapper_prelude "run-yarg" "/home/$KIOSK_USER" "${YARG_FORCE_SOFTWARE_RENDER:-false}"
+        kiosk_wrapper_prelude "run-yarg" "/home/$KIOSK_USER" "${YARG_FORCE_SOFTWARE_RENDER:-false}" "${YARG_AUDIO_VOLUME-}" "${YARG_PIPEWIRE_QUANTUM-}"
         cat <<'WRAPPER'
 
 YARG_SCREEN_WIDTH="__YARG_SCREEN_WIDTH__"
@@ -369,6 +369,7 @@ wait_for_alsa_default() {
     return 1
 }
 
+start_kiosk_exit_hotkey /opt/YARG/
 start_kiosk_audio YARG
 
 echo "run-yarg: esperando ALSA default via PipeWire" >&2

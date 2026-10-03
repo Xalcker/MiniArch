@@ -343,90 +343,6 @@ EOF
     fi
 }
 
-# Elige por que salida suena RPCS3 (RPCS3_AUDIO_OUTPUT): hdmi/dp (por defecto),
-# analog o auto (deja la eleccion de WirePlumber). Se logra subiendo la
-# prioridad de los sinks HDMI/DP o analogicos con una regla de WirePlumber en
-# el home del usuario; si el dispositivo preferido no existe, WirePlumber cae
-# solo al otro. El wrapper arranca wireplumber como el usuario, asi que toma
-# ~/.config/wireplumber/wireplumber.conf.d/.
-configure_rpcs3_audio_output() {
-    local output="${RPCS3_AUDIO_OUTPUT:-hdmi}"
-    local conf_dir="/mnt/home/$KIOSK_USER/.config/wireplumber/wireplumber.conf.d"
-    local pattern
-
-    case "${output,,}" in
-        hdmi|dp)
-            pattern='~alsa_output.*hdmi.*'
-            ;;
-        analog)
-            pattern='~alsa_output.*analog.*'
-            ;;
-        auto)
-            log "Salida de audio automatica (RPCS3_AUDIO_OUTPUT=auto)"
-            return 0
-            ;;
-        *)
-            warn "RPCS3_AUDIO_OUTPUT invalido: $output; se deja la salida automatica."
-            return 0
-            ;;
-    esac
-
-    log "Priorizando la salida de audio: ${output,,}"
-    mkdir -p "$conf_dir"
-
-    cat > "$conf_dir/51-rpcs3-audio-output.conf" << EOF_CONF
-monitor.alsa.rules = [
-  {
-    matches = [ { node.name = "$pattern" } ]
-    actions = { update-props = { priority.session = 3000, priority.driver = 3000 } }
-  }
-]
-EOF_CONF
-
-    run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "/home/$KIOSK_USER/.config"
-}
-
-configure_rpcs3_performance() {
-    log "Aplicando optimizaciones de rendimiento para RPCS3"
-
-    mkdir -p /mnt/etc/security/limits.d /mnt/etc/sysctl.d /mnt/etc/default
-
-    cat > /mnt/etc/security/limits.d/99-rpcs3.conf << EOF
-$KIOSK_USER - rtprio 99
-$KIOSK_USER - memlock unlimited
-$KIOSK_USER - nice -20
-EOF
-
-    echo 'vm.swappiness=10' > /mnt/etc/sysctl.d/99-rpcs3.conf
-    # RPCS3 abre muchos mapeos de memoria (PPU/SPU); el default de Linux no alcanza.
-    echo 'vm.max_map_count=2147483642' >> /mnt/etc/sysctl.d/99-rpcs3.conf
-
-    cat > /mnt/etc/default/cpupower << 'EOF'
-# Versiones antiguas del servicio cpupower leen este archivo (en minusculas o
-# mayusculas). Se escriben ambas formas.
-GOVERNOR='performance'
-MIN_FREQ=''
-MAX_FREQ=''
-governor='performance'
-min_freq=''
-max_freq=''
-EOF
-
-    # Los paquetes recientes de cpupower leen su configuracion de este otro
-    # archivo (EnvironmentFile de la unidad), no de /etc/default/cpupower: sin ese
-    # archivo el servicio termina con exito pero el gobernador queda en schedutil.
-    cat > /mnt/etc/default/cpupower-service.conf << 'EOF'
-GOVERNOR='performance'
-MIN_FREQ=''
-MAX_FREQ=''
-EOF
-
-    if ! run_quiet arch-chroot /mnt systemctl enable cpupower.service; then
-        log_error "Fallo al habilitar cpupower.service"
-        return 1
-    fi
-}
-
 # ---------------------------------------------------------------------------
 # Plantillas
 # ---------------------------------------------------------------------------
@@ -764,184 +680,6 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
 TEMPLATE
 
-read -r -d '' RPCS3_EXIT_HOTKEY_TEMPLATE <<'TEMPLATE' || true
-#!/usr/bin/env python3
-"""Cierra RPCS3 con un atajo, sin depender del compositor ni de la ventana.
-
-Lee los teclados directamente (como evmapy/hotkeygen en Batocera): Ctrl + Alt + Q.
-Al detectar la combinacion termina RPCS3; el wrapper del kiosko vuelve entonces
-al menu de mantenimiento. Con un control no hace falta: su boton Guide abre el
-menu de RPCS3, que trae la opcion de salir del juego. Los instrumentos
-(guitarras, baterias) se ignoran.
-
-Uso: rpcs3-exit-hotkey.py [--list]   (--list muestra que dispositivos detecta)
-"""
-import glob
-import os
-import select
-import struct
-import subprocess
-import sys
-import time
-
-EV_KEY = 1
-# struct input_event en x86_64: timeval (2 long), type, code, value.
-EVENT = struct.Struct("llHHi")
-
-KEY_Q, KEY_LEFTCTRL, KEY_LEFTALT, KEY_RIGHTCTRL, KEY_RIGHTALT = 16, 29, 56, 97, 100
-
-CTRL = {KEY_LEFTCTRL, KEY_RIGHTCTRL}
-ALT = {KEY_LEFTALT, KEY_RIGHTALT}
-EXCLUDED_NAMES = ("santroller", "guitar", "drum", "harmonix", "rock band", "keytar")
-TARGETS = ("AppRun.wrapped", "rpcs3")
-RESCAN_SECONDS = 5
-COOLDOWN_SECONDS = 3
-GRACE_SECONDS = 3
-
-
-def read_sysfs(event, name):
-    try:
-        with open("/sys/class/input/%s/device/%s" % (event, name)) as f:
-            return f.read().strip()
-    except OSError:
-        return ""
-
-
-def key_capabilities(event):
-    """Devuelve la mascara de teclas/botones del dispositivo como entero."""
-    mask = 0
-    words = read_sysfs(event, "capabilities/key").split()
-    for i, word in enumerate(reversed(words)):
-        mask |= int(word, 16) << (64 * i)
-    return mask
-
-
-def classify(mask, name):
-    """Tipos de atajo que admite un dispositivo: 'kbd' si es un teclado."""
-    if any(excluded in name.lower() for excluded in EXCLUDED_NAMES):
-        return set()
-    has = lambda code: (mask >> code) & 1
-    kinds = set()
-    if has(KEY_Q) and has(KEY_LEFTCTRL) and has(KEY_LEFTALT):
-        kinds.add("kbd")
-    return kinds
-
-
-def combo_pressed(kinds, held):
-    if "kbd" in kinds and held & CTRL and held & ALT and KEY_Q in held:
-        return "teclado"
-    return None
-
-
-def scan(devices, opened):
-    for path in sorted(glob.glob("/dev/input/event*")):
-        if path in opened:
-            continue
-        event = os.path.basename(path)
-        name = read_sysfs(event, "name")
-        kinds = classify(key_capabilities(event), name)
-        if not kinds:
-            continue
-        try:
-            fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
-        except OSError:
-            continue
-        opened.add(path)
-        devices[fd] = {"path": path, "name": name, "kinds": kinds, "held": set()}
-        print("rpcs3-exit-hotkey: vigilando %s (%s) [%s]" % (path, name, ",".join(sorted(kinds))), flush=True)
-
-
-def close_device(devices, opened, fd):
-    opened.discard(devices[fd]["path"])
-    try:
-        os.close(fd)
-    except OSError:
-        pass
-    del devices[fd]
-
-
-def running(targets):
-    """True si queda algun proceso vivo con esos nombres (un zombi no cuenta)."""
-    for target in targets:
-        out = subprocess.run(["pgrep", "-x", target], capture_output=True, text=True).stdout.split()
-        for pid in out:
-            try:
-                with open("/proc/%s/stat" % pid) as f:
-                    state = f.read().rsplit(")", 1)[1].split()[0]
-            except (OSError, IndexError):
-                continue
-            if state != "Z":
-                return True
-    return False
-
-
-def terminate_rpcs3(source, targets=TARGETS, grace=GRACE_SECONDS):
-    print("rpcs3-exit-hotkey: combinacion de %s; cerrando RPCS3" % source, flush=True)
-    for target in targets:
-        subprocess.run(["pkill", "-x", target], check=False)
-
-    # La GUI de RPCS3 atrapa SIGTERM y no siempre sale (el juego con --no-gui si):
-    # si pasado el plazo sigue vivo, se escala a SIGKILL.
-    deadline = time.monotonic() + grace
-    while time.monotonic() < deadline:
-        if not running(targets):
-            return
-        time.sleep(0.25)
-    print("rpcs3-exit-hotkey: RPCS3 no salio con SIGTERM; forzando SIGKILL", flush=True)
-    for target in targets:
-        subprocess.run(["pkill", "-9", "-x", target], check=False)
-
-
-def main():
-    devices, opened = {}, set()
-
-    if "--list" in sys.argv:
-        scan(devices, opened)
-        if not devices:
-            print("Sin dispositivos compatibles.")
-        return 0
-
-    last_scan = last_fire = 0.0
-    while True:
-        now = time.monotonic()
-        if now - last_scan >= RESCAN_SECONDS:
-            scan(devices, opened)
-            last_scan = now
-
-        if not devices:
-            time.sleep(1)
-            continue
-
-        ready, _, _ = select.select(list(devices), [], [], 1.0)
-        for fd in ready:
-            dev = devices[fd]
-            try:
-                data = os.read(fd, EVENT.size * 64)
-            except BlockingIOError:
-                continue
-            except OSError:
-                close_device(devices, opened, fd)
-                continue
-
-            for offset in range(0, len(data) - EVENT.size + 1, EVENT.size):
-                _, _, etype, code, value = EVENT.unpack_from(data, offset)
-                if etype != EV_KEY:
-                    continue
-                if value:
-                    dev["held"].add(code)
-                else:
-                    dev["held"].discard(code)
-
-                source = combo_pressed(dev["kinds"], dev["held"]) if value == 1 else None
-                if source and time.monotonic() - last_fire >= COOLDOWN_SECONDS:
-                    last_fire = time.monotonic()
-                    terminate_rpcs3(source)
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-TEMPLATE
-
 read -r -d '' RPCS3_WRAPPER_BODY <<'TEMPLATE' || true
 RPCS3_GAMES_DIR="__RPCS3_GAMES_DIR__"
 RPCS3_GAME_PATH="__RPCS3_GAME_PATH__"
@@ -950,8 +688,6 @@ RPCS3_EXIT_MENU="__RPCS3_EXIT_MENU__"
 RPCS3_MIDI_DRUMS="__RPCS3_MIDI_DRUMS__"
 RPCS3_PAD_AUTO="__RPCS3_PAD_AUTO__"
 RPCS3_QT_PLATFORM="__RPCS3_QT_PLATFORM__"
-RPCS3_AUDIO_VOLUME="__RPCS3_AUDIO_VOLUME__"
-RPCS3_PIPEWIRE_QUANTUM="__RPCS3_PIPEWIRE_QUANTUM__"
 RPCS3_MIC_SPLIT_MATCH="__RPCS3_MIC_SPLIT_MATCH__"
 RPCS3_MIC_VOLUME="__RPCS3_MIC_VOLUME__"
 RPCS3_MIC_SINGLE_MATCH="__RPCS3_MIC_SINGLE_MATCH__"
@@ -966,21 +702,6 @@ fi
 
 start_audio() {
     start_kiosk_audio RPCS3
-
-    # WirePlumber recuerda un volumen bajo (40 %) en algunos equipos; se fija el
-    # volumen de la salida por defecto y se quita el silencio.
-    if [[ -n "$RPCS3_AUDIO_VOLUME" ]] && command -v wpctl >/dev/null 2>&1; then
-        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-        wpctl set-volume @DEFAULT_AUDIO_SINK@ "$RPCS3_AUDIO_VOLUME" >/dev/null 2>&1 || true
-    fi
-
-    # PipeWire trabaja por defecto con ciclos de 1024 muestras (21 ms a 48 kHz) y
-    # cada etapa de un microfono (dispositivo, fuente mono, lectura de RPCS3) puede
-    # sumar uno. Se fuerza un cuantum menor para bajar la latencia de los
-    # microfonos y del audio. Es de ejecucion, asi que se aplica en cada arranque.
-    if [[ -n "$RPCS3_PIPEWIRE_QUANTUM" ]] && command -v pw-metadata >/dev/null 2>&1; then
-        pw-metadata -n settings 0 clock.force-quantum "$RPCS3_PIPEWIRE_QUANTUM" >/dev/null 2>&1 || true
-    fi
 }
 
 find_rpcs3_bin() {
@@ -1116,15 +837,6 @@ setup_pads() {
     SDL_VIDEODRIVER=dummy python3 "$script" 2>&1 | sed -u 's/^/[pads] /' >&2 || true
 }
 
-# Atajo para cerrar RPCS3 desde el teclado (Ctrl+Alt+Q).
-start_exit_hotkey() {
-    local script=/usr/local/bin/rpcs3-exit-hotkey.py
-
-    [[ -f "$script" ]] && command -v python3 >/dev/null 2>&1 || return 0
-    pgrep -u "$(id -u)" -f "$script" >/dev/null 2>&1 && return 0
-
-    python3 "$script" 2>&1 | sed 's/^/[exit-hotkey] /' >&2 &
-}
 
 # Bateria electronica MIDI por USB (RPCS3 emula la bateria de Rock Band 3 a partir
 # de ella). RPCS3 guarda el dispositivo como "Drums" + nombre del puerto ALSA,
@@ -1178,7 +890,7 @@ setup_midi_drums() {
     done < "$cfg" > "$tmp" && mv "$tmp" "$cfg"
 }
 
-start_exit_hotkey
+start_kiosk_exit_hotkey AppRun.wrapped rpcs3
 start_audio
 
 while true; do
@@ -1231,7 +943,7 @@ done
 TEMPLATE
 
 # El prologo (entorno, DBus, PipeWire) es comun a los tres kioscos.
-RPCS3_WRAPPER_TEMPLATE="$(kiosk_wrapper_prelude run-rpcs3 __RPCS3_HOME__ false)"
+RPCS3_WRAPPER_TEMPLATE="$(kiosk_wrapper_prelude run-rpcs3 __RPCS3_HOME__ false __RPCS3_AUDIO_VOLUME__ __RPCS3_PIPEWIRE_QUANTUM__)"
 RPCS3_WRAPPER_TEMPLATE+=$'\n\n'"$RPCS3_WRAPPER_BODY"
 
 install_rpcs3_update_script() {
@@ -1244,21 +956,6 @@ install_rpcs3_update_script() {
         "RPCS3_ASSET_REGEX=$RPCS3_ASSET_REGEX" \
         "OWNER=$KIOSK_USER" > /mnt/usr/local/bin/update-rpcs3
     chmod +x /mnt/usr/local/bin/update-rpcs3
-}
-
-# Instala el atajo de salida (teclado Ctrl+Alt+Q). Cage no
-# procesa Alt+F4 y RPCS3 sin GUI no tiene atajos para cerrarse, asi que un
-# proceso aparte lee los dispositivos de entrada, como hace evmapy en Batocera.
-install_rpcs3_exit_hotkey() {
-    if [[ "${RPCS3_EXIT_HOTKEY:-true}" != "true" ]]; then
-        log "Atajo de salida omitido (RPCS3_EXIT_HOTKEY=false)"
-        return 0
-    fi
-
-    log "Instalando atajo de salida de RPCS3 (Ctrl+Alt+Q)"
-    mkdir -p /mnt/usr/local/bin
-    printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > /mnt/usr/local/bin/rpcs3-exit-hotkey.py
-    chmod 755 /mnt/usr/local/bin/rpcs3-exit-hotkey.py
 }
 
 # Instala el script que asigna los controles conectados a los jugadores 1 y 2

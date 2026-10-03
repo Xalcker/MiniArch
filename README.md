@@ -151,7 +151,8 @@ de shaders no caben en el `/home` de un disco de 16 GB.
 
 - Arch Linux ISO actual.
 - Maquina fisica o VM con UEFI habilitado.
-- Disco de al menos 16 GB (32 GB para el camino RPCS3).
+- Disco de al menos 32 GB en las tres rutas con juego (`YARG_MIN_DISK_GB`,
+  `CLONEHERO_MIN_DISK_GB` y `RPCS3_MIN_DISK_GB`); `install-cage-kiosk.sh` pide 16 GB.
   Esquema por defecto: ESP 512 MiB, root 8 GiB, swap 2 GiB y `/home` con el
   resto. En un disco de 16 GB `/home` queda de ~5.5 GB, en 32 GB de ~21.5 GB y
   en 128 GB de ~117.5 GB. Ajustable con `ESP_SIZE`, `ROOT_SIZE` y `SWAP_SIZE`.
@@ -397,6 +398,8 @@ Canal de YARG: stable fijo, stable-latest o nightly? [stable/stable-latest/night
 `sudo update-yarg` respeta el canal instalado. En `stable` usa `YARG_URL`; en
 `stable-latest` consulta el latest estable; en `nightly` consulta el latest de
 `YARG-BleedingEdge` antes de descargar.
+Si ya tienes la ultima version no descarga nada; `sudo update-yarg --force` la
+reinstala igual. `update-clonehero` hace lo mismo (`--force` incluido).
 
 ## Uso Despues De Instalar Cage/YARG
 
@@ -689,6 +692,15 @@ Variables de Cage/YARG:
   `false` permite usar la GPU disponible, recomendado para GPU passthrough.
 - `YARG_EXIT_MENU`: `always` muestra menu al salir de YARG; `restart`
   relanza YARG directo; `never` sale del wrapper.
+- `YARG_AUDIO_OUTPUT` / `YARG_AUDIO_VOLUME`: salida de audio preferida (`hdmi` por
+  defecto, `analog` o `auto`) y volumen al arrancar (`0` a `1`, `1.0` por defecto).
+  Funcionan igual que `RPCS3_AUDIO_OUTPUT` / `RPCS3_AUDIO_VOLUME`.
+- `YARG_PIPEWIRE_QUANTUM`: ciclo de PipeWire en muestras (`128` por defecto; vacio no
+  lo toca). Igual que `RPCS3_PIPEWIRE_QUANTUM`.
+- `YARG_EXIT_HOTKEY`: `true` (por defecto) instala el atajo **Ctrl+Alt+Q** para cerrar
+  YARG desde el teclado; el wrapper vuelve entonces al menu de mantenimiento.
+  Comparte script con RPCS3 y Clone Hero (`/usr/local/bin/kiosk-exit-hotkey.py`).
+- `YARG_MIN_DISK_GB`: disco minimo en GB. Por defecto `32`.
 
 Variables de Cage/Clone Hero:
 
@@ -704,6 +716,14 @@ Variables de Cage/Clone Hero:
 - `CLONEHERO_FORCE_SOFTWARE_RENDER`: `true` fuerza llvmpipe/software render.
 - `CLONEHERO_EXIT_MENU`: `always` muestra menu al salir de Clone Hero;
   `restart` relanza Clone Hero directo; `never` sale del wrapper.
+- `CLONEHERO_AUDIO_OUTPUT` / `CLONEHERO_AUDIO_VOLUME`: salida de audio preferida
+  (`hdmi` por defecto, `analog` o `auto`) y volumen al arrancar (`0` a `1`, `1.0`
+  por defecto). Funcionan igual que `RPCS3_AUDIO_OUTPUT` / `RPCS3_AUDIO_VOLUME`.
+- `CLONEHERO_PIPEWIRE_QUANTUM`: ciclo de PipeWire en muestras (`128` por defecto; vacio
+  no lo toca). Igual que `RPCS3_PIPEWIRE_QUANTUM`.
+- `CLONEHERO_EXIT_HOTKEY`: `true` (por defecto) instala el atajo **Ctrl+Alt+Q** para
+  cerrar Clone Hero desde el teclado (mismo script que YARG y RPCS3).
+- `CLONEHERO_MIN_DISK_GB`: disco minimo en GB. Por defecto `32`.
 
 Variables de Cage/RPCS3:
 
@@ -748,12 +768,12 @@ Variables de Cage/RPCS3:
   `analog` o `auto`. Crea una regla de WirePlumber en
   `~/.config/wireplumber/wireplumber.conf.d/` que sube la prioridad de esos sinks;
   si el dispositivo preferido no existe se usa el otro. Para cambiarlo despues,
-  edita o borra `51-rpcs3-audio-output.conf` y reinicia `cage-kiosk.service`.
+  edita o borra `51-kiosk-audio-output.conf` y reinicia `cage-kiosk.service`.
 - `RPCS3_AUDIO_VOLUME`: volumen de la salida de audio al arrancar, de `0` a `1`
   (`1.0` = 100 %, por defecto). Se fija con `wpctl` en cada arranque del wrapper y
   quita el silencio; vacio no lo toca. Util porque WirePlumber puede dejar un
   sink HDMI en 40 %.
-- `RPCS3_EXIT_HOTKEY`: `true` (por defecto) instala `/usr/local/bin/rpcs3-exit-hotkey.py`,
+- `RPCS3_EXIT_HOTKEY`: `true` (por defecto) instala `/usr/local/bin/kiosk-exit-hotkey.py`,
   que el wrapper arranca para cerrar RPCS3 con **Ctrl+Alt+Q** en el teclado; el
   wrapper vuelve entonces al menu de mantenimiento. Cage no procesa Alt+F4 y
   RPCS3 sin GUI no tiene atajo de teclado para cerrarse. Con un control no hace

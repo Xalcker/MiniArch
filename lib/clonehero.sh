@@ -115,6 +115,8 @@ install_clonehero() {
     run_quiet arch-chroot /mnt rm -rf /opt/CloneHero/.new
     run_quiet arch-chroot /mnt find /opt/CloneHero -maxdepth 2 -type f \( -iname 'Clone Hero*' -o -iname 'CloneHero*' -o -iname 'clonehero' -o -iname '*.AppImage' \) -exec chmod +x {} +
     run_quiet arch-chroot /mnt mkdir -p "$CLONEHERO_SONGS_DIR" "$CLONEHERO_DATA_DIR"
+    # Marca de la URL instalada: update-clonehero no descarga si ya esta la ultima version.
+    printf '%s\n' "$CLONEHERO_URL" > /mnt/opt/CloneHero/.install-url
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" /opt/CloneHero "$CLONEHERO_DATA_DIR"
     rm -f "$package_file"
 }
@@ -185,45 +187,6 @@ EOF
     fi
 }
 
-configure_clonehero_performance() {
-    log "Aplicando optimizaciones de rendimiento para Clone Hero"
-
-    mkdir -p /mnt/etc/security/limits.d /mnt/etc/sysctl.d /mnt/etc/default
-
-    cat > /mnt/etc/security/limits.d/99-clonehero.conf << EOF
-$KIOSK_USER - rtprio 99
-$KIOSK_USER - memlock unlimited
-$KIOSK_USER - nice -20
-EOF
-
-    echo 'vm.swappiness=10' > /mnt/etc/sysctl.d/99-clonehero.conf
-
-    cat > /mnt/etc/default/cpupower << 'EOF'
-# Versiones antiguas del servicio cpupower leen este archivo (en minusculas o
-# mayusculas). Se escriben ambas formas.
-GOVERNOR='performance'
-MIN_FREQ=''
-MAX_FREQ=''
-governor='performance'
-min_freq=''
-max_freq=''
-EOF
-
-    # Los paquetes recientes de cpupower leen su configuracion de este otro
-    # archivo (EnvironmentFile de la unidad), no de /etc/default/cpupower: sin ese
-    # archivo el servicio termina con exito pero el gobernador queda en schedutil.
-    cat > /mnt/etc/default/cpupower-service.conf << 'EOF'
-GOVERNOR='performance'
-MIN_FREQ=''
-MAX_FREQ=''
-EOF
-
-    if ! run_quiet arch-chroot /mnt systemctl enable cpupower.service; then
-        log_error "Fallo al habilitar cpupower.service"
-        return 1
-    fi
-}
-
 install_clonehero_update_script() {
     normalize_clonehero_songs_dir
 
@@ -242,6 +205,10 @@ INSTALL_DIR="/opt/CloneHero"
 SONGS_DIR="$CLONEHERO_SONGS_DIR"
 PACKAGE_FILE="/tmp/CloneHero.download"
 OWNER="$KIOSK_USER"
+# URL instalada; el nombre lleva la version. --force reinstala igual.
+URL_MARK="\$INSTALL_DIR/.install-url"
+FORCE=false
+[[ "\${1:-}" == "--force" ]] && FORCE=true
 
 if [[ \${EUID} -ne 0 ]]; then
     echo "Este script debe ejecutarse como root." >&2
@@ -278,6 +245,12 @@ if [[ "\$CLONEHERO_RELEASE_CHANNEL" == "latest" ]]; then
     CLONEHERO_URL="\$(resolve_latest_release_url)"
 fi
 
+if [[ "\$FORCE" != "true" && -r "\$URL_MARK" && "\$(cat "\$URL_MARK")" == "\$CLONEHERO_URL" ]]; then
+    echo "Clone Hero ya esta en la ultima version (\$(basename "\$CLONEHERO_URL")); no se descarga nada."
+    echo "Usa update-clonehero --force para reinstalarlo igual."
+    exit 0
+fi
+
 echo "Descargando Clone Hero desde: \$CLONEHERO_URL"
 curl -fsSL --retry 3 --retry-delay 2 -o "\$PACKAGE_FILE" "\$CLONEHERO_URL"
 rm -rf "\$INSTALL_DIR/.new"
@@ -312,6 +285,7 @@ else
 fi
 rm -rf "\$INSTALL_DIR/.new"
 find "\$INSTALL_DIR" -maxdepth 2 -type f \( -iname 'Clone Hero*' -o -iname 'CloneHero*' -o -iname 'clonehero' -o -iname '*.AppImage' \) -exec chmod +x {} +
+printf '%s\n' "\$CLONEHERO_URL" > "\$URL_MARK"
 chown -R "\$OWNER:\$OWNER" "\$INSTALL_DIR" "\$SONGS_DIR"
 rm -f "\$PACKAGE_FILE"
 
@@ -599,7 +573,7 @@ install_clonehero_cage_wrapper() {
     install_kiosk_menu "Clone Hero" "Volver a Clone Hero" "Actualizar Clone Hero" "/usr/local/bin/update-clonehero"
 
     {
-        kiosk_wrapper_prelude "run-clonehero" "/home/$KIOSK_USER" "${CLONEHERO_FORCE_SOFTWARE_RENDER:-false}"
+        kiosk_wrapper_prelude "run-clonehero" "/home/$KIOSK_USER" "${CLONEHERO_FORCE_SOFTWARE_RENDER:-false}" "${CLONEHERO_AUDIO_VOLUME-}" "${CLONEHERO_PIPEWIRE_QUANTUM-}"
         cat <<'WRAPPER'
 
 CLONEHERO_SCREEN_WIDTH="__CLONEHERO_SCREEN_WIDTH__"
@@ -607,6 +581,7 @@ CLONEHERO_SCREEN_HEIGHT="__CLONEHERO_SCREEN_HEIGHT__"
 CLONEHERO_EXIT_MENU="__CLONEHERO_EXIT_MENU__"
 CLONEHERO_DATA_DIR="__CLONEHERO_DATA_DIR__"
 
+start_kiosk_exit_hotkey /opt/CloneHero/
 start_kiosk_audio "Clone Hero"
 
 find_clonehero_bin() {

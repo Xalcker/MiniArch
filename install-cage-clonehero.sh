@@ -50,6 +50,16 @@ CLONEHERO_DATA_DIR="${CLONEHERO_DATA_DIR:-}"
 CLONEHERO_RESOLUTION="${CLONEHERO_RESOLUTION:-ask}"
 CLONEHERO_FORCE_SOFTWARE_RENDER="${CLONEHERO_FORCE_SOFTWARE_RENDER:-false}"
 CLONEHERO_EXIT_MENU="${CLONEHERO_EXIT_MENU:-always}"
+# hdmi (por defecto), analog o auto: salida de audio preferida; volumen de 0 a 1 al arrancar.
+CLONEHERO_AUDIO_OUTPUT="${CLONEHERO_AUDIO_OUTPUT:-hdmi}"
+CLONEHERO_AUDIO_VOLUME="${CLONEHERO_AUDIO_VOLUME-1.0}"
+# Tamano de ciclo de PipeWire en muestras (48 kHz): 128 = 2.7 ms, 1024 = 21 ms (el valor
+# por defecto de PipeWire). Menos = menos latencia, pero mas carga de CPU. Vacio no lo toca.
+CLONEHERO_PIPEWIRE_QUANTUM="${CLONEHERO_PIPEWIRE_QUANTUM-128}"
+# true instala el atajo para cerrar Clone Hero con Ctrl+Alt+Q (teclado).
+CLONEHERO_EXIT_HOTKEY="${CLONEHERO_EXIT_HOTKEY:-true}"
+# Disco minimo en GB: las canciones y el /home no caben en un disco de 16 GB.
+CLONEHERO_MIN_DISK_GB="${CLONEHERO_MIN_DISK_GB:-32}"
 
 source "$SCRIPT_DIR/lib/validation.sh" || { log_error "No se pudo importar validation.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/partitioning.sh" || { log_error "No se pudo importar partitioning.sh"; exit 1; }
@@ -158,6 +168,9 @@ ask_initial_questions() {
     echo -e "${YELLOW}Usuario kiosko:${NC} $KIOSK_USER"
     echo ""
 
+    validate_kiosk_audio_volume CLONEHERO_AUDIO_VOLUME "$CLONEHERO_AUDIO_VOLUME" || return 1
+    validate_kiosk_pipewire_quantum CLONEHERO_PIPEWIRE_QUANTUM "$CLONEHERO_PIPEWIRE_QUANTUM" || return 1
+
     resolve_nvidia_choice
 
     CLONEHERO_RELEASE_CHANNEL="${CLONEHERO_RELEASE_CHANNEL,,}"
@@ -251,8 +264,8 @@ main() {
         exit 1
     fi
 
-    if ! check_disk "$DISK_DEVICE"; then
-        log_error "Disco invalido o insuficiente: se requiere al menos 16GB"
+    if ! check_disk "$DISK_DEVICE" "$CLONEHERO_MIN_DISK_GB"; then
+        log_error "Disco invalido o insuficiente: Clone Hero requiere al menos ${CLONEHERO_MIN_DISK_GB}GB"
         exit 1
     fi
 
@@ -346,6 +359,9 @@ main() {
         exit 1
     fi
 
+    configure_kiosk_audio_output "${CLONEHERO_AUDIO_OUTPUT:-hdmi}"
+    install_kiosk_exit_hotkey "${CLONEHERO_EXIT_HOTKEY:-true}" CLONEHERO
+
     if [[ -e "$CURSOR_PATH" ]]; then
         if ! install_custom_cursor "$CURSOR_PATH" "$KIOSK_USER"; then
             warn "Fallo en instalacion del cursor personalizado; se continuara con el cursor predeterminado."
@@ -379,7 +395,7 @@ main() {
         exit 1
     fi
 
-    if ! configure_clonehero_performance; then
+    if ! configure_kiosk_performance "Clone Hero"; then
         log_error "Fallo en optimizaciones de rendimiento para Clone Hero"
         exit 1
     fi

@@ -279,15 +279,15 @@ fake_appimage() {
 
 @test "el wrapper arranca el atajo de salida" {
     run render_wrapper "$BATS_TEST_TMPDIR/games"
-    [[ "$output" == *"start_exit_hotkey"* ]]
-    [[ "$output" == *"rpcs3-exit-hotkey.py"* ]]
+    [[ "$output" == *"start_kiosk_exit_hotkey AppRun.wrapped rpcs3"* ]]
+    [[ "$output" == *"kiosk-exit-hotkey.py"* ]]
 }
 
 @test "el script del atajo de salida compila y detecta las combinaciones" {
     command -v python3 >/dev/null || skip "python3 no esta instalado"
 
-    local script="$BATS_TEST_TMPDIR/rpcs3-exit-hotkey.py"
-    printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > "$script"
+    local script="$BATS_TEST_TMPDIR/kiosk-exit-hotkey.py"
+    printf '%s\n' "$KIOSK_EXIT_HOTKEY_TEMPLATE" > "$script"
 
     run python3 - "$script" <<'PY'
 import importlib.util, sys
@@ -306,9 +306,8 @@ PY
     [ "$status" -eq 0 ]
 }
 
-@test "install_rpcs3_exit_hotkey no instala nada con RPCS3_EXIT_HOTKEY=false" {
-    RPCS3_EXIT_HOTKEY=false
-    run install_rpcs3_exit_hotkey
+@test "install_kiosk_exit_hotkey no instala nada con false" {
+    run install_kiosk_exit_hotkey false RPCS3
     [ "$status" -eq 0 ]
     [[ "$output" == *"omitido"* ]]
 }
@@ -629,12 +628,12 @@ run_updater_tail() {
 
 @test "el wrapper fuerza el cuantum de PipeWire con pw-metadata cuando RPCS3_PIPEWIRE_QUANTUM tiene valor" {
     run render_wrapper "$BATS_TEST_TMPDIR/games"
-    [[ "$output" == *'pw-metadata -n settings 0 clock.force-quantum "$RPCS3_PIPEWIRE_QUANTUM"'* ]]
-    [[ "$output" == *'[[ -n "$RPCS3_PIPEWIRE_QUANTUM" ]]'* ]]
+    [[ "$output" == *'pw-metadata -n settings 0 clock.force-quantum "$KIOSK_PIPEWIRE_QUANTUM"'* ]]
+    [[ "$output" == *'[[ -n "$KIOSK_PIPEWIRE_QUANTUM" ]]'* ]]
 }
 
 @test "el instalador valida RPCS3_PIPEWIRE_QUANTUM (32 a 2048) y lo documenta" {
-    run grep -n 'RPCS3_PIPEWIRE_QUANTUM invalido' install-cage-rpcs3.sh
+    run grep -n 'validate_kiosk_pipewire_quantum RPCS3_PIPEWIRE_QUANTUM' install-cage-rpcs3.sh
     [ "$status" -eq 0 ]
     grep -q '^RPCS3_PIPEWIRE_QUANTUM=' .env.example
     grep -q 'RPCS3_PIPEWIRE_QUANTUM' README.md
@@ -757,10 +756,12 @@ PY
 @test "cada camino escribe la configuracion de cpupower tambien en cpupower-service.conf" {
     # La unidad cpupower de los paquetes recientes lee /etc/default/cpupower-service.conf;
     # sin ese archivo termina con exito pero el gobernador queda en schedutil.
-    for f in lib/rpcs3.sh lib/yarg.sh lib/clonehero.sh; do
-        run grep -c "/mnt/etc/default/cpupower-service.conf" "$f"
-        [ "$status" -eq 0 ] || { echo "$f no escribe cpupower-service.conf" >&2; return 1; }
-    done
+    # Hay una sola implementacion (configure_kiosk_performance) y las tres rutas la usan.
+    run grep -c "/mnt/etc/default/cpupower-service.conf" lib/kiosk_runtime.sh
+    [ "$status" -eq 0 ]
+    grep -Fq 'configure_kiosk_performance RPCS3' install-cage-rpcs3.sh
+    grep -Fq 'configure_kiosk_performance YARG' install-cage-yarg.sh
+    grep -Fq 'configure_kiosk_performance "Clone Hero"' install-cage-clonehero.sh
 }
 
 # --- escala de resolucion y override MIDI desde el instalador ---------------------------------
@@ -805,12 +806,12 @@ PY
 
 # --- atajo de salida: escalar a SIGKILL cuando la GUI atrapa SIGTERM -----------------------
 
-# Ejecuta terminate_rpcs3() del script del atajo contra un proceso ficticio (una
+# Ejecuta terminate_app() del script del atajo contra un proceso ficticio (una
 # copia de python3 con otro nombre, para que pkill -x no toque nada real).
 run_terminate_dummy() {
     local ignore_term="$1" grace="$2" name="dummyrpcs3$$"
     local script="$BATS_TEST_TMPDIR/hotkey.py"
-    printf '%s\n' "$RPCS3_EXIT_HOTKEY_TEMPLATE" > "$script"
+    printf '%s\n' "$KIOSK_EXIT_HOTKEY_TEMPLATE" > "$script"
     cp "$(command -v python3)" "$BATS_TEST_TMPDIR/$name"
 
     run python3 - "$script" "$BATS_TEST_TMPDIR/$name" "$name" "$ignore_term" "$grace" <<'PY'
@@ -821,7 +822,7 @@ code = "import signal,time\n" + ("signal.signal(signal.SIGTERM, signal.SIG_IGN)\
 proc = subprocess.Popen([binary, "-c", code])
 time.sleep(0.5)
 t0 = time.monotonic()
-terminate_rpcs3("prueba", targets=(name,), grace=float(grace))
+terminate_app("prueba", (name,), grace=float(grace))
 elapsed = time.monotonic() - t0
 alive = running((name,))
 proc.kill(); proc.wait()
