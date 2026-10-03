@@ -86,6 +86,160 @@ stub() { # nombre cuerpo
     [[ "$output" == *"antes de iniciar Clone Hero."* ]]
 }
 
+@test "start_kiosk_audio fija el volumen con wpctl cuando el prologo lo recibe" {
+    local calls="$BATS_TEST_TMPDIR/wpctl"
+    stub pgrep 'exit 0'
+    stub pactl 'echo "0 sink-falso"'
+    stub wpctl "echo \"\$*\" >> '$calls'"
+    {
+        kiosk_wrapper_prelude run-x /home/k false 0.8
+        echo 'wait_for_path() { return 0; }'
+        echo 'start_kiosk_audio Prueba'
+    } > "$BATS_TEST_TMPDIR/a.sh"
+
+    PATH="$STUBS:$PATH" XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR" KIOSK_DBUS_SESSION_STARTED=1 \
+        run bash "$BATS_TEST_TMPDIR/a.sh"
+    [ "$status" -eq 0 ]
+    grep -q 'set-mute @DEFAULT_AUDIO_SINK@ 0' "$calls"
+    grep -q 'set-volume @DEFAULT_AUDIO_SINK@ 0.8' "$calls"
+}
+
+@test "start_kiosk_audio no toca el volumen si el prologo no recibe uno" {
+    local calls="$BATS_TEST_TMPDIR/wpctl"
+    stub pgrep 'exit 0'
+    stub pactl 'echo "0 sink-falso"'
+    stub wpctl "echo llamado >> '$calls'"
+    {
+        kiosk_wrapper_prelude run-x /home/k false
+        echo 'wait_for_path() { return 0; }'
+        echo 'start_kiosk_audio Prueba'
+    } > "$BATS_TEST_TMPDIR/a.sh"
+
+    PATH="$STUBS:$PATH" XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR" KIOSK_DBUS_SESSION_STARTED=1 \
+        run bash "$BATS_TEST_TMPDIR/a.sh"
+    [ "$status" -eq 0 ]
+    [ ! -e "$calls" ]
+}
+
+@test "validate_kiosk_audio_volume acepta de 0 a 1 o vacio y rechaza el resto" {
+    validate_kiosk_audio_volume V ""
+    validate_kiosk_audio_volume V 1.0
+    validate_kiosk_audio_volume V 0.5
+    run validate_kiosk_audio_volume V 1.5
+    [ "$status" -eq 1 ]
+    run validate_kiosk_audio_volume V abc
+    [ "$status" -eq 1 ]
+}
+
+@test "start_kiosk_audio fuerza el cuantum de PipeWire solo si el prologo recibe uno" {
+    local calls="$BATS_TEST_TMPDIR/pwmeta"
+    stub pgrep 'exit 0'
+    stub pactl 'echo "0 sink-falso"'
+    stub pw-metadata "echo \"\$*\" >> '$calls'"
+    {
+        kiosk_wrapper_prelude run-x /home/k false "" 128
+        echo 'wait_for_path() { return 0; }'
+        echo 'start_kiosk_audio Prueba'
+    } > "$BATS_TEST_TMPDIR/a.sh"
+    PATH="$STUBS:$PATH" XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR" KIOSK_DBUS_SESSION_STARTED=1 \
+        run bash "$BATS_TEST_TMPDIR/a.sh"
+    [ "$status" -eq 0 ]
+    grep -q 'settings 0 clock.force-quantum 128' "$calls"
+
+    rm -f "$calls"
+    {
+        kiosk_wrapper_prelude run-x /home/k false "" ""
+        echo 'wait_for_path() { return 0; }'
+        echo 'start_kiosk_audio Prueba'
+    } > "$BATS_TEST_TMPDIR/b.sh"
+    PATH="$STUBS:$PATH" XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR" KIOSK_DBUS_SESSION_STARTED=1 \
+        run bash "$BATS_TEST_TMPDIR/b.sh"
+    [ "$status" -eq 0 ]
+    [ ! -e "$calls" ]
+}
+
+@test "validate_kiosk_pipewire_quantum acepta de 32 a 2048 o vacio y rechaza el resto" {
+    validate_kiosk_pipewire_quantum Q ""
+    validate_kiosk_pipewire_quantum Q 128
+    validate_kiosk_pipewire_quantum Q 32
+    validate_kiosk_pipewire_quantum Q 2048
+    run validate_kiosk_pipewire_quantum Q 16
+    [ "$status" -eq 1 ]
+    run validate_kiosk_pipewire_quantum Q 4096
+    [ "$status" -eq 1 ]
+    run validate_kiosk_pipewire_quantum Q abc
+    [ "$status" -eq 1 ]
+}
+
+# --- atajo de salida compartido ----------------------------------------------
+
+@test "install_kiosk_exit_hotkey no instala nada con false" {
+    run install_kiosk_exit_hotkey false YARG
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"omitido (YARG_EXIT_HOTKEY=false)"* ]]
+}
+
+@test "start_kiosk_exit_hotkey pasa los procesos objetivo al script" {
+    local calls="$BATS_TEST_TMPDIR/hk"
+    stub pgrep 'exit 1'
+    stub python3 "echo \"\$*\" >> '$calls'"
+    {
+        kiosk_wrapper_prelude run-x /home/k false
+        echo 'wait_for_path() { return 0; }'
+        echo 'start_kiosk_exit_hotkey /opt/YARG/ proceso'
+        echo 'wait'
+    } > "$BATS_TEST_TMPDIR/a.sh"
+    # El script solo arranca si existe: se sustituye la ruta fija por una de prueba.
+    sed -i "s|/usr/local/bin/kiosk-exit-hotkey.py|$BATS_TEST_TMPDIR/kiosk-exit-hotkey.py|" "$BATS_TEST_TMPDIR/a.sh"
+    touch "$BATS_TEST_TMPDIR/kiosk-exit-hotkey.py"
+
+    PATH="$STUBS:$PATH" XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR" KIOSK_DBUS_SESSION_STARTED=1 \
+        run bash "$BATS_TEST_TMPDIR/a.sh"
+    [ "$status" -eq 0 ]
+    grep -q "kiosk-exit-hotkey.py /opt/YARG/ proceso" "$calls"
+}
+
+@test "el atajo de salida distingue rutas (-f con prefijo) de nombres exactos (-x)" {
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+    local script="$BATS_TEST_TMPDIR/kiosk-exit-hotkey.py"
+    printf '%s\n' "$KIOSK_EXIT_HOTKEY_TEMPLATE" > "$script"
+
+    run python3 - "$script" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("hotkey", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+assert m.match_args("/opt/YARG/") == ["-f", "^/opt/YARG/"]
+assert m.match_args("rpcs3") == ["-x", "rpcs3"]
+PY
+    [ "$status" -eq 0 ]
+}
+
+# --- rendimiento y updaters compartidos -----------------------------------------
+
+@test "las tres rutas usan configure_kiosk_performance y no quedan copias propias" {
+    grep -Fq 'configure_kiosk_performance YARG' install-cage-yarg.sh
+    grep -Fq 'configure_kiosk_performance "Clone Hero"' install-cage-clonehero.sh
+    grep -Fq 'configure_kiosk_performance RPCS3' install-cage-rpcs3.sh
+    run grep -rn 'configure_yarg_performance\|configure_clonehero_performance\|configure_rpcs3_performance' lib install-cage-*.sh
+    [ "$status" -ne 0 ]
+}
+
+@test "update-yarg y update-clonehero no descargan si ya esta la ultima version y aceptan --force" {
+    for f in lib/yarg.sh lib/clonehero.sh; do
+        grep -Fq 'URL_MARK=' "$f"
+        grep -Fq '[[ "\${1:-}" == "--force" ]]' "$f"
+        grep -Fq '.install-url' "$f"
+    done
+}
+
+@test "YARG y Clone Hero exigen un disco minimo configurable" {
+    grep -Fq 'check_disk "$DISK_DEVICE" "$YARG_MIN_DISK_GB"' install-cage-yarg.sh
+    grep -Fq 'check_disk "$DISK_DEVICE" "$CLONEHERO_MIN_DISK_GB"' install-cage-clonehero.sh
+    grep -q '^YARG_MIN_DISK_GB=' .env.example
+    grep -q '^CLONEHERO_MIN_DISK_GB=' .env.example
+}
+
 # --- menu de mantenimiento ---------------------------------------------------
 
 @test "el menu es Bash valido, sin marcadores, con titulo y subrayado del mismo largo" {

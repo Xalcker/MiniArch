@@ -48,6 +48,16 @@ YARG_PERSISTENT_DATA_DIR="${YARG_PERSISTENT_DATA_DIR:-}"
 YARG_RESOLUTION="${YARG_RESOLUTION:-ask}"
 YARG_FORCE_SOFTWARE_RENDER="${YARG_FORCE_SOFTWARE_RENDER:-false}"
 YARG_EXIT_MENU="${YARG_EXIT_MENU:-always}"
+# hdmi (por defecto), analog o auto: salida de audio preferida; volumen de 0 a 1 al arrancar.
+YARG_AUDIO_OUTPUT="${YARG_AUDIO_OUTPUT:-hdmi}"
+YARG_AUDIO_VOLUME="${YARG_AUDIO_VOLUME-1.0}"
+# Tamano de ciclo de PipeWire en muestras (48 kHz): 128 = 2.7 ms, 1024 = 21 ms (el valor
+# por defecto de PipeWire). Menos = menos latencia, pero mas carga de CPU. Vacio no lo toca.
+YARG_PIPEWIRE_QUANTUM="${YARG_PIPEWIRE_QUANTUM-128}"
+# true instala el atajo para cerrar YARG con Ctrl+Alt+Q (teclado).
+YARG_EXIT_HOTKEY="${YARG_EXIT_HOTKEY:-true}"
+# Disco minimo en GB: las canciones y el /home no caben en un disco de 16 GB.
+YARG_MIN_DISK_GB="${YARG_MIN_DISK_GB:-32}"
 YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL:-ask}"
 YARG_STABLE_API_URL="${YARG_STABLE_API_URL:-https://api.github.com/repos/YARC-Official/YARG/releases/latest}"
 YARG_STABLE_ASSET_REGEX="${YARG_STABLE_ASSET_REGEX:-linux.*(x86_64|x64|64).*\\.zip}"
@@ -162,6 +172,9 @@ ask_initial_questions() {
     echo -e "${YELLOW}Usuario kiosko:${NC} $KIOSK_USER"
     echo ""
 
+    validate_kiosk_audio_volume YARG_AUDIO_VOLUME "$YARG_AUDIO_VOLUME" || return 1
+    validate_kiosk_pipewire_quantum YARG_PIPEWIRE_QUANTUM "$YARG_PIPEWIRE_QUANTUM" || return 1
+
     resolve_nvidia_choice
 
     YARG_RELEASE_CHANNEL="${YARG_RELEASE_CHANNEL,,}"
@@ -257,8 +270,8 @@ main() {
         exit 1
     fi
 
-    if ! check_disk "$DISK_DEVICE"; then
-        log_error "Disco invalido o insuficiente: se requiere al menos 16GB"
+    if ! check_disk "$DISK_DEVICE" "$YARG_MIN_DISK_GB"; then
+        log_error "Disco invalido o insuficiente: YARG requiere al menos ${YARG_MIN_DISK_GB}GB"
         exit 1
     fi
 
@@ -352,6 +365,9 @@ main() {
         exit 1
     fi
 
+    configure_kiosk_audio_output "${YARG_AUDIO_OUTPUT:-hdmi}"
+    install_kiosk_exit_hotkey "${YARG_EXIT_HOTKEY:-true}" YARG
+
     if [[ -e "$CURSOR_PATH" ]]; then
         if ! install_custom_cursor "$CURSOR_PATH" "$KIOSK_USER"; then
             warn "Fallo en instalacion del cursor personalizado; se continuara con el cursor predeterminado."
@@ -385,7 +401,7 @@ main() {
         exit 1
     fi
 
-    if ! configure_yarg_performance; then
+    if ! configure_kiosk_performance YARG; then
         log_error "Fallo en optimizaciones de rendimiento para YARG"
         exit 1
     fi

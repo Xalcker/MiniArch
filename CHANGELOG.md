@@ -75,6 +75,15 @@ Infraestructura:
   `test_docs` (coherencia de la documentacion con el repo), `test_assets` y
   `test_song_paths_and_menu`.
 - `.gitattributes` para mantener LF en scripts, pruebas y documentos.
+- Mejoras de RPCS3 compartidas con YARG y Clone Hero en `lib/kiosk_runtime.sh`:
+  salida de audio por HDMI con regla de WirePlumber y volumen al arrancar
+  (`*_AUDIO_OUTPUT`, `*_AUDIO_VOLUME`), cuantum de PipeWire para bajar la latencia
+  (`*_PIPEWIRE_QUANTUM`, 128 por defecto), atajo Ctrl+Alt+Q para cerrar la app
+  (`*_EXIT_HOTKEY`, script comun `kiosk-exit-hotkey.py`), disco minimo por ruta
+  (`YARG_MIN_DISK_GB` y `CLONEHERO_MIN_DISK_GB`, 32 GB) y updaters que no descargan
+  si ya esta la ultima version (`update-yarg --force`, `update-clonehero --force`).
+- `configure_kiosk_performance`: una sola implementacion de limites de tiempo real,
+  swappiness y cpupower para las tres rutas (antes copiada en cada una).
 
 ### Cambiado
 

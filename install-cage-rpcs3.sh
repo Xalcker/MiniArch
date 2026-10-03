@@ -174,16 +174,8 @@ ask_guided_configuration() {
             ;;
     esac
 
-    if [[ -n "$RPCS3_PIPEWIRE_QUANTUM" ]] && \
-       { [[ ! "$RPCS3_PIPEWIRE_QUANTUM" =~ ^[0-9]+$ ]] || (( RPCS3_PIPEWIRE_QUANTUM < 32 || RPCS3_PIPEWIRE_QUANTUM > 2048 )); }; then
-        log_error "RPCS3_PIPEWIRE_QUANTUM invalido: $RPCS3_PIPEWIRE_QUANTUM. Use un numero entre 32 y 2048 (por ejemplo 128) o vacio."
-        return 1
-    fi
-
-    if [[ -n "$RPCS3_AUDIO_VOLUME" && ! "$RPCS3_AUDIO_VOLUME" =~ ^(0(\.[0-9]+)?|1(\.0+)?)$ ]]; then
-        log_error "RPCS3_AUDIO_VOLUME invalido: $RPCS3_AUDIO_VOLUME. Use un numero entre 0 y 1 (por ejemplo 1.0) o vacio."
-        return 1
-    fi
+    validate_kiosk_pipewire_quantum RPCS3_PIPEWIRE_QUANTUM "$RPCS3_PIPEWIRE_QUANTUM" || return 1
+    validate_kiosk_audio_volume RPCS3_AUDIO_VOLUME "$RPCS3_AUDIO_VOLUME" || return 1
 
     if [[ -z "${RB3DX_CONFIG_PROFILE:-}" ]]; then
         local profile_answer="recommended"
@@ -461,19 +453,19 @@ main() {
         exit 1
     fi
 
-    if ! configure_rpcs3_performance; then
+    if ! configure_kiosk_performance RPCS3 "vm.max_map_count=2147483642"; then
         log_error "Fallo en optimizaciones de rendimiento para RPCS3"
         exit 1
     fi
 
-    configure_rpcs3_audio_output
+    configure_kiosk_audio_output "${RPCS3_AUDIO_OUTPUT:-hdmi}"
 
     if ! install_rpcs3_update_script; then
         log_error "Fallo en instalacion del updater de RPCS3"
         exit 1
     fi
 
-    install_rpcs3_exit_hotkey
+    install_kiosk_exit_hotkey "${RPCS3_EXIT_HOTKEY:-true}" RPCS3
 
     install_rpcs3_midi_config
     install_rpcs3_input_config
