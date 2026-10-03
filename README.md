@@ -959,6 +959,9 @@ MiniArch/
 |   |-- test_repo_hygiene.bats
 |   |-- test_drivers.bats
 |   |-- test_disk_safety.bats
+|   |-- test_disk_scripts.bats
+|   |-- test_updaters.bats
+|   |-- test_wrappers.bats
 |   |-- test_docs.bats
 |   |-- test_customization.bats
 |   |-- test_finalization.bats
