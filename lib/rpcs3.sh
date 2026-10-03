@@ -298,7 +298,6 @@ configure_rpcs3_games_dir() {
 
 configure_rpcs3_samba_share() {
     local games_dir="$RPCS3_GAMES_DIR"
-    local smb_conf="/mnt/etc/samba/smb.conf"
 
     log "Configurando Samba para compartir los juegos de RPCS3"
 
@@ -306,31 +305,7 @@ configure_rpcs3_samba_share() {
     run_quiet arch-chroot /mnt chown -R "$KIOSK_USER:$KIOSK_USER" "$games_dir"
     run_quiet arch-chroot /mnt chmod 775 "$games_dir"
 
-    if [[ ! -f "$smb_conf" ]] || ! grep -q '^\[global\]' "$smb_conf"; then
-        cat > "$smb_conf" << EOF
-[global]
-   workgroup = WORKGROUP
-   server string = RPCS3 Kiosk
-   security = user
-   map to guest = Bad User
-   log file = /var/log/samba/%m.log
-   max log size = 50
-EOF
-    fi
-
-    if ! grep -q '^\[RPCS3-Games\]' "$smb_conf"; then
-        cat >> "$smb_conf" << EOF
-
-[RPCS3-Games]
-   path = $games_dir
-   writable = yes
-   browsable = yes
-   guest ok = yes
-   create mask = 0775
-   directory mask = 0775
-   force user = $KIOSK_USER
-EOF
-    fi
+    write_samba_share "RPCS3 Kiosk" "RPCS3-Games" "$games_dir"
 
     if ! run_quiet arch-chroot /mnt systemctl enable smb.service nmb.service; then
         log_error "Fallo al habilitar servicios Samba"

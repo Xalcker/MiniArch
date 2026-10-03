@@ -684,8 +684,22 @@ Variables de Cage/YARG:
   y `nvidia-utils`, que **solo soportan GPU Turing o mas nuevas** (GTX 16xx,
   RTX 20xx en adelante). Ver "NVIDIA y tarjetas anteriores a Turing".
 - `NVIDIA_SKIP_GPU_CHECK`: `true` omite la deteccion de GPU (ver mas abajo).
+- `SAMBA_GUEST`: `true` (por defecto) permite acceso sin password a los shares;
+  `false` exige el usuario Samba del kiosko (password elegida en la
+  instalacion).
+- `SAMBA_HOSTS_ALLOW`: redes o hosts permitidos en Samba, por ejemplo
+  `"192.168.0.0/16 127."`. Vacio no restringe. Aplica a todos los shares y solo
+  se escribe en un `smb.conf` nuevo. Samba exige siempre SMB2 o superior.
+- `GITHUB_TOKEN`: token opcional para las consultas a `api.github.com` de los
+  canales `stable-latest`, `nightly` y `latest` (evita el limite de 60
+  peticiones/hora por IP). Si GitHub responde 403/429 el instalador y los
+  updaters lo indican; en un updater usa
+  `sudo --preserve-env=GITHUB_TOKEN update-yarg`. No se guarda en el sistema.
 - `YARG_RELEASE_CHANNEL`: `stable`, `stable-latest`, `nightly` o `ask`.
 - `YARG_URL`: ZIP estable de YARG.
+- `YARG_SHA256`: sha256 opcional de `YARG_URL`. En `stable-latest` y `nightly`
+  se verifica el digest que publica la API de GitHub cuando existe. Si el hash
+  no coincide, la instalacion y `update-yarg` abortan.
 - `YARG_STABLE_API_URL`: endpoint del ultimo release estable.
 - `YARG_STABLE_ASSET_REGEX`: patron usado para elegir el ZIP Linux estable.
 - `YARG_NIGHTLY_API_URL`: endpoint del ultimo nightly.
@@ -713,6 +727,8 @@ Variables de Cage/Clone Hero:
 
 - `CLONEHERO_RELEASE_CHANNEL`: `latest`, `url` o `ask`.
 - `CLONEHERO_URL`: descarga fija de Clone Hero cuando se usa `url`.
+- `CLONEHERO_SHA256`: sha256 opcional de `CLONEHERO_URL`. En el canal `latest`
+  se verifica el digest que publica la API de GitHub cuando existe.
 - `CLONEHERO_API_URL`: endpoint del ultimo release.
 - `CLONEHERO_ASSET_REGEX`: patron usado para elegir el asset Linux.
 - `CLONEHERO_SONGS_DIR`: carpeta local de canciones. Por defecto

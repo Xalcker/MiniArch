@@ -91,11 +91,19 @@ kiosko para que cargar canciones sea simple.
 Los caminos Cage/Clone Hero y Cage/RPCS3 crean shares equivalentes
 (`CloneHero-Songs` y `RPCS3-Games`) con la misma configuracion.
 
-No expongas ese share a redes publicas o no confiables. En produccion, considera:
+Por defecto los shares (`YARG-Songs`, `CloneHero-Songs` y `RPCS3-Games`) son
+escribibles sin password desde cualquier host que alcance el puerto 445, y
+escriben como el usuario kiosko, que tiene sudo sin password. Samba exige SMB2
+o superior (`server min protocol = SMB2`).
 
-- Firewall que limite SMB a tu LAN.
-- Password Samba obligatoria.
-- Desactivar guest.
+No expongas esos shares a redes publicas o no confiables. Para endurecerlos
+define en `.env` antes de instalar:
+
+- `SAMBA_GUEST=false`: quita `guest ok` y `map to guest`; solo entra el usuario
+  Samba del kiosko con la password elegida en la instalacion.
+- `SAMBA_HOSTS_ALLOW="192.168.0.0/16 127."`: limita las redes permitidas.
+
+Ademas, un firewall que limite SMB a tu LAN.
 
 ## Firewall
 

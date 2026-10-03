@@ -9,7 +9,7 @@
     grep -Fq '"ShowAntiPiracyDialog": false' lib/yarg.sh
     grep -Fq '"ShowEngineInconsistencyDialog": false' lib/yarg.sh
     grep -Fq '"ShowExperimentalWarningDialog": false' lib/yarg.sh
-    grep -Fq 'path = $songs_dir' lib/yarg.sh
+    grep -Fq 'write_samba_share "YARG Kiosk" "YARG-Songs" "$songs_dir"' lib/yarg.sh
 }
 
 @test "YARG no crea home Songs como enlace hacia /opt/YARG/Songs" {
@@ -23,7 +23,7 @@
     grep -Fq 'arch-chroot /mnt ln -sfnT "$CLONEHERO_SONGS_DIR" "$CLONEHERO_DATA_DIR/Songs"' lib/clonehero.sh
     grep -Fq 'SONGS_DIR="$CLONEHERO_SONGS_DIR"' lib/clonehero.sh
     grep -Fq 'SONGS_DIR="${CLONEHERO_SONGS_DIR}"' lib/clonehero.sh
-    grep -Fq 'path = $songs_dir' lib/clonehero.sh
+    grep -Fq 'write_samba_share "Clone Hero Kiosk" "CloneHero-Songs" "$songs_dir"' lib/clonehero.sh
     ! grep -Fq 'CLONEHERO_SONGS_DIR="${CLONEHERO_SONGS_DIR:-/opt/CloneHero' install-cage-clonehero.sh
 }
 
@@ -63,7 +63,7 @@ $(cat "$work/body")
 EOF" > "$gen"
 
     sed -i -e "s#/opt/CloneHero#$work/opt#g" -e 's#if \[\[ \${EUID} -ne 0 \]\]#if false#' \
-        -e "s#/tmp/CloneHero.download#$work/pkg.download#" -e "s#^chown -R .*#true#" "$gen"
+        -e "s#^chown -R .*#true#" "$gen"
 
     # Paquete nuevo: directorio raiz unico con un _Data y un binario.
     mkdir -p "$work/src/CloneHero/Clone Hero_Data/Managed"

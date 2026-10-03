@@ -94,3 +94,119 @@ teardown() {
         done
     done
 }
+
+# curl de prueba: escribe $FAKE_BODY en -o e imprime $FAKE_CODE como http_code.
+# Guarda los argumentos recibidos en $BATS_TEST_TMPDIR/curl.args.
+fake_curl() {
+    mkdir -p "$BATS_TEST_TMPDIR/bin"
+    cat > "$BATS_TEST_TMPDIR/bin/curl" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$BATS_TEST_TMPDIR/curl.args"
+while [[ $# -gt 0 ]]; do [[ "$1" == "-o" ]] && out="$2"; shift; done
+printf '%s' "$FAKE_BODY" > "$out"
+printf '%s' "$FAKE_CODE"
+SH
+    chmod +x "$BATS_TEST_TMPDIR/bin/curl"
+    export PATH="$BATS_TEST_TMPDIR/bin:$PATH"
+}
+
+@test "github_api_get devuelve el JSON con HTTP 200 y envia el token si existe" {
+    fake_curl
+    export FAKE_BODY='{"ok":true}' FAKE_CODE=200 GITHUB_TOKEN=abc123
+    run github_api_get "https://api.github.com/x"
+    [ "$status" -eq 0 ]
+    [ "$output" = '{"ok":true}' ]
+    grep -Fq 'Authorization: Bearer abc123' "$BATS_TEST_TMPDIR/curl.args"
+}
+
+@test "github_api_get no envia Authorization sin token" {
+    fake_curl
+    export FAKE_BODY='{}' FAKE_CODE=200
+    unset GITHUB_TOKEN
+    run github_api_get "https://api.github.com/x"
+    [ "$status" -eq 0 ]
+    ! grep -Fq 'Authorization' "$BATS_TEST_TMPDIR/curl.args"
+}
+
+@test "github_api_get explica el limite de peticiones ante 403 y 429" {
+    fake_curl
+    local code
+    for code in 403 429; do
+        export FAKE_BODY='rate limit' FAKE_CODE=$code
+        run github_api_get "https://api.github.com/x"
+        [ "$status" -eq 1 ]
+        grep -Fq "HTTP $code" "$LOG_FILE"
+        grep -Fq "GITHUB_TOKEN" "$LOG_FILE"
+    done
+}
+
+@test "github_api_get falla con otros codigos HTTP" {
+    fake_curl
+    export FAKE_BODY='' FAKE_CODE=500
+    run github_api_get "https://api.github.com/x"
+    [ "$status" -eq 1 ]
+    grep -Fq "HTTP 500" "$LOG_FILE"
+}
+
+@test "github_asset_sha256 extrae el digest del asset correcto" {
+    local json
+    json='{"assets":[
+      {"name":"a.zip","digest": "sha256:'"$(printf 'a%.0s' {1..64})"'",
+       "browser_download_url": "https://x/a.zip"},
+      {"name":"b.zip","browser_download_url": "https://x/b.zip"},
+      {"name":"c.zip","digest": "sha256:'"$(printf 'c%.0s' {1..64})"'",
+       "browser_download_url": "https://x/c.zip"}]}'
+    run github_asset_sha256 "$(printf '%s' "$json" | sed 's/,\s*"browser/,\n"browser/;s/{"name/\n{"name/')" "https://x/c.zip"
+    [ "$output" = "$(printf 'c%.0s' {1..64})" ]
+    # b.zip no publica digest: no debe heredar el de a.zip
+    run github_asset_sha256 "$(printf '%s' "$json" | sed 's/,\s*"browser/,\n"browser/;s/{"name/\n{"name/')" "https://x/b.zip"
+    [ -z "$output" ]
+}
+
+@test "verify_sha256 acepta hash correcto, vacio, y rechaza uno distinto" {
+    local f="$BATS_TEST_TMPDIR/f"
+    printf 'hola' > "$f"
+    local h; h="$(sha256sum "$f" | cut -d' ' -f1)"
+    run verify_sha256 "$f" "$h"
+    [ "$status" -eq 0 ]
+    run verify_sha256 "$f" "${h^^}"
+    [ "$status" -eq 0 ]
+    run verify_sha256 "$f" ""
+    [ "$status" -eq 0 ]
+    run verify_sha256 "$f" "$(printf '0%.0s' {1..64})"
+    [ "$status" -eq 1 ]
+    grep -Fq "sha256 no coincide" "$LOG_FILE"
+}
+
+@test "write_samba_share por defecto deja el share con guest y SMB2 minimo" {
+    export SAMBA_CONF="$BATS_TEST_TMPDIR/smb.conf" KIOSK_USER=kiosk
+    unset SAMBA_GUEST SAMBA_HOSTS_ALLOW
+    write_samba_share "Test Kiosk" "Songs" "/srv/songs"
+    grep -Fq 'server string = Test Kiosk' "$SAMBA_CONF"
+    grep -Fq 'server min protocol = SMB2' "$SAMBA_CONF"
+    grep -Fq 'map to guest = Bad User' "$SAMBA_CONF"
+    grep -Fq 'guest ok = yes' "$SAMBA_CONF"
+    grep -Fq 'force user = kiosk' "$SAMBA_CONF"
+    ! grep -Fq 'hosts allow' "$SAMBA_CONF"
+    ! grep -Fq 'valid users' "$SAMBA_CONF"
+}
+
+@test "write_samba_share con SAMBA_GUEST=false exige usuario y aplica hosts allow" {
+    export SAMBA_CONF="$BATS_TEST_TMPDIR/smb.conf" KIOSK_USER=kiosk \
+        SAMBA_GUEST=false SAMBA_HOSTS_ALLOW="192.168.0.0/16 127."
+    write_samba_share "Test Kiosk" "Songs" "/srv/songs"
+    ! grep -Fq 'guest ok' "$SAMBA_CONF"
+    ! grep -Fq 'map to guest' "$SAMBA_CONF"
+    grep -Fq 'valid users = kiosk' "$SAMBA_CONF"
+    grep -Fq 'hosts allow = 192.168.0.0/16 127.' "$SAMBA_CONF"
+}
+
+@test "write_samba_share agrega varios shares sin duplicar [global] ni el mismo share" {
+    export SAMBA_CONF="$BATS_TEST_TMPDIR/smb.conf" KIOSK_USER=kiosk
+    write_samba_share "A" "Uno" "/srv/uno"
+    write_samba_share "B" "Dos" "/srv/dos"
+    write_samba_share "B" "Dos" "/srv/dos"
+    [ "$(grep -c '^\[global\]' "$SAMBA_CONF")" -eq 1 ]
+    [ "$(grep -c '^\[Uno\]' "$SAMBA_CONF")" -eq 1 ]
+    [ "$(grep -c '^\[Dos\]' "$SAMBA_CONF")" -eq 1 ]
+}
