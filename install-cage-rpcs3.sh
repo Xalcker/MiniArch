@@ -115,6 +115,10 @@ RPCS3_MIC_SINGLE_VOLUME="${RPCS3_MIC_SINGLE_VOLUME-75%}"
 RPCS3_MIC_VOLUME="${RPCS3_MIC_VOLUME-35%}"
 # RB3 mas la cache de shaders de RPCS3 no caben en el /home de un disco de 16 GB.
 RPCS3_MIN_DISK_GB="${RPCS3_MIN_DISK_GB:-32}"
+# true configura zram (swap comprimido en RAM) por delante del swap de disco; el tamano
+# es la mitad de la RAM con tope en ZRAM_MAX_MB (MiB).
+ZRAM_ENABLED="${ZRAM_ENABLED:-true}"
+ZRAM_MAX_MB="${ZRAM_MAX_MB:-4096}"
 
 source "$SCRIPT_DIR/lib/validation.sh" || { log_error "No se pudo importar validation.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/partitioning.sh" || { log_error "No se pudo importar partitioning.sh"; exit 1; }
@@ -175,6 +179,7 @@ ask_guided_configuration() {
     esac
 
     validate_kiosk_pipewire_quantum RPCS3_PIPEWIRE_QUANTUM "$RPCS3_PIPEWIRE_QUANTUM" || return 1
+    validate_kiosk_zram || return 1
     validate_kiosk_audio_volume RPCS3_AUDIO_VOLUME "$RPCS3_AUDIO_VOLUME" || return 1
 
     if [[ -z "${RB3DX_CONFIG_PROFILE:-}" ]]; then
@@ -455,6 +460,11 @@ main() {
 
     if ! configure_kiosk_performance RPCS3 "vm.max_map_count=2147483642"; then
         log_error "Fallo en optimizaciones de rendimiento para RPCS3"
+        exit 1
+    fi
+
+    if ! configure_kiosk_zram; then
+        log_error "Fallo en configuracion de zram"
         exit 1
     fi
 

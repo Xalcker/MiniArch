@@ -60,6 +60,10 @@ CLONEHERO_PIPEWIRE_QUANTUM="${CLONEHERO_PIPEWIRE_QUANTUM-128}"
 CLONEHERO_EXIT_HOTKEY="${CLONEHERO_EXIT_HOTKEY:-true}"
 # Disco minimo en GB: las canciones y el /home no caben en un disco de 16 GB.
 CLONEHERO_MIN_DISK_GB="${CLONEHERO_MIN_DISK_GB:-32}"
+# true configura zram (swap comprimido en RAM) por delante del swap de disco; el tamano
+# es la mitad de la RAM con tope en ZRAM_MAX_MB (MiB).
+ZRAM_ENABLED="${ZRAM_ENABLED:-true}"
+ZRAM_MAX_MB="${ZRAM_MAX_MB:-4096}"
 
 source "$SCRIPT_DIR/lib/validation.sh" || { log_error "No se pudo importar validation.sh"; exit 1; }
 source "$SCRIPT_DIR/lib/partitioning.sh" || { log_error "No se pudo importar partitioning.sh"; exit 1; }
@@ -170,6 +174,7 @@ ask_initial_questions() {
 
     validate_kiosk_audio_volume CLONEHERO_AUDIO_VOLUME "$CLONEHERO_AUDIO_VOLUME" || return 1
     validate_kiosk_pipewire_quantum CLONEHERO_PIPEWIRE_QUANTUM "$CLONEHERO_PIPEWIRE_QUANTUM" || return 1
+    validate_kiosk_zram || return 1
 
     resolve_nvidia_choice
 
@@ -397,6 +402,11 @@ main() {
 
     if ! configure_kiosk_performance "Clone Hero"; then
         log_error "Fallo en optimizaciones de rendimiento para Clone Hero"
+        exit 1
+    fi
+
+    if ! configure_kiosk_zram; then
+        log_error "Fallo en configuracion de zram"
         exit 1
     fi
 

@@ -171,6 +171,68 @@ stub() { # nombre cuerpo
     [ "$status" -eq 1 ]
 }
 
+# --- zram -----------------------------------------------------------------------
+
+@test "validate_kiosk_zram acepta true/false y un tope numerico de 256 o mas" {
+    ZRAM_ENABLED=true ZRAM_MAX_MB=4096 validate_kiosk_zram
+    ZRAM_ENABLED=false ZRAM_MAX_MB=256 validate_kiosk_zram
+    ZRAM_ENABLED=quizas ZRAM_MAX_MB=4096 run validate_kiosk_zram
+    [ "$status" -eq 1 ]
+    ZRAM_ENABLED=true ZRAM_MAX_MB=128 run validate_kiosk_zram
+    [ "$status" -eq 1 ]
+    ZRAM_ENABLED=true ZRAM_MAX_MB=mucho run validate_kiosk_zram
+    [ "$status" -eq 1 ]
+}
+
+@test "configure_kiosk_zram escribe zram-generator y baja la prioridad del swap de disco" {
+    export INSTALL_ROOT="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$INSTALL_ROOT/etc"
+    printf '%s\n' \
+        '# /dev/sda2' \
+        'UUID=aaaa	/         	ext4      	rw,relatime	0 1' \
+        '# /dev/sda3' \
+        'UUID=bbbb	none      	swap      	defaults  	0 0' > "$INSTALL_ROOT/etc/fstab"
+
+    ZRAM_ENABLED=true ZRAM_MAX_MB=2048 run configure_kiosk_zram
+    [ "$status" -eq 0 ]
+
+    local conf="$INSTALL_ROOT/etc/systemd/zram-generator.conf"
+    grep -qx '\[zram0\]' "$conf"
+    grep -qx 'zram-size = min(ram / 2, 2048)' "$conf"
+    grep -qx 'compression-algorithm = zstd' "$conf"
+    grep -qx 'swap-priority = 100' "$conf"
+    grep -q 'swap.*defaults,pri=10' "$INSTALL_ROOT/etc/fstab"
+    # La raiz no se toca
+    grep -q 'ext4.*rw,relatime' "$INSTALL_ROOT/etc/fstab"
+}
+
+@test "configure_kiosk_zram es idempotente con la prioridad y no hace nada con ZRAM_ENABLED=false" {
+    export INSTALL_ROOT="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$INSTALL_ROOT/etc"
+    printf 'UUID=bbbb\tnone\tswap\tdefaults\t0 0\n' > "$INSTALL_ROOT/etc/fstab"
+
+    ZRAM_ENABLED=true configure_kiosk_zram
+    ZRAM_ENABLED=true configure_kiosk_zram
+    [ "$(grep -o 'pri=10' "$INSTALL_ROOT/etc/fstab" | wc -l)" -eq 1 ]
+
+    rm -rf "$INSTALL_ROOT/etc/systemd"
+    ZRAM_ENABLED=false run configure_kiosk_zram
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"omitido"* ]]
+    [ ! -e "$INSTALL_ROOT/etc/systemd/zram-generator.conf" ]
+}
+
+@test "las tres rutas validan y configuran zram, y el paquete esta en la instalacion base" {
+    for f in install-cage-yarg.sh install-cage-clonehero.sh install-cage-rpcs3.sh; do
+        grep -Fq 'validate_kiosk_zram || return 1' "$f"
+        grep -Fq 'configure_kiosk_zram' "$f"
+        grep -q '^ZRAM_ENABLED=' "$f"
+    done
+    grep -Fq 'zram-generator' lib/cage.sh
+    grep -q '^ZRAM_ENABLED=' .env.example
+    grep -q '^ZRAM_MAX_MB=' .env.example
+}
+
 # --- atajo de salida compartido ----------------------------------------------
 
 @test "install_kiosk_exit_hotkey no instala nada con false" {

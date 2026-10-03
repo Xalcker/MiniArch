@@ -7,7 +7,8 @@
 #     PipeWire). Cada app agrega su bloque especifico despues.
 #   - configure_kiosk_audio_output / cuantum de PipeWire / volumen: audio comun.
 #   - install_kiosk_exit_hotkey: atajo Ctrl+Alt+Q para cerrar la app.
-#   - configure_kiosk_performance: limites, sysctl y cpupower.
+#   - configure_kiosk_performance / configure_kiosk_zram: limites, sysctl, cpupower
+#     y swap comprimido en RAM.
 #   - install_kiosk_menu: menu de mantenimiento /usr/local/bin/kiosk-menu.sh.
 #   - install_cage_service: servicio cage-kiosk.service.
 # Un arreglo en estas piezas aplica a las tres apps.
@@ -95,7 +96,14 @@ $KIOSK_USER - memlock unlimited
 $KIOSK_USER - nice -20
 EOF_LIMITS
 
-    echo 'vm.swappiness=10' > "/mnt/etc/sysctl.d/99-$slug.conf"
+    # Con zram, swapear es barato (memoria comprimida): se usa de inmediato y las
+    # paginas se leen de una en una (page-cluster=0). Sin zram, el swap es de disco
+    # y se evita en lo posible.
+    if [[ "${ZRAM_ENABLED:-true}" == "true" ]]; then
+        printf '%s\n' 'vm.swappiness=100' 'vm.page-cluster=0' > "/mnt/etc/sysctl.d/99-$slug.conf"
+    else
+        echo 'vm.swappiness=10' > "/mnt/etc/sysctl.d/99-$slug.conf"
+    fi
     for line in "$@"; do
         echo "$line" >> "/mnt/etc/sysctl.d/99-$slug.conf"
     done
@@ -123,6 +131,48 @@ EOF_CPUPOWER_SERVICE
     if ! run_quiet arch-chroot /mnt systemctl enable cpupower.service; then
         log_error "Fallo al habilitar cpupower.service"
         return 1
+    fi
+}
+
+# Valida ZRAM_ENABLED (true/false) y ZRAM_MAX_MB (numero >= 256).
+validate_kiosk_zram() {
+    if [[ "${ZRAM_ENABLED:-true}" != "true" && "${ZRAM_ENABLED:-true}" != "false" ]]; then
+        log_error "ZRAM_ENABLED invalido: ${ZRAM_ENABLED}. Use true o false."
+        return 1
+    fi
+
+    if [[ ! "${ZRAM_MAX_MB:-4096}" =~ ^[0-9]+$ ]] || (( ${ZRAM_MAX_MB:-4096} < 256 )); then
+        log_error "ZRAM_MAX_MB invalido: ${ZRAM_MAX_MB}. Use un numero de MiB de 256 o mas (por ejemplo 4096)."
+        return 1
+    fi
+}
+
+# Swap comprimido en RAM (zram) por delante del swap de disco. El tamano es la mitad
+# de la RAM con un tope de ZRAM_MAX_MB; el swap de disco baja a prioridad 10 y queda
+# como respaldo para cuando zram se llena. zram-generator lo activa al arrancar.
+# Uso: configure_kiosk_zram   (respeta ZRAM_ENABLED=false)
+configure_kiosk_zram() {
+    local root="${INSTALL_ROOT:-/mnt}" max_mb="${ZRAM_MAX_MB:-4096}"
+    local fstab="$root/etc/fstab"
+
+    if [[ "${ZRAM_ENABLED:-true}" != "true" ]]; then
+        log "zram omitido (ZRAM_ENABLED=false)"
+        return 0
+    fi
+
+    log "Configurando zram (mitad de la RAM, maximo ${max_mb} MiB, zstd)"
+    mkdir -p "$root/etc/systemd"
+
+    cat > "$root/etc/systemd/zram-generator.conf" << EOF_ZRAM
+[zram0]
+zram-size = min(ram / 2, $max_mb)
+compression-algorithm = zstd
+swap-priority = 100
+EOF_ZRAM
+
+    # genfstab deja el swap de disco sin prioridad; se baja para que zram vaya primero.
+    if [[ -f "$fstab" ]]; then
+        sed -i -E '/^[^#].*[[:space:]]swap[[:space:]]/{/pri=/!s/(swap[[:space:]]+)defaults/\1defaults,pri=10/}' "$fstab"
     fi
 }
 
