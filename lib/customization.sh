@@ -134,22 +134,22 @@ install_custom_cursor() {
             return 1
         fi
 
-        if ! mkdir -p "/mnt/usr/share/icons/$theme_name/cursors" /mnt/tmp "$user_home/.icons/default"; then
+        if ! mkdir -p "/mnt/usr/share/icons/$theme_name/cursors" /mnt/var/tmp "$user_home/.icons/default"; then
             log_error "Failed to create cursor theme directories"
             return 1
         fi
 
-        if ! cp "$png_source" /mnt/tmp/miniarch-pick-cursor.png; then
+        if ! cp "$png_source" /mnt/var/tmp/miniarch-pick-cursor.png; then
             log_error "Failed to copy cursor PNG"
             return 1
         fi
 
-        cat > /mnt/tmp/miniarch-pick-cursor.cfg <<'EOF'
+        cat > /mnt/var/tmp/miniarch-pick-cursor.cfg <<'EOF'
 64 23 8 miniarch-pick-cursor.png
 EOF
 
         if ! arch-chroot /mnt bash -lc \
-            'cd /tmp && xcursorgen miniarch-pick-cursor.cfg /usr/share/icons/MiniArchPick/cursors/default' \
+            'cd /var/tmp && xcursorgen miniarch-pick-cursor.cfg /usr/share/icons/MiniArchPick/cursors/default' \
             >> "${LOG_FILE:-/dev/null}" 2>&1; then
             log_error "Failed to generate X11 cursor from PNG. Check ${LOG_FILE:-installer log} for xcursorgen details."
             return 1
@@ -180,7 +180,7 @@ Comment=Default Cursor Theme
 Inherits=$theme_name
 EOF
 
-        rm -f /mnt/tmp/miniarch-pick-cursor.png /mnt/tmp/miniarch-pick-cursor.cfg
+        rm -f /mnt/var/tmp/miniarch-pick-cursor.png /mnt/var/tmp/miniarch-pick-cursor.cfg
         arch-chroot /mnt chown -R "$username:$username" "/home/$username/.icons"
 
         log "Custom cursor theme generated from PNG"
