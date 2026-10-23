@@ -145,7 +145,7 @@ install_custom_cursor() {
         fi
 
         cat > /mnt/var/tmp/miniarch-pick-cursor.cfg <<'EOF'
-64 23 8 miniarch-pick-cursor.png
+32 5 1 miniarch-pick-cursor.png
 EOF
 
         if ! arch-chroot /mnt bash -lc \

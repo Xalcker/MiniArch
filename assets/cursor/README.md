@@ -7,8 +7,8 @@ instalador genera el tema de cursor a partir de él.
 
 ```text
 assets/cursor/
-├── guitar-pick-left.png   # PNG usado por el instalador (50x64, RGBA)
-├── guitar-pick-left.svg   # Fuente vectorial del PNG
+├── guitar-pick-left.png   # PNG usado por el instalador (25x32, RGBA)
+├── guitar-pick-left.svg   # Fuente vectorial (64x64) de la que sale el PNG
 └── README.md
 ```
 
@@ -21,14 +21,17 @@ llaman a `install_custom_cursor` con `CURSOR_PATH` (por defecto
 1. Si `CURSOR_PATH` es un directorio que contiene `guitar-pick-left.png`, o es
    directamente un archivo `.png`, genera el tema **`MiniArchPick`** con
    `xcursorgen` (paquete `xorg-xcursorgen` de Arch, ya incluido en el sistema
-   base de estos caminos) usando la configuración `64 23 8 <png>`: tamaño 64 y
-   punto activo en x=23, y=8.
+   base de estos caminos) usando la configuración `32 5 1 <png>`: tamaño 32 y
+   punto activo en x=5, y=1 (la punta de la púa, en la esquina superior
+   izquierda del PNG).
 2. Crea los cursores `default`, `left_ptr`, `pointer` y `hand` en
    `/usr/share/icons/MiniArchPick/cursors/` y lo deja como cursor por defecto
    (`/usr/share/icons/default/index.theme` y `~/.icons/default/index.theme`
    heredan de `MiniArchPick`).
 3. Los wrappers `run-yarg.sh`, `run-clonehero.sh` y `run-rpcs3.sh` exportan
-   `XCURSOR_THEME=MiniArchPick` y `XCURSOR_SIZE=64` si el tema existe.
+   `XCURSOR_THEME=MiniArchPick` y `XCURSOR_SIZE=32` si el tema existe. Con 32 px
+   el cursor se ve proporcionado en una tele de 720p; Cage no escala el cursor,
+   así que el tamaño real es el del PNG.
 
 El camino minimal `install-cage-kiosk.sh` (foot) **no instala cursor**.
 
@@ -39,7 +42,7 @@ contenido a `/usr/share/icons/default/`.
 
 ## Usar tu propio cursor
 
-1. Dibuja un cursor de unos **64 px de alto** con fondo transparente (Inkscape,
+1. Dibuja un cursor de unos **32 px de alto** con fondo transparente (Inkscape,
    GIMP, etc.) y expórtalo como PNG.
 2. Reemplaza `guitar-pick-left.png` (conservando el nombre) o apunta
    `CURSOR_PATH` a tu PNG:
@@ -48,9 +51,11 @@ contenido a `/usr/share/icons/default/`.
    CURSOR_PATH=/ruta/a/mi-cursor.png
    ```
 
-3. El punto activo (la "punta" que hace clic) está fijo en x=23, y=8 de un
-   cursor de 64 px. Si tu diseño tiene la punta en otro lugar, ajusta la línea
-   `64 23 8 ...` en `install_custom_cursor` (`lib/customization.sh`).
+3. El punto activo (la "punta" que hace clic) está fijo en x=5, y=1 de un
+   cursor de 32 px. Si tu diseño tiene la punta en otro lugar, ajusta la línea
+   `32 5 1 ...` en `install_custom_cursor` (`lib/customization.sh`). Si cambias
+   el tamaño del PNG, ajusta también el primer número y `XCURSOR_SIZE` en
+   `lib/kiosk_runtime.sh`.
 
 ## Probar el PNG en tu equipo
 
@@ -58,7 +63,7 @@ En Arch Linux (o con `xcursorgen` instalado):
 
 ```bash
 cd assets/cursor
-echo "64 23 8 guitar-pick-left.png" > /tmp/cursor.cfg
+echo "32 5 1 guitar-pick-left.png" > /tmp/cursor.cfg
 xcursorgen /tmp/cursor.cfg /tmp/cursor-prueba && file /tmp/cursor-prueba
 # Debe mostrar: X11 cursor
 ```

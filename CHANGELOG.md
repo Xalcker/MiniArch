@@ -142,6 +142,10 @@ Infraestructura:
 
 ### Corregido
 
+- El cursor `MiniArchPick` ya no se ve enorme en pantallas de 720p ni tiene el
+  punto activo desalineado: el PNG pasa de 50x64 a 25x32 (tamaño del cursor y
+  `XCURSOR_SIZE` en 32) y el punto activo queda en la punta de la púa (`32 5 1`,
+  antes `64 23 8`, que caía a 13 px de la punta).
 - El `.env` ya no se carga con `source` (que ejecutaba su contenido como root y
   rompia con passwords con simbolos): `load_env_file` en `lib/common.sh` lo lee
   como `CLAVE=valor`, sin evaluar valores, con comillas simples/dobles,
