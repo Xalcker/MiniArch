@@ -146,7 +146,18 @@ de shaders no caben en el `/home` de un disco de 16 GB.
 - Cage como compositor de kiosko.
 - `foot` como aplicacion unica.
 - Servicio `cage-kiosk.service`.
-- SSH opcional.
+- SSH opcional (`ENABLE_SSH`).
+- Plymouth opcional (`ENABLE_PLYMOUTH`).
+
+Sin `.env` usa el mismo modo asistido que YARG y Clone Hero: pregunta usuario,
+passwords, hostname, zona horaria, SSH y Plymouth. Con `.env` solo pregunta lo
+que falte.
+
+No incluye, a diferencia de los caminos con juego:
+
+- Audio (PipeWire, firmware de audio) ni Bluetooth.
+- Cursor personalizado (`CURSOR_PATH` no se usa).
+- zram, Samba, menu de mantenimiento ni atajo de salida.
 
 ## Requisitos
 
@@ -711,6 +722,9 @@ Variables de Cage/YARG:
 - `YARG_RESOLUTION`: `4k`, `2k`, `1080p`, `720p` o `ask`.
 - `YARG_FORCE_SOFTWARE_RENDER`: `true` fuerza llvmpipe/software render;
   `false` permite usar la GPU disponible, recomendado para GPU passthrough.
+- `YARG_FORCE_WAYLAND`: experimental. `true` lanza YARG con `-force-wayland`
+  (Wayland nativo dentro de Cage); `false`, el valor por defecto, usa XWayland,
+  que es el camino mas compatible. Sin probar en hardware real.
 - `YARG_EXIT_MENU`: `always` muestra menu al salir de YARG; `restart`
   relanza YARG directo; `never` sale del wrapper.
 - `YARG_AUDIO_OUTPUT` / `YARG_AUDIO_VOLUME`: salida de audio preferida (`hdmi` por
@@ -950,6 +964,7 @@ MiniArch/
 |   |-- test_partition_sizes.bats
 |   |-- test_song_paths_and_menu.bats
 |   |-- test_kiosk_runtime.bats
+|   |-- test_kiosk_installer.bats
 |   |-- test_validation.bats
 |   |-- test_partitioning.bats
 |   |-- test_base_install.bats

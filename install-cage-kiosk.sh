@@ -15,10 +15,14 @@ VERBOSE_INSTALL="${VERBOSE_INSTALL:-false}"
 
 source "$SCRIPT_DIR/lib/common.sh" || { echo "No se pudo importar common.sh" >&2; exit 1; }
 
+ENV_FILE_LOADED=false
 if [[ -f "$SCRIPT_DIR/.env" ]]; then
     log "Cargando configuracion desde .env..."
     load_env_file "$SCRIPT_DIR/.env" || exit 1
+    ENV_FILE_LOADED=true
     log "Configuracion cargada desde .env"
+else
+    warn "No existe $SCRIPT_DIR/.env; se usara modo asistido interactivo."
 fi
 
 DISK_DEVICE="${DISK_DEVICE:-ask}"
@@ -47,26 +51,29 @@ source "$SCRIPT_DIR/lib/finalization.sh" || { log_error "No se pudo importar fin
 INSTALL_MOUNTS_CREATED=0
 INSTALL_SUCCESS=0
 
-prompt_secret() {
-    local var_name="$1"
-    local label="$2"
-    local current_value="${!var_name-}"
-    local value confirmation
+# Mismas preguntas que los caminos YARG y Clone Hero. Con .env solo se pregunta
+# lo que falte; sin .env se preguntan todas con el valor actual como default.
+ask_guided_configuration() {
+    section "Modo asistido"
 
-    [[ -n "$current_value" ]] && return 0
+    if [[ "$ENV_FILE_LOADED" == "true" ]]; then
+        echo -e "${YELLOW}Se cargaron valores desde .env; solo se preguntara lo que falte.${NC}"
+    else
+        echo -e "${YELLOW}No se encontro .env. Responda estas preguntas para continuar sin archivo de configuracion.${NC}"
+    fi
+    echo ""
 
-    while true; do
-        read -rsp "$(echo -e "${BLUE}${label}: ${NC}")" value
-        echo ""
-        read -rsp "$(echo -e "${BLUE}Confirme ${label}: ${NC}")" confirmation
-        echo ""
+    prompt_value KIOSK_USER "Usuario kiosko" "kiosk" || return 1
+    prompt_password KIOSK_PASSWORD "Password del usuario $KIOSK_USER" || return 1
 
-        [[ -n "$value" ]] || { log_error "$label no puede quedar vacio"; continue; }
-        [[ "$value" == "$confirmation" ]] || { log_error "Las contrasenas no coinciden"; continue; }
+    if [[ "$REQUIRE_ROOT_PASSWORD" == "true" ]]; then
+        prompt_password ROOT_PASSWORD "Password de root" || return 1
+    fi
 
-        printf -v "$var_name" "%s" "$value"
-        return 0
-    done
+    prompt_value KIOSK_HOSTNAME "Hostname del kiosko" "minikiosk" || return 1
+    prompt_value TIMEZONE "Zona horaria" "America/Phoenix" || return 1
+    prompt_bool ENABLE_SSH "Habilitar SSH para mantenimiento remoto" "false" || return 1
+    prompt_bool ENABLE_PLYMOUTH "Habilitar Plymouth" "true" || return 1
 }
 
 install_cage_foot_base() {
@@ -189,8 +196,7 @@ main() {
     echo -e "${CYAN}        INSTALADOR ARCH LINUX + CAGE + FOOT${NC}"
     echo -e "${BLUE}===================================================================${NC}"
 
-    prompt_secret KIOSK_PASSWORD "Password del usuario $KIOSK_USER"
-    [[ "$REQUIRE_ROOT_PASSWORD" == "true" ]] && prompt_secret ROOT_PASSWORD "Password de root"
+    ask_guided_configuration || exit 1
 
     if ! DISK_DEVICE="$(select_disk_device "$DISK_DEVICE")"; then
         log_error "No se selecciono un disco destino valido"

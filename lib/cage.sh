@@ -347,6 +347,7 @@ install_cage_wrapper() {
 YARG_SCREEN_WIDTH="__YARG_SCREEN_WIDTH__"
 YARG_SCREEN_HEIGHT="__YARG_SCREEN_HEIGHT__"
 YARG_EXIT_MENU="__YARG_EXIT_MENU__"
+YARG_FORCE_WAYLAND="__YARG_FORCE_WAYLAND__"
 
 wait_for_alsa_default() {
     local attempts="${1:-50}"
@@ -387,6 +388,12 @@ build_yarg_args() {
             -screen-fullscreen 1
         )
     fi
+
+    # Experimental: Unity usa XWayland por defecto; -force-wayland lo cambia a Wayland nativo.
+    if [[ "${YARG_FORCE_WAYLAND,,}" == "true" ]]; then
+        echo "run-yarg: forzando Wayland nativo (-force-wayland)" >&2
+        YARG_ARGS+=(-force-wayland)
+    fi
 }
 
 while true; do
@@ -425,6 +432,7 @@ WRAPPER
     sed -i "s#__YARG_SCREEN_WIDTH__#${YARG_SCREEN_WIDTH:-}#g" /mnt/usr/local/bin/run-yarg.sh
     sed -i "s#__YARG_SCREEN_HEIGHT__#${YARG_SCREEN_HEIGHT:-}#g" /mnt/usr/local/bin/run-yarg.sh
     sed -i "s#__YARG_EXIT_MENU__#${YARG_EXIT_MENU:-always}#g" /mnt/usr/local/bin/run-yarg.sh
+    sed -i "s#__YARG_FORCE_WAYLAND__#${YARG_FORCE_WAYLAND:-false}#g" /mnt/usr/local/bin/run-yarg.sh
 }
 
 configure_network_target() {
