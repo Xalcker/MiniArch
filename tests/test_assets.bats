@@ -69,10 +69,11 @@ SH
 }
 
 @test "el README del cursor describe lo que hace install_custom_cursor" {
-    grep -Fq "64 23 8" assets/cursor/README.md
-    grep -Fq "64 23 8" lib/customization.sh
+    grep -Fq "32 5 1" assets/cursor/README.md
+    grep -Fq "32 5 1" lib/customization.sh
     grep -Fq "MiniArchPick" assets/cursor/README.md
-    grep -Fq "XCURSOR_SIZE=64" lib/yarg.sh lib/cage.sh lib/clonehero.sh lib/rpcs3.sh 2>/dev/null || grep -rFq "XCURSOR_SIZE=64" lib
+    grep -rFq "XCURSOR_SIZE=32" lib
+    ! grep -rFq "XCURSOR_SIZE=64" lib
     grep -Fq "xorg-xcursorgen" lib/cage.sh
 }
 

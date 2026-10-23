@@ -427,7 +427,7 @@ echo "__KIOSK_TAG__: XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >&2
 
 if [[ -d /usr/share/icons/MiniArchPick ]]; then
     export XCURSOR_THEME=MiniArchPick
-    export XCURSOR_SIZE=64
+    export XCURSOR_SIZE=32
 fi
 if [[ -x /usr/bin/Xwayland ]]; then
     export WLR_XWAYLAND=/usr/bin/Xwayland
