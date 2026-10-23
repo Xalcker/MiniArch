@@ -30,15 +30,15 @@ hide_system_messages() {
     local user_home="/mnt/home/$username"
     
     if [[ -z "$username" ]]; then
-        log_error "Username not provided for hiding system messages"
+        log_error "No se indicó el nombre de usuario para ocultar los mensajes del sistema"
         return 1
     fi
     
-    log "Hiding system messages for user: $username"
+    log "Ocultando mensajes del sistema para el usuario: $username"
     
     # Crear archivo .hushlogin para ocultar mensajes de login
     if ! touch "$user_home/.hushlogin"; then
-        log_error "Failed to create .hushlogin file"
+        log_error "Fallo al crear el archivo .hushlogin"
         return 1
     fi
     
@@ -47,14 +47,14 @@ hide_system_messages() {
     
     # Vaciar o eliminar /etc/motd (Message Of The Day)
     if ! echo "" > /mnt/etc/motd; then
-        log_error "Failed to clear /etc/motd"
+        log_error "Fallo al vaciar /etc/motd"
         return 1
     fi
     
     # Configurar systemd para ocultar mensajes de servicios
     # Modificar /etc/systemd/system.conf
     if [[ ! -f /mnt/etc/systemd/system.conf ]]; then
-        log_error "/etc/systemd/system.conf not found"
+        log_error "No se encontró /etc/systemd/system.conf"
         return 1
     fi
     
@@ -68,7 +68,7 @@ hide_system_messages() {
     # Configurar logind para deshabilitar VTs automáticos
     # Modificar /etc/systemd/logind.conf
     if [[ ! -f /mnt/etc/systemd/logind.conf ]]; then
-        log_error "/etc/systemd/logind.conf not found"
+        log_error "No se encontró /etc/systemd/logind.conf"
         return 1
     fi
     
@@ -79,7 +79,7 @@ hide_system_messages() {
         echo "NAutoVTs=0" >> /mnt/etc/systemd/logind.conf
     fi
     
-    log "System messages hidden successfully"
+    log "Mensajes del sistema ocultados exitosamente"
     return 0
 }
 
@@ -105,22 +105,22 @@ install_custom_cursor() {
     local png_source=""
     
     if [[ -z "$cursor_path" ]]; then
-        log_error "Cursor path not provided"
+        log_error "No se indicó la ruta del cursor"
         return 1
     fi
     
     if [[ -z "$username" ]]; then
-        log_error "Username not provided for cursor installation"
+        log_error "No se indicó el nombre de usuario para instalar el cursor"
         return 1
     fi
     
     # Verificar que el cursor existe
     if [[ ! -e "$cursor_path" ]]; then
-        log_error "Cursor path does not exist: $cursor_path"
+        log_error "La ruta del cursor no existe: $cursor_path"
         return 1
     fi
     
-    log "Installing custom cursor from: $cursor_path"
+    log "Instalando cursor personalizado desde: $cursor_path"
 
     if [[ -d "$cursor_path" && -f "$cursor_path/guitar-pick-left.png" ]]; then
         png_source="$cursor_path/guitar-pick-left.png"
@@ -130,17 +130,17 @@ install_custom_cursor() {
 
     if [[ -n "$png_source" ]]; then
         if ! arch-chroot /mnt bash -lc 'command -v xcursorgen >/dev/null 2>&1'; then
-            log_error "xcursorgen is not installed in target system"
+            log_error "xcursorgen no está instalado en el sistema destino"
             return 1
         fi
 
         if ! mkdir -p "/mnt/usr/share/icons/$theme_name/cursors" /mnt/var/tmp "$user_home/.icons/default"; then
-            log_error "Failed to create cursor theme directories"
+            log_error "Fallo al crear los directorios del tema de cursor"
             return 1
         fi
 
         if ! cp "$png_source" /mnt/var/tmp/miniarch-pick-cursor.png; then
-            log_error "Failed to copy cursor PNG"
+            log_error "Fallo al copiar el PNG del cursor"
             return 1
         fi
 
@@ -151,7 +151,7 @@ EOF
         if ! arch-chroot /mnt bash -lc \
             'cd /var/tmp && xcursorgen miniarch-pick-cursor.cfg /usr/share/icons/MiniArchPick/cursors/default' \
             >> "${LOG_FILE:-/dev/null}" 2>&1; then
-            log_error "Failed to generate X11 cursor from PNG. Check ${LOG_FILE:-installer log} for xcursorgen details."
+            log_error "Fallo al generar el cursor X11 desde el PNG. Revisa ${LOG_FILE:-el log del instalador} para ver los detalles de xcursorgen."
             return 1
         fi
 
@@ -183,13 +183,13 @@ EOF
         rm -f /mnt/var/tmp/miniarch-pick-cursor.png /mnt/var/tmp/miniarch-pick-cursor.cfg
         arch-chroot /mnt chown -R "$username:$username" "/home/$username/.icons"
 
-        log "Custom cursor theme generated from PNG"
+        log "Tema de cursor personalizado generado desde el PNG"
         return 0
     fi
     
     # Crear directorio de iconos del sistema si no existe
     if ! mkdir -p /mnt/usr/share/icons/default; then
-        log_error "Failed to create system icons directory"
+        log_error "Fallo al crear el directorio de iconos del sistema"
         return 1
     fi
     
@@ -197,13 +197,13 @@ EOF
     if [[ -d "$cursor_path" ]]; then
         # Si es un directorio, copiar todo el contenido
         if ! cp -r "$cursor_path"/* /mnt/usr/share/icons/default/; then
-            log_error "Failed to copy cursor directory"
+            log_error "Fallo al copiar el directorio del cursor"
             return 1
         fi
     else
         # Si es un archivo, copiarlo directamente
         if ! cp "$cursor_path" /mnt/usr/share/icons/default/; then
-            log_error "Failed to copy cursor file"
+            log_error "Fallo al copiar el archivo del cursor"
             return 1
         fi
     fi
@@ -217,13 +217,13 @@ Inherits=default
 EOF
     
     if [[ $? -ne 0 ]]; then
-        log_error "Failed to create system cursor index.theme"
+        log_error "Fallo al crear el index.theme del cursor del sistema"
         return 1
     fi
     
     # Crear directorio de iconos del usuario
     if ! mkdir -p "$user_home/.icons/default"; then
-        log_error "Failed to create user icons directory"
+        log_error "Fallo al crear el directorio de iconos del usuario"
         return 1
     fi
     
@@ -236,14 +236,14 @@ Inherits=default
 EOF
     
     if [[ $? -ne 0 ]]; then
-        log_error "Failed to create user cursor index.theme"
+        log_error "Fallo al crear el index.theme del cursor del usuario"
         return 1
     fi
     
     # Establecer permisos correctos
     arch-chroot /mnt chown -R "$username:$username" "/home/$username/.icons"
     
-    log "Custom cursor installed successfully"
+    log "Cursor personalizado instalado exitosamente"
     return 0
 }
 
