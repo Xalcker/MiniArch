@@ -964,6 +964,7 @@ MiniArch/
 |   |-- test_partition_sizes.bats
 |   |-- test_song_paths_and_menu.bats
 |   |-- test_kiosk_runtime.bats
+|   |-- test_kiosk_installer.bats
 |   |-- test_validation.bats
 |   |-- test_partitioning.bats
 |   |-- test_base_install.bats
