@@ -52,27 +52,27 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for hiding system messages"
+            log_error "No se indicó el nombre de usuario para ocultar los mensajes del sistema"
             return 1
         fi
         
-        log "Hiding system messages for user: $username"
+        log "Ocultando mensajes del sistema para el usuario: $username"
         
         # Crear archivo .hushlogin
         if ! touch "$user_home/.hushlogin"; then
-            log_error "Failed to create .hushlogin file"
+            log_error "Fallo al crear el archivo .hushlogin"
             return 1
         fi
         
         # Vaciar /etc/motd
         if ! echo "" > "$test_dir/etc/motd"; then
-            log_error "Failed to clear /etc/motd"
+            log_error "Fallo al vaciar /etc/motd"
             return 1
         fi
         
         # Modificar system.conf
         if [[ ! -f "$test_dir/etc/systemd/system.conf" ]]; then
-            log_error "/etc/systemd/system.conf not found"
+            log_error "No se encontró /etc/systemd/system.conf"
             return 1
         fi
         
@@ -84,7 +84,7 @@ EOF
         
         # Modificar logind.conf
         if [[ ! -f "$test_dir/etc/systemd/logind.conf" ]]; then
-            log_error "/etc/systemd/logind.conf not found"
+            log_error "No se encontró /etc/systemd/logind.conf"
             return 1
         fi
         
@@ -94,13 +94,13 @@ EOF
             echo "NAutoVTs=0" >> "$test_dir/etc/systemd/logind.conf"
         fi
         
-        log "System messages hidden successfully"
+        log "Mensajes del sistema ocultados exitosamente"
         return 0
     }
     
     run hide_system_messages "kiosk"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"System messages hidden successfully"* ]]
+    [[ "$output" == *"Mensajes del sistema ocultados exitosamente"* ]]
     
     # Verify files were created/modified
     [ -f "$test_dir/home/kiosk/.hushlogin" ]
@@ -115,7 +115,7 @@ EOF
     run hide_system_messages
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"Username not provided"* ]]
+    [[ "$output" == *"No se indicó el nombre de usuario"* ]]
 }
 
 @test "hide_system_messages: crea .hushlogin correctamente" {
@@ -151,21 +151,21 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for hiding system messages"
+            log_error "No se indicó el nombre de usuario para ocultar los mensajes del sistema"
             return 1
         fi
         
-        log "Hiding system messages for user: $username"
+        log "Ocultando mensajes del sistema para el usuario: $username"
         
         if ! touch "$user_home/.hushlogin"; then
-            log_error "Failed to create .hushlogin file"
+            log_error "Fallo al crear el archivo .hushlogin"
             return 1
         fi
         
         echo "" > "$test_dir/etc/motd"
         
         if [[ ! -f "$test_dir/etc/systemd/system.conf" ]]; then
-            log_error "/etc/systemd/system.conf not found"
+            log_error "No se encontró /etc/systemd/system.conf"
             return 1
         fi
         
@@ -176,7 +176,7 @@ EOF
         fi
         
         if [[ ! -f "$test_dir/etc/systemd/logind.conf" ]]; then
-            log_error "/etc/systemd/logind.conf not found"
+            log_error "No se encontró /etc/systemd/logind.conf"
             return 1
         fi
         
@@ -186,7 +186,7 @@ EOF
             echo "NAutoVTs=0" >> "$test_dir/etc/systemd/logind.conf"
         fi
         
-        log "System messages hidden successfully"
+        log "Mensajes del sistema ocultados exitosamente"
         return 0
     }
     
@@ -226,17 +226,17 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for hiding system messages"
+            log_error "No se indicó el nombre de usuario para ocultar los mensajes del sistema"
             return 1
         fi
         
-        log "Hiding system messages for user: $username"
+        log "Ocultando mensajes del sistema para el usuario: $username"
         
         touch "$user_home/.hushlogin"
         echo "" > "$test_dir/etc/motd"
         
         if [[ ! -f "$test_dir/etc/systemd/system.conf" ]]; then
-            log_error "/etc/systemd/system.conf not found"
+            log_error "No se encontró /etc/systemd/system.conf"
             return 1
         fi
         
@@ -247,7 +247,7 @@ EOF
         fi
         
         if [[ ! -f "$test_dir/etc/systemd/logind.conf" ]]; then
-            log_error "/etc/systemd/logind.conf not found"
+            log_error "No se encontró /etc/systemd/logind.conf"
             return 1
         fi
         
@@ -257,7 +257,7 @@ EOF
             echo "NAutoVTs=0" >> "$test_dir/etc/systemd/logind.conf"
         fi
         
-        log "System messages hidden successfully"
+        log "Mensajes del sistema ocultados exitosamente"
         return 0
     }
     
@@ -298,17 +298,17 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for hiding system messages"
+            log_error "No se indicó el nombre de usuario para ocultar los mensajes del sistema"
             return 1
         fi
         
-        log "Hiding system messages for user: $username"
+        log "Ocultando mensajes del sistema para el usuario: $username"
         
         touch "$user_home/.hushlogin"
         echo "" > "$test_dir/etc/motd"
         
         if [[ ! -f "$test_dir/etc/systemd/system.conf" ]]; then
-            log_error "/etc/systemd/system.conf not found"
+            log_error "No se encontró /etc/systemd/system.conf"
             return 1
         fi
         
@@ -319,7 +319,7 @@ EOF
         fi
         
         if [[ ! -f "$test_dir/etc/systemd/logind.conf" ]]; then
-            log_error "/etc/systemd/logind.conf not found"
+            log_error "No se encontró /etc/systemd/logind.conf"
             return 1
         fi
         
@@ -329,7 +329,7 @@ EOF
             echo "NAutoVTs=0" >> "$test_dir/etc/systemd/logind.conf"
         fi
         
-        log "System messages hidden successfully"
+        log "Mensajes del sistema ocultados exitosamente"
         return 0
     }
     
@@ -373,21 +373,21 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for hiding system messages"
+            log_error "No se indicó el nombre de usuario para ocultar los mensajes del sistema"
             return 1
         fi
         
-        log "Hiding system messages for user: $username"
+        log "Ocultando mensajes del sistema para el usuario: $username"
         
         touch "$user_home/.hushlogin"
         
         if ! echo "" > "$test_dir/etc/motd"; then
-            log_error "Failed to clear /etc/motd"
+            log_error "Fallo al vaciar /etc/motd"
             return 1
         fi
         
         if [[ ! -f "$test_dir/etc/systemd/system.conf" ]]; then
-            log_error "/etc/systemd/system.conf not found"
+            log_error "No se encontró /etc/systemd/system.conf"
             return 1
         fi
         
@@ -398,7 +398,7 @@ EOF
         fi
         
         if [[ ! -f "$test_dir/etc/systemd/logind.conf" ]]; then
-            log_error "/etc/systemd/logind.conf not found"
+            log_error "No se encontró /etc/systemd/logind.conf"
             return 1
         fi
         
@@ -408,7 +408,7 @@ EOF
             echo "NAutoVTs=0" >> "$test_dir/etc/systemd/logind.conf"
         fi
         
-        log "System messages hidden successfully"
+        log "Mensajes del sistema ocultados exitosamente"
         return 0
     }
     
@@ -449,35 +449,35 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$cursor_path" ]]; then
-            log_error "Cursor path not provided"
+            log_error "No se indicó la ruta del cursor"
             return 1
         fi
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for cursor installation"
+            log_error "No se indicó el nombre de usuario para instalar el cursor"
             return 1
         fi
         
         if [[ ! -e "$cursor_path" ]]; then
-            log_error "Cursor path does not exist: $cursor_path"
+            log_error "La ruta del cursor no existe: $cursor_path"
             return 1
         fi
         
-        log "Installing custom cursor from: $cursor_path"
+        log "Instalando cursor personalizado desde: $cursor_path"
         
         if ! mkdir -p "$test_dir/usr/share/icons/default"; then
-            log_error "Failed to create system icons directory"
+            log_error "Fallo al crear el directorio de iconos del sistema"
             return 1
         fi
         
         if [[ -d "$cursor_path" ]]; then
             if ! cp -r "$cursor_path"/* "$test_dir/usr/share/icons/default/"; then
-                log_error "Failed to copy cursor directory"
+                log_error "Fallo al copiar el directorio del cursor"
                 return 1
             fi
         else
             if ! cp "$cursor_path" "$test_dir/usr/share/icons/default/"; then
-                log_error "Failed to copy cursor file"
+                log_error "Fallo al copiar el archivo del cursor"
                 return 1
             fi
         fi
@@ -490,12 +490,12 @@ Inherits=default
 EOF
         
         if [[ $? -ne 0 ]]; then
-            log_error "Failed to create system cursor index.theme"
+            log_error "Fallo al crear el index.theme del cursor del sistema"
             return 1
         fi
         
         if ! mkdir -p "$user_home/.icons/default"; then
-            log_error "Failed to create user icons directory"
+            log_error "Fallo al crear el directorio de iconos del usuario"
             return 1
         fi
         
@@ -507,17 +507,17 @@ Inherits=default
 EOF
         
         if [[ $? -ne 0 ]]; then
-            log_error "Failed to create user cursor index.theme"
+            log_error "Fallo al crear el index.theme del cursor del usuario"
             return 1
         fi
         
-        log "Custom cursor installed successfully"
+        log "Cursor personalizado instalado exitosamente"
         return 0
     }
     
     run install_custom_cursor "$test_dir/cursor" "kiosk"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Custom cursor installed successfully"* ]]
+    [[ "$output" == *"Cursor personalizado instalado exitosamente"* ]]
     
     rm -rf "$test_dir"
 }
@@ -526,21 +526,21 @@ EOF
     run install_custom_cursor "" "kiosk"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"Cursor path not provided"* ]]
+    [[ "$output" == *"No se indicó la ruta del cursor"* ]]
 }
 
 @test "install_custom_cursor: sin nombre de usuario retorna 1" {
     run install_custom_cursor "/path/to/cursor" ""
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"Username not provided"* ]]
+    [[ "$output" == *"No se indicó el nombre de usuario"* ]]
 }
 
 @test "install_custom_cursor: cursor inexistente retorna 1" {
     run install_custom_cursor "/nonexistent/cursor" "kiosk"
     [ "$status" -eq 1 ]
     [[ "$output" == *"ERROR"* ]]
-    [[ "$output" == *"Cursor path does not exist"* ]]
+    [[ "$output" == *"La ruta del cursor no existe"* ]]
 }
 
 @test "install_custom_cursor: copia cursor de directorio correctamente" {
@@ -566,21 +566,21 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$cursor_path" ]]; then
-            log_error "Cursor path not provided"
+            log_error "No se indicó la ruta del cursor"
             return 1
         fi
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for cursor installation"
+            log_error "No se indicó el nombre de usuario para instalar el cursor"
             return 1
         fi
         
         if [[ ! -e "$cursor_path" ]]; then
-            log_error "Cursor path does not exist: $cursor_path"
+            log_error "La ruta del cursor no existe: $cursor_path"
             return 1
         fi
         
-        log "Installing custom cursor from: $cursor_path"
+        log "Instalando cursor personalizado desde: $cursor_path"
         
         mkdir -p "$test_dir/usr/share/icons/default"
         
@@ -606,7 +606,7 @@ Comment=Default Cursor Theme
 Inherits=default
 EOF
         
-        log "Custom cursor installed successfully"
+        log "Cursor personalizado instalado exitosamente"
         return 0
     }
     
@@ -641,21 +641,21 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$cursor_path" ]]; then
-            log_error "Cursor path not provided"
+            log_error "No se indicó la ruta del cursor"
             return 1
         fi
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for cursor installation"
+            log_error "No se indicó el nombre de usuario para instalar el cursor"
             return 1
         fi
         
         if [[ ! -e "$cursor_path" ]]; then
-            log_error "Cursor path does not exist: $cursor_path"
+            log_error "La ruta del cursor no existe: $cursor_path"
             return 1
         fi
         
-        log "Installing custom cursor from: $cursor_path"
+        log "Instalando cursor personalizado desde: $cursor_path"
         
         mkdir -p "$test_dir/usr/share/icons/default"
         
@@ -681,7 +681,7 @@ Comment=Default Cursor Theme
 Inherits=default
 EOF
         
-        log "Custom cursor installed successfully"
+        log "Cursor personalizado instalado exitosamente"
         return 0
     }
     
@@ -716,21 +716,21 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$cursor_path" ]]; then
-            log_error "Cursor path not provided"
+            log_error "No se indicó la ruta del cursor"
             return 1
         fi
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for cursor installation"
+            log_error "No se indicó el nombre de usuario para instalar el cursor"
             return 1
         fi
         
         if [[ ! -e "$cursor_path" ]]; then
-            log_error "Cursor path does not exist: $cursor_path"
+            log_error "La ruta del cursor no existe: $cursor_path"
             return 1
         fi
         
-        log "Installing custom cursor from: $cursor_path"
+        log "Instalando cursor personalizado desde: $cursor_path"
         
         mkdir -p "$test_dir/usr/share/icons/default"
         
@@ -748,7 +748,7 @@ Inherits=default
 EOF
         
         if [[ $? -ne 0 ]]; then
-            log_error "Failed to create system cursor index.theme"
+            log_error "Fallo al crear el index.theme del cursor del sistema"
             return 1
         fi
         
@@ -762,11 +762,11 @@ Inherits=default
 EOF
         
         if [[ $? -ne 0 ]]; then
-            log_error "Failed to create user cursor index.theme"
+            log_error "Fallo al crear el index.theme del cursor del usuario"
             return 1
         fi
         
-        log "Custom cursor installed successfully"
+        log "Cursor personalizado instalado exitosamente"
         return 0
     }
     
@@ -803,21 +803,21 @@ EOF
         local user_home="$test_dir/home/$username"
         
         if [[ -z "$cursor_path" ]]; then
-            log_error "Cursor path not provided"
+            log_error "No se indicó la ruta del cursor"
             return 1
         fi
         
         if [[ -z "$username" ]]; then
-            log_error "Username not provided for cursor installation"
+            log_error "No se indicó el nombre de usuario para instalar el cursor"
             return 1
         fi
         
         if [[ ! -e "$cursor_path" ]]; then
-            log_error "Cursor path does not exist: $cursor_path"
+            log_error "La ruta del cursor no existe: $cursor_path"
             return 1
         fi
         
-        log "Installing custom cursor from: $cursor_path"
+        log "Instalando cursor personalizado desde: $cursor_path"
         
         mkdir -p "$test_dir/usr/share/icons/default"
         
@@ -844,11 +844,11 @@ Inherits=default
 EOF
         
         if [[ $? -ne 0 ]]; then
-            log_error "Failed to create user cursor index.theme"
+            log_error "Fallo al crear el index.theme del cursor del usuario"
             return 1
         fi
         
-        log "Custom cursor installed successfully"
+        log "Cursor personalizado instalado exitosamente"
         return 0
     }
     
@@ -929,24 +929,24 @@ EOF
             local user_home="$test_dir/home/$username"
             
             if [[ -z "$username" ]]; then
-                log_error "Username not provided for hiding system messages"
+                log_error "No se indicó el nombre de usuario para ocultar los mensajes del sistema"
                 return 1
             fi
             
-            log "Hiding system messages for user: $username"
+            log "Ocultando mensajes del sistema para el usuario: $username"
             
             if ! touch "$user_home/.hushlogin"; then
-                log_error "Failed to create .hushlogin file"
+                log_error "Fallo al crear el archivo .hushlogin"
                 return 1
             fi
             
             if ! echo "" > "$test_dir/etc/motd"; then
-                log_error "Failed to clear /etc/motd"
+                log_error "Fallo al vaciar /etc/motd"
                 return 1
             fi
             
             if [[ ! -f "$test_dir/etc/systemd/system.conf" ]]; then
-                log_error "/etc/systemd/system.conf not found"
+                log_error "No se encontró /etc/systemd/system.conf"
                 return 1
             fi
             
@@ -957,7 +957,7 @@ EOF
             fi
             
             if [[ ! -f "$test_dir/etc/systemd/logind.conf" ]]; then
-                log_error "/etc/systemd/logind.conf not found"
+                log_error "No se encontró /etc/systemd/logind.conf"
                 return 1
             fi
             
@@ -967,7 +967,7 @@ EOF
                 echo "NAutoVTs=0" >> "$test_dir/etc/systemd/logind.conf"
             fi
             
-            log "System messages hidden successfully"
+            log "Mensajes del sistema ocultados exitosamente"
             return 0
         }
         
