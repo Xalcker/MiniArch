@@ -153,6 +153,24 @@ cage_app_calls() { grep -vc 'foot' "$W/cage.calls" || true; }
     grep -Fq "env WLR=1 GL=1" "$W/cage.env"
 }
 
+@test "run-yarg.sh no usa -force-wayland por defecto" {
+    make_yarg
+    unset YARG_FORCE_WAYLAND
+    gen_wrapper install_cage_wrapper run-yarg.sh /opt/YARG
+    run_wrapper
+    grep -Fq "cage -- " "$W/cage.calls"
+    ! grep -Fq -- "-force-wayland" "$W/cage.calls"
+}
+
+@test "run-yarg.sh agrega -force-wayland con YARG_FORCE_WAYLAND=true" {
+    make_yarg
+    export YARG_FORCE_WAYLAND=true
+    gen_wrapper install_cage_wrapper run-yarg.sh /opt/YARG
+    run_wrapper
+    [[ "$output" == *"forzando Wayland nativo"* ]]
+    grep -Fq -- "-force-wayland" "$W/cage.calls"
+}
+
 @test "run-yarg.sh espera el sink de audio antes de lanzar la app" {
     make_yarg
     gen_wrapper install_cage_wrapper run-yarg.sh /opt/YARG
