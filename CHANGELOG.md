@@ -148,6 +148,9 @@ Infraestructura:
 
 ### Corregido
 
+- `install-rb3dx`: RPCS3 aborta (codigo 134) al cerrar tras `--headless --installpkg`
+  aunque instale el paquete; ahora se comprueba el resultado por el `PARAM.SFO`
+  nuevo en `dev_hdd0/game` en vez de por el codigo de salida.
 - El cursor `MiniArchPick` ya no se ve enorme en pantallas de 720p ni tiene el
   punto activo desalineado: el PNG pasa de 50x64 a 25x32 (tamaño del cursor y
   `XCURSOR_SIZE` en 32) y el punto activo queda en la punta de la púa (`32 5 1`,

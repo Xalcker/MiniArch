@@ -622,7 +622,9 @@ Rock Band 3 Deluxe desde el menu de mantenimiento:
   `~/RB3DX-PS3.zip`, lo valida con `unzip -t`, lo descomprime en `~/RB3DX-PS3/` y
   pregunta si instalar el `.pkg` con `AppRun --headless --installpkg <pkg>`
   (opcion de linea de comandos de RPCS3, que instala y termina sin abrir la GUI).
-  Hace falta tener Rock Band 3 (BLUS30463) ya agregado a RPCS3; si la instalacion
+  RPCS3 aborta (codigo 134) al cerrar en modo headless aunque haya instalado el
+  paquete, asi que el script comprueba si aparecio un `PARAM.SFO` nuevo en
+  `dev_hdd0/game`. Hace falta tener Rock Band 3 (BLUS30463) ya agregado a RPCS3; si la instalacion
   automatica falla queda el `.pkg` listo para `File > Install Packages/Raps/Edats`.
   Pide al menos 2.5 GB libres. Rock Band 3 Deluxe es un proyecto de fans sin
   licencia publicada; la fuente es la pagina oficial de descargas
