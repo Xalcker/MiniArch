@@ -373,7 +373,9 @@ curl -fL --retry 3 --retry-delay 2 -o "$WORK_DIR/RPCS3.AppImage" "$LATEST_URL"
 chmod +x "$WORK_DIR/RPCS3.AppImage"
 
 # Se extrae primero y solo se reemplaza la instalacion si la extraccion salio bien.
-(cd "$WORK_DIR" && ./RPCS3.AppImage --appimage-extract >/dev/null) || true
+# El runtime nuevo avisa "Failed to utilize FUSE" por stderr cuando no hay FUSE; no es un
+# error (abajo se extrae sin FUSE), asi que se silencia para no parecer un fallo.
+(cd "$WORK_DIR" && ./RPCS3.AppImage --appimage-extract >/dev/null 2>&1) || true
 if [[ ! -x "$WORK_DIR/squashfs-root/AppRun" ]]; then
     # Runtime nuevo sin FUSE disponible: se lee la imagen directo (DwarFS en
     # los AppImage actuales; squashfs en los clasicos).

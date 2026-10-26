@@ -148,6 +148,9 @@ Infraestructura:
 
 ### Corregido
 
+- `update-rpcs3`: ya no muestra "Failed to utilize FUSE during startup" del runtime
+  del AppImage; la extraccion sin FUSE posterior es el camino normal y ese aviso
+  parecia un fallo de la actualizacion.
 - `install-rb3dx`: RPCS3 aborta (codigo 134) al cerrar tras `--headless --installpkg`
   aunque instale el paquete; ahora se comprueba el resultado por el `PARAM.SFO`
   nuevo en `dev_hdd0/game` en vez de por el codigo de salida.
