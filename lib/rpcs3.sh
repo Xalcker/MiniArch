@@ -485,7 +485,7 @@ download_file() {
 }
 
 install_packages() {
-    local pkg
+    local pkg marker code
 
     if [[ ! -x "$RPCS3_BIN" ]]; then
         echo "No se encontro RPCS3 en $RPCS3_BIN; instala los .pkg desde la GUI de RPCS3."
@@ -499,12 +499,20 @@ install_packages() {
         return 0
     fi
 
+    # RPCS3 instala el paquete pero aborta (SIGABRT, codigo 134) al cerrar en modo
+    # headless, asi que el codigo de salida no sirve: se comprueba si el paquete
+    # dejo un PARAM.SFO nuevo en dev_hdd0/game.
+    marker="$(mktemp "$DEST/.rb3dx-marker.XXXXXX")"
+    TMP_DIRS+=("$marker")
     for pkg in "$@"; do
         echo "Instalando $pkg"
-        if "$RPCS3_BIN" --headless --installpkg "$pkg"; then
+        touch -d '1 second ago' "$marker"
+        code=0
+        "$RPCS3_BIN" --headless --installpkg "$pkg" || code=$?
+        if [[ -n "$(find "$CONFIG_DIR/dev_hdd0/game" -maxdepth 2 -name PARAM.SFO -newer "$marker" 2>/dev/null)" ]]; then
             echo "Instalado: ${pkg##*/}"
         else
-            echo "RPCS3 no pudo instalar ${pkg##*/}; instalalo desde la GUI (File > Install Packages/Raps/Edats)." >&2
+            echo "RPCS3 no instalo ${pkg##*/} (codigo $code); instalalo desde la GUI (File > Install Packages/Raps/Edats)." >&2
         fi
     done
 }

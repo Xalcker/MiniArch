@@ -996,15 +996,43 @@ import sys, zipfile
 with zipfile.ZipFile(sys.argv[1], "w") as z:
     z.writestr("RB3DX-USA-abc123.pkg", b"pkg")
 PY
-    printf '#!/usr/bin/env bash\necho "$@" >> "%s/rpcs3.log"\n' "$dir" > "$dir/rpcs3"
+    # RPCS3 real: instala el paquete (PARAM.SFO en dev_hdd0/game) y aborta al cerrar (134).
+    cat > "$dir/rpcs3" <<SH
+#!/usr/bin/env bash
+echo "\$@" >> "$dir/rpcs3.log"
+mkdir -p "$dir/cfg/rpcs3/dev_hdd0/game/BLUS30463"
+: > "$dir/cfg/rpcs3/dev_hdd0/game/BLUS30463/PARAM.SFO"
+exit 134
+SH
     chmod +x "$dir/rpcs3"
 
-    FAKE_ZIP="$dir/fake.zip" RB3DX_DEST="$dir/home" RPCS3_BIN="$dir/rpcs3" PATH="$dir/bin:$PATH" \
+    XDG_CONFIG_HOME="$dir/cfg" FAKE_ZIP="$dir/fake.zip" RB3DX_DEST="$dir/home" RPCS3_BIN="$dir/rpcs3" PATH="$dir/bin:$PATH" \
         run bash "$dir/install-rb3dx" <<< "s"
     [ "$status" -eq 0 ]
     [ -f "$dir/home/RB3DX-PS3.zip" ]
     [ -f "$dir/home/RB3DX-PS3/RB3DX-USA-abc123.pkg" ]
     grep -Fxq -- "--headless --installpkg $dir/home/RB3DX-PS3/RB3DX-USA-abc123.pkg" "$dir/rpcs3.log"
+    [[ "$output" == *"Instalado: RB3DX-USA-abc123.pkg"* ]]
+}
+
+@test "install-rb3dx avisa si RPCS3 no dejo ningun paquete instalado" {
+    command -v unzip >/dev/null || skip "unzip no esta instalado"
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+    make_rb3dx_script
+    local dir="$BATS_TEST_TMPDIR/rb3dx"
+    python3 - "$dir/fake.zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("x.pkg", b"pkg")
+PY
+    printf '#!/usr/bin/env bash\nexit 134\n' > "$dir/rpcs3"
+    chmod +x "$dir/rpcs3"
+
+    XDG_CONFIG_HOME="$dir/cfg" FAKE_ZIP="$dir/fake.zip" RB3DX_DEST="$dir/home" RPCS3_BIN="$dir/rpcs3" PATH="$dir/bin:$PATH" \
+        run bash "$dir/install-rb3dx" <<< "s"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"no instalo x.pkg (codigo 134)"* ]]
+    [[ "$output" != *"Instalado:"* ]]
 }
 
 @test "install-rb3dx no instala en RPCS3 si respondes que no" {
