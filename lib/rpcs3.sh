@@ -426,15 +426,223 @@ rm -rf "$INSTALL_DIR.old"
 echo "RPCS3 actualizado en $INSTALL_DIR"
 TEMPLATE
 
+read -r -d '' RB3DX_INSTALL_TEMPLATE <<'TEMPLATE' || true
+#!/usr/bin/env bash
+# Descarga la ultima build de Rock Band 3 Deluxe (PS3), la descomprime en el home
+# y, si lo confirmas, la instala en RPCS3 con --headless --installpkg.
+# Uso: install-rb3dx [--teleport-fix]
+#   sin argumentos   descarga, descomprime e instala RB3DX (hace falta Rock Band 3
+#                    ya agregado a RPCS3)
+#   --teleport-fix   aplica el parche contra el teletransporte de la guia de MiloHax
+#                    (solo funciona con el juego en carpeta, no con un .iso)
+set -euo pipefail
+
+RB3DX_URL="__RB3DX_URL__"
+TELEPORT_URL="__RB3DX_TELEPORT_FIX_URL__"
+GAMES_DIR="__RPCS3_GAMES_DIR__"
+GAME_MATCH="__RPCS3_GAME_MATCH__"
+RPCS3_BIN="${RPCS3_BIN:-/opt/RPCS3/AppRun}"
+DEST="${RB3DX_DEST:-$HOME}"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rpcs3"
+MIN_FREE_MB="${RB3DX_MIN_FREE_MB:-2500}"
+
+TMP_DIRS=()
+cleanup() {
+    [[ ${#TMP_DIRS[@]} -gt 0 ]] && rm -rf "${TMP_DIRS[@]}"
+    return 0
+}
+trap cleanup EXIT
+
+ask_yes() {
+    local answer
+    read -r -p "$1 [S/n]: " answer || answer=n
+    case "${answer,,}" in
+        n|no) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+# Tamano en bytes que anuncia el servidor (vacio si no responde).
+remote_size() {
+    curl -fsIL "$1" 2>/dev/null | tr -d '\r' \
+        | awk 'tolower($1) == "content-length:" {size = $2} END {print size}' || true
+}
+
+# download_file URL ARCHIVO: descarga con reanudacion; no repite una descarga
+# completa (mismo tamano que el servidor).
+download_file() {
+    local url="$1" target="$2" remote
+
+    remote="$(remote_size "$url")"
+    if [[ -s "$target" && -n "$remote" && "$(stat -c %s "$target")" == "$remote" ]]; then
+        echo "Ya esta descargado: $target"
+        return 0
+    fi
+
+    echo "Descargando $url"
+    curl -fL --retry 3 --retry-delay 2 -C - -o "$target.part" "$url"
+    mv "$target.part" "$target"
+}
+
+install_packages() {
+    local pkg
+
+    if [[ ! -x "$RPCS3_BIN" ]]; then
+        echo "No se encontro RPCS3 en $RPCS3_BIN; instala los .pkg desde la GUI de RPCS3."
+        return 0
+    fi
+
+    echo ""
+    echo "RB3DX se instala sobre Rock Band 3 (BLUS30463): agrega primero el juego a RPCS3."
+    if ! ask_yes "Instalarlo ahora en RPCS3 (rpcs3 --headless --installpkg)?"; then
+        echo "Puedes instalarlo despues desde RPCS3: File > Install Packages/Raps/Edats."
+        return 0
+    fi
+
+    for pkg in "$@"; do
+        echo "Instalando $pkg"
+        if "$RPCS3_BIN" --headless --installpkg "$pkg"; then
+            echo "Instalado: ${pkg##*/}"
+        else
+            echo "RPCS3 no pudo instalar ${pkg##*/}; instalalo desde la GUI (File > Install Packages/Raps/Edats)." >&2
+        fi
+    done
+}
+
+fetch_rb3dx() {
+    local zip="$DEST/RB3DX-PS3.zip" out="$DEST/RB3DX-PS3" free_mb
+    local -a pkgs
+
+    mkdir -p "$DEST"
+    free_mb="$(df -Pm "$DEST" | awk 'NR == 2 {print $4}')"
+    if [[ -n "$free_mb" ]] && (( free_mb < MIN_FREE_MB )); then
+        echo "Espacio insuficiente en $DEST: ${free_mb} MiB libres, hacen falta ${MIN_FREE_MB} MiB." >&2
+        return 1
+    fi
+
+    download_file "$RB3DX_URL" "$zip"
+
+    if ! unzip -tq "$zip" >/dev/null; then
+        rm -f "$zip"
+        echo "El zip descargado esta danado; se borro. Vuelve a intentarlo." >&2
+        return 1
+    fi
+
+    rm -rf "$out"
+    mkdir -p "$out"
+    unzip -q -o "$zip" -d "$out"
+
+    mapfile -t pkgs < <(find "$out" -type f -iname '*.pkg' | sort)
+    if [[ ${#pkgs[@]} -eq 0 ]]; then
+        echo "El zip no trae ningun .pkg; revisa el contenido en $out" >&2
+        return 1
+    fi
+
+    echo ""
+    echo "Rock Band 3 Deluxe quedo listo en $out:"
+    printf '  %s\n' "${pkgs[@]##*/}"
+    install_packages "${pkgs[@]}"
+}
+
+# Carpetas PS3_GAME de Rock Band 3 (juego en formato carpeta) conocidas por RPCS3.
+find_game_folders() {
+    local sfo dir
+
+    while IFS= read -r sfo; do
+        dir="$(dirname "$sfo")"
+        [[ "${dir##*/}" == "PS3_GAME" ]] || continue
+        grep -aqi -- "$GAME_MATCH" "$sfo" 2>/dev/null && echo "$dir"
+    done < <(find "$GAMES_DIR" "$CONFIG_DIR/dev_hdd0/disc" -maxdepth 4 -name PARAM.SFO 2>/dev/null | sort)
+    return 0
+}
+
+extract_archive() {
+    local archive="$1" dest="$2"
+
+    if command -v bsdtar >/dev/null 2>&1; then
+        bsdtar -xf "$archive" -C "$dest"
+    elif command -v 7z >/dev/null 2>&1; then
+        7z x -y -o"$dest" "$archive" >/dev/null
+    else
+        echo "Hace falta bsdtar (libarchive) o 7z para descomprimir el parche." >&2
+        return 1
+    fi
+}
+
+# Parche contra el teletransporte de guitarra/pelo/sombrero (RPCS3). Reemplaza
+# archivos dentro de PS3_GAME, asi que solo aplica al juego en carpeta: un .iso
+# es de solo lectura para RPCS3.
+fix_teleport() {
+    local archive="$DEST/rb3_ps3_guitar_glitch_fix.7z" tmp src game
+    local -a games
+
+    mapfile -t games < <(find_game_folders)
+    if [[ ${#games[@]} -eq 0 ]]; then
+        echo "No se encontro Rock Band 3 en formato carpeta (PS3_GAME) en $GAMES_DIR ni en dev_hdd0/disc." >&2
+        echo "El parche reemplaza archivos dentro de PS3_GAME, asi que no se puede aplicar a un .iso." >&2
+        echo "Extrae el ISO a una carpeta, agregala a RPCS3 y vuelve a ejecutar esta opcion." >&2
+        return 1
+    fi
+
+    mkdir -p "$DEST"
+    download_file "$TELEPORT_URL" "$archive"
+
+    tmp="$(mktemp -d "$DEST/.rb3dx-teleport.XXXXXX")"
+    TMP_DIRS+=("$tmp")
+    extract_archive "$archive" "$tmp"
+
+    src="$(find "$tmp" -type d -name PS3_GAME | head -n 1)"
+    if [[ -z "$src" ]]; then
+        echo "El parche descargado no trae la carpeta PS3_GAME." >&2
+        return 1
+    fi
+
+    for game in "${games[@]}"; do
+        echo "Aplicando el parche en $game (los archivos reemplazados quedan como .~N~)"
+        cp -a --backup=numbered "$src/." "$game/"
+    done
+    echo "Parche aplicado. Si el juego se vuelve inestable activa High Memory Mode (guia de MiloHax)."
+}
+
+case "${1:-}" in
+    "")
+        fetch_rb3dx
+        ;;
+    --teleport-fix)
+        fix_teleport
+        ;;
+    *)
+        echo "Uso: install-rb3dx [--teleport-fix]" >&2
+        exit 2
+        ;;
+esac
+TEMPLATE
+
 # Menu de mantenimiento: el comun de los kioscos mas la opcion de abrir la GUI
-# de RPCS3 (configuracion, firmware, juegos y controles).
+# de RPCS3 (configuracion, firmware, juegos y controles) y las de RB3DX.
 RPCS3_MENU_TEMPLATE="$(kiosk_menu_script "RPCS3" "Volver al juego" "Actualizar RPCS3" /usr/local/bin/update-rpcs3 \
     --setup 'GUI_FLAG="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rpcs3-open-gui"' \
     --ip-extra '    echo "Juegos por red: \\$(show_hostname)\RPCS3-Games"' \
     --extra-label "Abrir RPCS3 (configuracion, firmware, juegos y controles)" \
     --extra-code '            # El wrapper ve este archivo al salir del menu y abre la GUI de RPCS3.
             touch "$GUI_FLAG"
-            exit 0')"
+            exit 0' \
+    --extra-label "Descargar Rock Band 3 Deluxe (PS3) e instalarlo en RPCS3" \
+    --extra-code '            clear
+            if [[ -x /usr/local/bin/install-rb3dx ]]; then
+                /usr/local/bin/install-rb3dx || echo "La descarga o instalacion de RB3DX no termino."
+            else
+                echo "No se encontro /usr/local/bin/install-rb3dx."
+            fi
+            pause_menu' \
+    --extra-label "Aplicar parche contra el teletransporte de RB3 (solo juego en carpeta)" \
+    --extra-code '            clear
+            if [[ -x /usr/local/bin/install-rb3dx ]]; then
+                /usr/local/bin/install-rb3dx --teleport-fix || echo "El parche no se aplico."
+            else
+                echo "No se encontro /usr/local/bin/install-rb3dx."
+            fi
+            pause_menu')"
 
 read -r -d '' RPCS3_PROFILE_FIX_TEMPLATE <<'TEMPLATE' || true
 #!/usr/bin/env python3
@@ -931,6 +1139,20 @@ install_rpcs3_update_script() {
         "RPCS3_ASSET_REGEX=$RPCS3_ASSET_REGEX" \
         "OWNER=$KIOSK_USER" > /mnt/usr/local/bin/update-rpcs3
     chmod +x /mnt/usr/local/bin/update-rpcs3
+}
+
+# Instala /usr/local/bin/install-rb3dx, que usa la opcion de RB3DX del menu de
+# mantenimiento (descarga, descomprime e instala Rock Band 3 Deluxe).
+install_rb3dx_script() {
+    log "Instalando /usr/local/bin/install-rb3dx"
+
+    mkdir -p /mnt/usr/local/bin
+    rpcs3_render "$RB3DX_INSTALL_TEMPLATE" \
+        "RB3DX_URL=$RB3DX_URL" \
+        "RB3DX_TELEPORT_FIX_URL=$RB3DX_TELEPORT_FIX_URL" \
+        "RPCS3_GAMES_DIR=$RPCS3_GAMES_DIR" \
+        "RPCS3_GAME_MATCH=$RPCS3_GAME_MATCH" > /mnt/usr/local/bin/install-rb3dx
+    chmod 755 /mnt/usr/local/bin/install-rb3dx
 }
 
 # Instala el script que asigna los controles conectados a los jugadores 1 y 2

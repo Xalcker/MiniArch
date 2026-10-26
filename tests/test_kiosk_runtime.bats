@@ -404,3 +404,15 @@ run_menu() { # opcion [args de kiosk_menu_script...]
     done
     ! grep -Fq 'cat > /mnt/etc/systemd/system/cage-kiosk.service' lib/cage.sh lib/clonehero.sh lib/rpcs3.sh
 }
+
+@test "varias opciones extra se numeran en orden antes de actualizar" {
+    kiosk_menu_script RPCS3 "Volver" "Actualizar RPCS3" /usr/local/bin/update-rpcs3 \
+        --extra-label "Uno" --extra-code '            echo uno' \
+        --extra-label "Dos" --extra-code '            echo dos' > "$BATS_TEST_TMPDIR/m.sh"
+    bash -n "$BATS_TEST_TMPDIR/m.sh"
+    grep -Fxq '6) Uno' "$BATS_TEST_TMPDIR/m.sh"
+    grep -Fxq '7) Dos' "$BATS_TEST_TMPDIR/m.sh"
+    grep -Fxq '8) Actualizar RPCS3' "$BATS_TEST_TMPDIR/m.sh"
+    grep -Fxq '9) Reiniciar Kiosko' "$BATS_TEST_TMPDIR/m.sh"
+    grep -Fxq '10) Apagar Kiosko' "$BATS_TEST_TMPDIR/m.sh"
+}

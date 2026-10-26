@@ -134,6 +134,7 @@ red y limpieza del instalador, pero arranca directamente `foot` dentro de Cage.
   instrumentos por libusb y sin ese permiso falla con `Unable to open ... device`.
 - `vm.max_map_count` alto, limites de tiempo real y `cpupower` en performance.
 - Updater `/usr/local/bin/update-rpcs3`.
+- `/usr/local/bin/install-rb3dx` (opciones de RB3DX del menu de mantenimiento).
 - Servicio `cage-kiosk.service` y wrapper `/usr/local/bin/run-rpcs3.sh`.
 
 Requiere un disco de al menos 32 GB (`RPCS3_MIN_DISK_GB`): el juego y la cache
@@ -613,6 +614,30 @@ Si no lo encuentra abre la GUI. Desde el menu de mantenimiento (aparece al
 salir del juego, salvo `RPCS3_EXIT_MENU=restart` o `never`) la opcion
 `Abrir RPCS3` vuelve a abrir la GUI para cambiar controles o agregar juegos.
 
+Rock Band 3 Deluxe desde el menu de mantenimiento:
+
+- `Descargar Rock Band 3 Deluxe (PS3) e instalarlo en RPCS3` ejecuta
+  `/usr/local/bin/install-rb3dx` como el usuario del kiosko: descarga `RB3DX_URL`
+  (~790 MB, con reanudacion y sin repetir una descarga completa) a
+  `~/RB3DX-PS3.zip`, lo valida con `unzip -t`, lo descomprime en `~/RB3DX-PS3/` y
+  pregunta si instalar el `.pkg` con `AppRun --headless --installpkg <pkg>`
+  (opcion de linea de comandos de RPCS3, que instala y termina sin abrir la GUI).
+  Hace falta tener Rock Band 3 (BLUS30463) ya agregado a RPCS3; si la instalacion
+  automatica falla queda el `.pkg` listo para `File > Install Packages/Raps/Edats`.
+  Pide al menos 2.5 GB libres. Rock Band 3 Deluxe es un proyecto de fans sin
+  licencia publicada; la fuente es la pagina oficial de descargas
+  <https://rb3dx.milohax.org/downloads/> (que enlaza el release `nightly` de
+  GitHub: no hay version numerada ni URL "latest" estable distinta de esa).
+- `Aplicar parche contra el teletransporte de RB3 (solo juego en carpeta)`
+  (`install-rb3dx --teleport-fix`) baja `RB3DX_TELEPORT_FIX_URL` (el
+  `rb3_ps3_guitar_glitch_fix.7z` de la
+  [guia de MiloHax](https://guides.milohax.org/en/rb3/teleport/), ~75 MB) y copia su
+  `PS3_GAME` sobre el juego en carpeta, guardando lo reemplazado como `.~N~`.
+  La guia describe solo ese procedimiento (`Open Disc Game Folder`, reemplazar
+  archivos); como el parche reemplaza archivos dentro de `PS3_GAME`, **no se puede
+  aplicar a un `.iso`**: si el juego solo esta como ISO, la opcion avisa y no
+  descarga nada. Extrae el ISO a una carpeta para usarlo.
+
 Share Samba para subir juegos:
 
 ```text
@@ -774,6 +799,9 @@ Variables de Cage/RPCS3:
 - `RB3DX_DOWNLOAD`: `true` (por defecto) descarga la ultima build de Rock Band 3
   Deluxe para PS3 (~750 MB) a `/home/<usuario>/RB3DX-PS3.zip`; `false` la omite.
 - `RB3DX_URL`: URL del zip de RB3DX (por defecto la build `develop` en nightly.link).
+  La opcion del menu de mantenimiento usa esta misma URL.
+- `RB3DX_TELEPORT_FIX_URL`: URL del `rb3_ps3_guitar_glitch_fix.7z` que baja la opcion
+  del parche contra el teletransporte (solo juego en carpeta, no `.iso`).
 - `RB3DX_DOWNLOAD_CONFIGS`: `true` (por defecto) descarga los tres perfiles de
   configuracion de la guia de MiloHax (`recommended`, `minimum`, `potato`) como
   `/home/<usuario>/RB3DX-config-<perfil>.zip`. El instalador reescribe cada zip

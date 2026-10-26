@@ -51,6 +51,7 @@ RPCS3_FIRMWARE_URL="${RPCS3_FIRMWARE_URL:-http://dus01.ps3.update.playstation.ne
 # perfiles de configuracion recomendados de la guia de MiloHax.
 RB3DX_DOWNLOAD="${RB3DX_DOWNLOAD:-true}"
 RB3DX_URL="${RB3DX_URL:-https://nightly.link/hmxmilohax/rock-band-3-deluxe/workflows/build/develop/RB3DX-PS3.zip}"
+RB3DX_TELEPORT_FIX_URL="${RB3DX_TELEPORT_FIX_URL:-https://github.com/hmxmilohax/rock-band-3-deluxe/raw/develop/dependencies/ps3_patcher/rb3_ps3_guitar_glitch_fix.7z}"
 RB3DX_CONFIG_BASE_URL="${RB3DX_CONFIG_BASE_URL:-https://guides.milohax.org/downloads/rb3/rpcs3/customconfigs}"
 RB3DX_DOWNLOAD_CONFIGS="${RB3DX_DOWNLOAD_CONFIGS:-true}"
 # Perfil que se aplica: recommended, minimum, potato o none. Vacio = preguntar
@@ -474,6 +475,8 @@ main() {
         log_error "Fallo en instalacion del updater de RPCS3"
         exit 1
     fi
+
+    install_rb3dx_script
 
     install_kiosk_exit_hotkey "${RPCS3_EXIT_HOTKEY:-true}" RPCS3
 

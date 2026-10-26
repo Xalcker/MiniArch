@@ -728,17 +728,19 @@ TEMPLATE
 # Opciones (todas con valor):
 #   --extra-label <texto>   opcion adicional antes de "Actualizar"
 #   --extra-code <codigo>   cuerpo Bash de esa opcion
+#                           (el par se puede repetir: una opcion por par, en orden)
 #   --setup <codigo>        lineas Bash tras las variables iniciales del menu
 #   --ip-extra <codigo>     lineas Bash al final de "Ver direccion IP"
 kiosk_menu_script() {
     local app="$1" return_label="$2" update_label="$3" update_command="$4"
     shift 4
 
-    local extra_label="" extra_code="" setup="" ip_extra=""
+    local -a extra_labels=() extra_codes=()
+    local setup="" ip_extra="" i
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --extra-label) extra_label="$2" ;;
-            --extra-code) extra_code="$2" ;;
+            --extra-label) extra_labels+=("$2") ;;
+            --extra-code) extra_codes+=("$2") ;;
             --setup) setup="$2" ;;
             --ip-extra) ip_extra="$2" ;;
             *) echo "kiosk_menu_script: opcion desconocida: $1" >&2; return 1 ;;
@@ -752,11 +754,11 @@ kiosk_menu_script() {
     rule="$(printf '%*s' "${#title}" '' | tr ' ' '=')"
     update_rule="$(printf '%*s' "${#update_label}" '' | tr ' ' '=')"
 
-    if [[ -n "$extra_label" ]]; then
+    for i in "${!extra_labels[@]}"; do
         n=$((n + 1))
-        options+="$n) $extra_label"$'\n'
-        cases+="        $n)"$'\n'"$extra_code"$'\n'"            ;;"$'\n'
-    fi
+        options+="$n) ${extra_labels[$i]}"$'\n'
+        cases+="        $n)"$'\n'"${extra_codes[$i]:-}"$'\n'"            ;;"$'\n'
+    done
 
     n=$((n + 1))
     options+="$n) $update_label"$'\n'
