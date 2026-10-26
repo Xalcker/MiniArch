@@ -941,3 +941,158 @@ assert m.is_instrument("8BitDo SN30 Pro") and not m.is_instrument("sanjay900 San
 PY
     [ "$status" -eq 0 ]
 }
+
+# --- install-rb3dx (descarga de Rock Band 3 Deluxe desde el menu) --------------
+
+make_rb3dx_script() {
+    local dir="$BATS_TEST_TMPDIR/rb3dx"
+    mkdir -p "$dir/bin" "$dir/home" "$dir/games"
+    rpcs3_render "$RB3DX_INSTALL_TEMPLATE" \
+        "RB3DX_URL=https://h/RB3DX-PS3.zip" \
+        "RB3DX_TELEPORT_FIX_URL=https://h/fix.7z" \
+        "RPCS3_GAMES_DIR=$dir/games" \
+        "RPCS3_GAME_MATCH=Rock Band 3" > "$dir/install-rb3dx"
+    # curl de prueba: -I responde un tamano fijo; la descarga copia el archivo de $FAKE_<ext>.
+    cat > "$dir/bin/curl" <<'SH'
+#!/usr/bin/env bash
+out=""; head=false; url=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o) out="$2"; shift ;;
+        -fsIL) head=true ;;
+        http*) url="$1" ;;
+    esac
+    shift
+done
+echo "$url" >> "$CURL_LOG"
+if [[ "$head" == "true" ]]; then
+    printf 'HTTP/2 200\r\ncontent-length: 1\r\n'
+elif [[ "$url" == *.zip ]]; then
+    cp "$FAKE_ZIP" "$out"
+else
+    cp "$FAKE_7Z" "$out"
+fi
+SH
+    # bsdtar de prueba: el "7z" falso es un tar.
+    printf '#!/usr/bin/env bash\nexec tar "$@"\n' > "$dir/bin/bsdtar"
+    chmod +x "$dir/bin/curl" "$dir/bin/bsdtar"
+    export CURL_LOG="$dir/curl.log"
+    : > "$CURL_LOG"
+}
+
+@test "install-rb3dx es Bash valido y sin marcadores sin sustituir" {
+    make_rb3dx_script
+    bash -n "$BATS_TEST_TMPDIR/rb3dx/install-rb3dx"
+    ! grep -q '__[A-Z0-9_]*__' "$BATS_TEST_TMPDIR/rb3dx/install-rb3dx"
+}
+
+@test "install-rb3dx descarga, descomprime el pkg y lo instala con --headless --installpkg" {
+    command -v unzip >/dev/null || skip "unzip no esta instalado"
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+    make_rb3dx_script
+    local dir="$BATS_TEST_TMPDIR/rb3dx"
+    python3 - "$dir/fake.zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("RB3DX-USA-abc123.pkg", b"pkg")
+PY
+    printf '#!/usr/bin/env bash\necho "$@" >> "%s/rpcs3.log"\n' "$dir" > "$dir/rpcs3"
+    chmod +x "$dir/rpcs3"
+
+    FAKE_ZIP="$dir/fake.zip" RB3DX_DEST="$dir/home" RPCS3_BIN="$dir/rpcs3" PATH="$dir/bin:$PATH" \
+        run bash "$dir/install-rb3dx" <<< "s"
+    [ "$status" -eq 0 ]
+    [ -f "$dir/home/RB3DX-PS3.zip" ]
+    [ -f "$dir/home/RB3DX-PS3/RB3DX-USA-abc123.pkg" ]
+    grep -Fxq -- "--headless --installpkg $dir/home/RB3DX-PS3/RB3DX-USA-abc123.pkg" "$dir/rpcs3.log"
+}
+
+@test "install-rb3dx no instala en RPCS3 si respondes que no" {
+    command -v unzip >/dev/null || skip "unzip no esta instalado"
+    command -v python3 >/dev/null || skip "python3 no esta instalado"
+    make_rb3dx_script
+    local dir="$BATS_TEST_TMPDIR/rb3dx"
+    python3 - "$dir/fake.zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("x.pkg", b"pkg")
+PY
+    printf '#!/usr/bin/env bash\necho "$@" >> "%s/rpcs3.log"\n' "$dir" > "$dir/rpcs3"
+    chmod +x "$dir/rpcs3"
+
+    FAKE_ZIP="$dir/fake.zip" RB3DX_DEST="$dir/home" RPCS3_BIN="$dir/rpcs3" PATH="$dir/bin:$PATH" \
+        run bash "$dir/install-rb3dx" <<< "n"
+    [ "$status" -eq 0 ]
+    [ -f "$dir/home/RB3DX-PS3/x.pkg" ]
+    [ ! -e "$dir/rpcs3.log" ]
+}
+
+@test "install-rb3dx rechaza un zip danado y lo borra" {
+    command -v unzip >/dev/null || skip "unzip no esta instalado"
+    make_rb3dx_script
+    local dir="$BATS_TEST_TMPDIR/rb3dx"
+    echo "no es un zip" > "$dir/fake.zip"
+
+    FAKE_ZIP="$dir/fake.zip" RB3DX_DEST="$dir/home" PATH="$dir/bin:$PATH" run bash "$dir/install-rb3dx"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"danado"* ]]
+    [ ! -e "$dir/home/RB3DX-PS3.zip" ]
+}
+
+@test "install-rb3dx avisa si no hay espacio y no descarga" {
+    make_rb3dx_script
+    local dir="$BATS_TEST_TMPDIR/rb3dx"
+
+    RB3DX_MIN_FREE_MB=999999999 RB3DX_DEST="$dir/home" PATH="$dir/bin:$PATH" run bash "$dir/install-rb3dx"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Espacio insuficiente"* ]]
+    [ ! -s "$dir/curl.log" ]
+}
+
+@test "el parche de teletransporte no se descarga si el juego solo esta como .iso" {
+    make_rb3dx_script
+    local dir="$BATS_TEST_TMPDIR/rb3dx"
+    : > "$dir/games/Rock Band 3.iso"
+
+    RB3DX_DEST="$dir/home" PATH="$dir/bin:$PATH" run bash "$dir/install-rb3dx" --teleport-fix
+    [ "$status" -ne 0 ]
+    [[ "$output" == *".iso"* ]]
+    [ ! -s "$dir/curl.log" ]
+}
+
+@test "el parche de teletransporte se copia sobre PS3_GAME del juego en carpeta y respalda lo reemplazado" {
+    command -v tar >/dev/null || skip "tar no esta instalado"
+    make_rb3dx_script
+    local dir="$BATS_TEST_TMPDIR/rb3dx" game="$BATS_TEST_TMPDIR/rb3dx/games/RB3/PS3_GAME"
+    mkdir -p "$game/USRDIR" "$dir/fix/PS3_GAME/USRDIR"
+    printf 'Rock Band 3' > "$game/PARAM.SFO"
+    echo viejo > "$game/USRDIR/EBOOT.BIN"
+    echo nuevo > "$dir/fix/PS3_GAME/USRDIR/EBOOT.BIN"
+    tar -cf "$dir/fake.7z" -C "$dir/fix" PS3_GAME
+
+    FAKE_7Z="$dir/fake.7z" RB3DX_DEST="$dir/home" PATH="$dir/bin:$PATH" run bash "$dir/install-rb3dx" --teleport-fix
+    [ "$status" -eq 0 ]
+    [ "$(cat "$game/USRDIR/EBOOT.BIN")" = "nuevo" ]
+    [ "$(cat "$game/USRDIR/EBOOT.BIN.~1~")" = "viejo" ]
+    grep -Fq "https://h/fix.7z" "$dir/curl.log"
+}
+
+@test "install-rb3dx rechaza argumentos desconocidos" {
+    make_rb3dx_script
+    run bash "$BATS_TEST_TMPDIR/rb3dx/install-rb3dx" --otra-cosa
+    [ "$status" -eq 2 ]
+}
+
+@test "el menu de RPCS3 ofrece las opciones de RB3DX y del parche" {
+    printf '%s\n' "$RPCS3_MENU_TEMPLATE" > "$BATS_TEST_TMPDIR/menu.sh"
+    bash -n "$BATS_TEST_TMPDIR/menu.sh"
+    grep -Fq 'Descargar Rock Band 3 Deluxe (PS3)' "$BATS_TEST_TMPDIR/menu.sh"
+    grep -Fq 'Aplicar parche contra el teletransporte' "$BATS_TEST_TMPDIR/menu.sh"
+    grep -Fq 'install-rb3dx --teleport-fix' "$BATS_TEST_TMPDIR/menu.sh"
+    grep -Eq '^[0-9]+\) Actualizar RPCS3$' "$BATS_TEST_TMPDIR/menu.sh"
+}
+
+@test "el instalador de RPCS3 instala install-rb3dx y define RB3DX_TELEPORT_FIX_URL" {
+    grep -Eq '^ +install_rb3dx_script$' install-cage-rpcs3.sh
+    grep -q '^RB3DX_TELEPORT_FIX_URL=' .env.example
+}

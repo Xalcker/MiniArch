@@ -191,3 +191,9 @@ defecto es `http://`, sin cifrado ni verificacion de integridad por parte del
 instalador. Si necesitas mas garantias, descarga el `PS3UPDAT.PUP` por otro
 medio, compara su hash con el publicado y usa `RPCS3_DOWNLOAD_FIRMWARE=false`.
 El firmware lo valida RPCS3 al instalarlo desde su GUI.
+
+Las opciones de Rock Band 3 Deluxe del menu de mantenimiento (`install-rb3dx`)
+descargan por HTTPS desde GitHub el zip de RB3DX y el parche contra el
+teletransporte, sin verificar hash ni firma (el proyecto no publica ninguno).
+Corren como el usuario del kiosko, sin privilegios, y el parche copia archivos
+sobre el juego en carpeta.

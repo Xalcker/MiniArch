@@ -87,6 +87,12 @@ Infraestructura:
 - zram (`zram-generator`) en YARG, Clone Hero y RPCS3: swap comprimido en RAM por
   delante del swap de disco (prioridad 10), `vm.swappiness=100` y
   `ZRAM_ENABLED` / `ZRAM_MAX_MB`.
+- Menu de mantenimiento de RPCS3: opcion para descargar Rock Band 3 Deluxe,
+  descomprimirlo en el home e instalarlo con `rpcs3 --headless --installpkg`
+  (`install-rb3dx`, `lib/rpcs3.sh`), y opcion para aplicar el parche contra el
+  teletransporte de MiloHax (`RB3DX_TELEPORT_FIX_URL`; solo juego en carpeta, no
+  `.iso`). `kiosk_menu_script` admite ahora varios pares `--extra-label` /
+  `--extra-code`.
 
 ### Cambiado
 
